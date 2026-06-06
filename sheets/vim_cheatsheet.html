@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vim Survival Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:42%;}
+  td.desc{width:58%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Vim Survival Cheat Sheet</h1>
+<p class="sub">Get out of it, then use it · started 2026-06-05 · twin of <code>Tools/vim_cheatsheet.md</code></p>
+
+<!-- ============ ESCAPE HATCH FIRST ============ -->
+<h2>0 · First, how to GET OUT</h2>
+<div class="callout warn">
+  <b>Trapped?</b> Press <kbd>Esc</kbd> a couple of times (back to Normal mode), then type <code>:q!</code> and <kbd>Enter</kbd> — quits and discards everything. That one sequence rescues 90% of "stuck in Vim" moments.
+</div>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>:wq</code> <kbd>Enter</kbd></td><td class="desc">save <b>and</b> quit (or <code>ZZ</code>, or <code>:x</code>)</td></tr>
+    <tr><td class="cmd"><code>:w</code> <kbd>Enter</kbd></td><td class="desc">save (<b>w</b>rite), stay open</td></tr>
+    <tr><td class="cmd"><code>:q</code> <kbd>Enter</kbd></td><td class="desc">quit (only if no unsaved changes)</td></tr>
+    <tr><td class="cmd"><code>:q!</code> <kbd>Enter</kbd></td><td class="desc">quit, <b>discard all edits</b> (<code>!</code> = force)</td></tr>
+    <tr><td class="cmd"><code>:qa!</code> <kbd>Enter</kbd></td><td class="desc">quit <b>ALL</b> windows, discard (<code>qa</code> = quit all) — for vimdiff / multiple splits, where <code>:q!</code> only closes one</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Vim</b> = "Vi IMproved", a <b>modal</b> text editor (Vi: Bill Joy, 1976 → Vim: Bram Moolenaar, 1991). <b>Modal</b> = the same key does different things per mode — alien at first, fast once it clicks. You keep landing in it because tools open <code>$EDITOR</code> (default Vim on most systems): <code>git commit</code>, <code>git config --global --edit</code>, <code>git rebase -i</code>, <code>crontab -e</code>.
+</div>
+
+<!-- ============ THREE MODES ============ -->
+<h2>1 · The three modes (core mental model)</h2>
+<div class="callout">
+  <pre><code>            i / a / o ...
+   ┌────────────────────────►┐
+NORMAL                     INSERT   ← type text normally here
+(navigate,                   │
+ run commands)  ◄────────────┘
+   │   ▲          Esc
+ : │   │ Esc
+   ▼   │
+COMMAND-LINE     VISUAL  ← (v) select text to act on
+(:w :q :s ...)</code></pre>
+  <b>Normal</b> (default) — keys are <i>commands</i>, not text (why fresh Vim looks "erratic" — you're firing commands). <b>Insert</b> — types text; enter with <code>i</code>, leave with <kbd>Esc</kbd>. <b>Visual</b> — highlight a range then act. <b>Command-line</b> — the <code>:</code> prompt.
+</div>
+<div class="callout good">
+  <b>Vim convention — the mode indicator:</b> look at the <b>bottom-left</b> of the terminal. <code>-- INSERT --</code> = Insert mode; blank = Normal mode. Glance there before typing.
+</div>
+
+<!-- ============ INSERT DOORS ============ -->
+<h2>2 · Entering Insert mode (several doors in)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Pick the right entry</h3>
+    <table>
+      <tr><td class="cmd"><code>i</code></td><td class="desc"><b>i</b>nsert before cursor</td></tr>
+      <tr><td class="cmd"><code>a</code></td><td class="desc"><b>a</b>ppend after cursor</td></tr>
+      <tr><td class="cmd"><code>I</code></td><td class="desc">insert at line start (first non-blank)</td></tr>
+      <tr><td class="cmd"><code>A</code></td><td class="desc">append at line end</td></tr>
+      <tr><td class="cmd"><code>o</code></td><td class="desc"><b>o</b>pen new line below + type</td></tr>
+      <tr><td class="cmd"><code>O</code></td><td class="desc">open new line above</td></tr>
+    </table>
+    <p class="lead"><kbd>Esc</kbd> always returns to Normal mode.</p>
+  </div>
+  <div class="card">
+    <h3>The Git "uncomment & save" flow</h3>
+    <p class="lead">In Git config, comments start with <code>;</code> or <code>#</code>; "uncomment" = delete that leading char.</p>
+    <pre><code>1. Move cursor onto the ; or #   (arrows or h j k l)
+2. Press  x   ← deletes that one char (no Insert needed!)
+   or:  i , then Backspace it
+3. Need a value? press  a , type it
+4. Esc   (-- INSERT -- disappears)
+5. :wq  Enter   to save & quit
+   messed up? Esc , :q!  Enter</code></pre>
+  </div>
+</div>
+<div class="callout"><b>Pro tip:</b> in Normal mode, <code>x</code> deletes the character under the cursor instantly — often quicker than entering Insert mode just to Backspace one <code>;</code>.</div>
+
+<!-- ============ MOVE ============ -->
+<h2>3 · Moving around (Normal mode)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Motions</h3>
+    <table>
+      <tr><td class="cmd"><code>h j k l</code></td><td class="desc">left, down, up, right</td></tr>
+      <tr><td class="cmd"><code>w</code> / <code>b</code></td><td class="desc">forward / back a word</td></tr>
+      <tr><td class="cmd"><code>0</code> / <code>$</code></td><td class="desc">start / end of line</td></tr>
+      <tr><td class="cmd"><code>gg</code> / <code>G</code></td><td class="desc">top / bottom of file</td></tr>
+      <tr><td class="cmd"><code>:42</code> <kbd>Enter</kbd></td><td class="desc">jump to line 42</td></tr>
+      <tr><td class="cmd"><code>Ctrl-d</code> / <code>Ctrl-u</code></td><td class="desc">half-page down / up</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Why <code>hjkl</code>?</h3>
+    <p class="lead">On Bill Joy's 1970s ADM-3A terminal those four keys had arrow symbols printed on them — Vi inherited the layout. <code>j</code> looks a bit like a down-arrow → "j = down". Arrow keys also work; home-row keys just keep your hands put.</p>
+  </div>
+</div>
+
+<!-- ============ EDIT ============ -->
+<h2>4 · Editing without Insert mode (Normal-mode power)</h2>
+<div class="callout">Speed = <b>operator + motion</b>. <code>d</code> delete · <code>c</code> change (delete + Insert) · <code>y</code> yank (copy). Read it as <i>verb + count + noun</i>: <code>d2w</code> = delete 2 words, <code>3dd</code> = delete 3 lines, <code>ci"</code> = change inside quotes.</div>
+<div class="grid">
+  <div class="card">
+    <h3>Delete / change / copy</h3>
+    <table>
+      <tr><td class="cmd"><code>x</code></td><td class="desc">delete char under cursor</td></tr>
+      <tr><td class="cmd"><code>dd</code></td><td class="desc">delete (cut) whole line</td></tr>
+      <tr><td class="cmd"><code>dw</code> / <code>D</code></td><td class="desc">delete to end of word / line</td></tr>
+      <tr><td class="cmd"><code>cc</code></td><td class="desc">change whole line (clears + Insert)</td></tr>
+      <tr><td class="cmd"><code>yy</code> / <code>p</code></td><td class="desc">yank line / paste after cursor</td></tr>
+      <tr><td class="cmd"><code>r&lt;char&gt;</code></td><td class="desc">replace one char, no Insert</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Undo &amp; repeat</h3>
+    <table>
+      <tr><td class="cmd"><code>u</code></td><td class="desc"><b>u</b>ndo</td></tr>
+      <tr><td class="cmd"><code>Ctrl-r</code></td><td class="desc"><b>r</b>edo</td></tr>
+      <tr><td class="cmd"><code>.</code></td><td class="desc">repeat last change (hugely useful)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ SEARCH ============ -->
+<h2>5 · Search &amp; replace</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>/text</code> <kbd>Enter</kbd></td><td class="desc">search forward; <code>n</code> next, <code>N</code> previous</td></tr>
+    <tr><td class="cmd"><code>?text</code> <kbd>Enter</kbd></td><td class="desc">search backward</td></tr>
+    <tr><td class="cmd"><code>:%s/old/new/g</code></td><td class="desc">replace old→new everywhere (<code>%</code> = whole file, <code>g</code> = all per line)</td></tr>
+    <tr><td class="cmd"><code>:%s/old/new/gc</code></td><td class="desc">same, <b>c</b>onfirm each</td></tr>
+    <tr><td class="cmd"><code>:noh</code> <kbd>Enter</kbd></td><td class="desc">clear search highlight</td></tr>
+  </table>
+  <p class="lead">Grammar: <code>:[range]s/pattern/replacement/[flags]</code> — <code>s</code> = <b>s</b>ubstitute, inherited from <code>ed</code>/<code>sed</code>. Same <code>s/old/new/</code> you see in shell one-liners.</p>
+</div>
+
+<!-- ============ SURVIVAL ============ -->
+<h2>6 · Survival card (tape to the monitor)</h2>
+<pre><code>STUCK?            Esc Esc  then  :q!  Enter      (quit, discard)
+SAVE &amp; QUIT       Esc  :wq  Enter
+TYPE TEXT         i   ... (then Esc when done)
+DELETE A CHAR     x
+DELETE A LINE     dd
+UNDO / REDO       u  /  Ctrl-r
+FIND              /word  Enter   (n = next)</code></pre>
+
+<!-- ============ BONUS ============ -->
+<h2>7 · Bonus — make this stop happening</h2>
+<div class="callout good">
+  Prefer a friendlier editor for Git?
+  <pre><code>git config --global core.editor "nano"          # simple terminal editor
+git config --global core.editor "code --wait"   # VS Code (waits till you close the tab)</code></pre>
+  <code>--wait</code> matters: without it VS Code returns instantly and Git sees an empty message. To learn Vim properly, run <code>vimtutor</code> — the best 30 minutes you'll spend.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Vim</b></td><td class="desc">"Vi IMproved", modal terminal editor</td></tr>
+    <tr><td class="cmd"><b>Modal editor</b></td><td class="desc">keys mean different things per mode</td></tr>
+    <tr><td class="cmd"><b>Normal mode</b></td><td class="desc">default; keystrokes are commands</td></tr>
+    <tr><td class="cmd"><b>Insert mode</b></td><td class="desc">types text (<code>i</code> in, <kbd>Esc</kbd> out)</td></tr>
+    <tr><td class="cmd"><b>Visual mode</b></td><td class="desc">select a range to operate on</td></tr>
+    <tr><td class="cmd"><b>Command-line mode</b></td><td class="desc">the <code>:</code> prompt (<code>:w :q :s</code>)</td></tr>
+    <tr><td class="cmd"><b>Yank</b></td><td class="desc">Vim's word for copy (<code>y</code>)</td></tr>
+    <tr><td class="cmd"><b>$EDITOR</b></td><td class="desc">env var tools open for text entry</td></tr>
+    <tr><td class="cmd"><b>operator + motion</b></td><td class="desc">composable grammar (<code>d</code>+<code>w</code>=<code>dw</code>)</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://vimhelp.org/usr_01.txt.html">vimtutor</a> ·
+  <a href="https://vimhelp.org/">Vim docs</a> ·
+  <a href="https://vim.rtorr.com/">vim.rtorr.com cheat sheet</a> ·
+  <a href="https://www.catonmat.net/why-vim-uses-hjkl-as-arrow-keys">Why HJKL (ADM-3A)</a> ·
+  <a href="https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration">Git core.editor</a>
+</p>
+
+</div>
+</body>
+</html>

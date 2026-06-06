@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSH Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>SSH Cheat Sheet</h1>
+<p class="sub">Remote shells: keys · config · scp · tunnels · started 2026-06-06 · twin of <code>Tools/ssh_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>SSH</b> (Secure Shell) = a protocol for an <b>encrypted</b> connection to another machine: a remote terminal, plus file transfer (<code>scp</code>/<code>sftp</code>/<code>rsync</code>) and tunnels, all over the same pipe. Created in <b>1995 by Tatu Ylönen</b> after a password-sniffing attack on his university network — it replaced <b>telnet</b> and <b>rlogin</b>, which sent passwords in plain text. Standard implementation: <b>OpenSSH</b>, preinstalled on macOS/Linux.
+</div>
+<div class="callout">
+  <b>You get a shell on another machine, through an encrypted pipe:</b>
+  <pre><code>  your laptop                         remote server
+  ┌──────────┐   encrypted pipe      ┌──────────────┐
+  │ terminal │ ═══════════════════► │ shell (bash) │
+  │  (ssh)   │ ◄═══════════════════ │  runs THERE  │
+  └──────────┘     port 22          └──────────────┘</code></pre>
+  Every command in an <code>ssh</code> session executes on the <i>remote</i> machine. Default port <b>22</b> (telnet was 23 — SSH took the slot next door). Three uses of the pipe: <b>terminal</b>, <b>file transfer</b>, <b>tunnels</b>.
+</div>
+
+<!-- ============ KEYS ============ -->
+<h2>1 · Key-based auth — the core skill</h2>
+<div class="callout">
+  <b>Padlock vs. key.</b> A keypair = two linked files. The <b>public key</b> (<code>.pub</code>) is a <i>padlock</i> — safe to copy onto any server; it can only lock (verify), never unlock. The <b>private key</b> is the <i>key</i> that opens it — it <b>never leaves your machine</b>. Login = the server challenges you to prove you hold the private key matching a padlock in its list; no password crosses the wire.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Step 1 — generate (once per machine)</h3>
+    <pre><code>ssh-keygen -t ed25519 -C "laptop-2026"</code></pre>
+    <table>
+      <tr><td class="cmd"><code>-t ed25519</code></td><td class="desc">key <b>t</b>ype — modern elliptic-curve algorithm; shorter, faster, ≥ as secure as RSA</td></tr>
+      <tr><td class="cmd"><code>-C "label"</code></td><td class="desc"><b>C</b>omment embedded in the public key so you can tell keys apart later (machine name or email)</td></tr>
+      <tr><td class="cmd"><code>~/.ssh/id_ed25519</code></td><td class="desc"><b>private key</b> — never leaves this machine</td></tr>
+      <tr><td class="cmd"><code>~/.ssh/id_ed25519.pub</code></td><td class="desc"><b>public key</b> — the shareable padlock (one line of text)</td></tr>
+    </table>
+    <p class="lead"><b>Passphrase:</b> set one — it encrypts the private key on disk (stolen laptop ≠ stolen identity). The agent (§4) means you type it once per session. <b>Ed25519 vs RSA one-liner:</b> use ed25519 unless a legacy server forces <code>-t rsa -b 4096</code> (<b>RSA</b> = Rivest–Shamir–Adleman, the older default).</p>
+  </div>
+  <div class="card">
+    <h3>Step 2 &amp; 3 — install, then log in</h3>
+    <pre><code>ssh-copy-id alice@server.example.com   # once, with password
+ssh alice@server.example.com           # forever after, no password</code></pre>
+    <p class="lead"><code>ssh-copy-id</code> logs in once with your password and appends your public key to <code>~/.ssh/authorized_keys</code> <i>on the server</i> — the server's list of accepted padlocks (one per line) — fixing permissions as it goes. That's all "installing a key" means.</p>
+    <div class="callout warn" style="margin-bottom:0">
+      <b>Never share, email, paste, or commit the private key.</b> Only the <code>.pub</code> ever leaves your machine. Leaked? Generate a new pair and purge the old public key from every server's <code>authorized_keys</code>.
+    </div>
+  </div>
+</div>
+<div class="callout good">
+  <b>Etymology — why "ed25519"?</b> Decode it as <b>Ed</b> + <b>25519</b>. <i>Ed</i> = <b>EdDSA</b> (Edwards-curve Digital Signature Algorithm) — "Edwards" honors mathematician <b>Harold Edwards</b>, who described this curve family in 2007. <i>25519</i> names the underlying prime field: the curve lives over the prime <b>2²⁵⁵ − 19</b> — the number is literally in the name. The same prime powers <b>Curve25519/X25519</b> (key <i>exchange</i>, Daniel J. Bernstein, 2005); Ed25519 (Bernstein et al., 2011) is its <i>signature</i> sibling. So: "Edwards-curve signatures over the 2²⁵⁵−19 prime."
+</div>
+
+<!-- ============ EVERYDAY ============ -->
+<h2>2 · Everyday commands</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Connect &amp; run</h3>
+    <table>
+      <tr><td class="cmd"><code>ssh alice@server.example.com</code></td><td class="desc">remote shell as user <code>alice</code></td></tr>
+      <tr><td class="cmd"><code>ssh -p 2222 alice@server.example.com</code></td><td class="desc">non-default <b>p</b>ort (default 22)</td></tr>
+      <tr><td class="cmd"><code>ssh alice@server.example.com 'df -h'</code></td><td class="desc">run one remote command, print output, exit</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Move files</h3>
+    <table>
+      <tr><td class="cmd"><code>scp report.pdf alice@server.example.com:/tmp/</code></td><td class="desc"><b>s</b>ecure <b>c</b>o<b>p</b>y to server (<code>:</code> before remote path)</td></tr>
+      <tr><td class="cmd"><code>scp alice@server.example.com:/var/log/app.log .</code></td><td class="desc">copy from server to here</td></tr>
+      <tr><td class="cmd"><code>scp -r ./site alice@server.example.com:~/www/</code></td><td class="desc">directory, <b>r</b>ecursively</td></tr>
+      <tr><td class="cmd"><code>sftp alice@server.example.com</code></td><td class="desc">interactive session (<b>SFTP</b> = SSH File Transfer Protocol): <code>ls</code>/<code>cd</code>, <code>get</code>, <code>put</code>, <code>exit</code></td></tr>
+      <tr><td class="cmd"><code>rsync -avz ./project/ alice@server.example.com:~/project/</code></td><td class="desc">sync over SSH — transfers only what changed (<code>-a</code> archive, <code>-v</code> verbose, <code>-z</code> compress)</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout good">
+  <b>Mnemonic:</b> in <code>scp</code>/<code>rsync</code>, a path with <code>host:</code> in front is remote, without is local — source first, destination second, same as <code>cp</code>.
+</div>
+
+<!-- ============ CONFIG ============ -->
+<h2>3 · ~/.ssh/config — stop typing incantations</h2>
+<p class="lead">A per-user file that gives connections <b>names</b>. Every SSH-speaking tool (<code>ssh</code>, <code>scp</code>, <code>rsync</code>, <code>git</code>, VS Code Remote) understands the alias.</p>
+<pre><code># ~/.ssh/config
+Host myserver                       # the alias you'll type
+    HostName 203.0.113.10           # real address (IP or DNS name)
+    User alice                      # login user (drop alice@)
+    Port 2222                       # non-default port, if any
+    IdentityFile ~/.ssh/id_ed25519  # which private key to offer</code></pre>
+<p class="lead">Now <code>ssh myserver</code> replaces <code>ssh -p 2222 -i ~/.ssh/id_ed25519 alice@203.0.113.10</code> — and <code>scp file myserver:/tmp/</code> works too. Stack one <code>Host</code> block per server; <code>Host *</code> at the bottom sets defaults.</p>
+
+<!-- ============ AGENT ============ -->
+<h2>4 · ssh-agent — type the passphrase once</h2>
+<p class="lead">A small background process holding your <i>decrypted</i> private keys in memory for the session: unlock once, every later <code>ssh</code>/<code>scp</code>/<code>git</code> asks the agent instead of you.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>ssh-add</code></td><td class="desc">load default key into the agent (passphrase prompt, once)</td></tr>
+    <tr><td class="cmd"><code>ssh-add -l</code></td><td class="desc"><b>l</b>ist keys the agent currently holds</td></tr>
+    <tr><td class="cmd"><code>ssh-add --apple-use-keychain</code></td><td class="desc">macOS: store passphrase in Keychain so the key auto-loads after reboot (pair with <code>UseKeychain yes</code> + <code>AddKeysToAgent yes</code> in config)</td></tr>
+  </table>
+</div>
+
+<!-- ============ TUNNELS ============ -->
+<h2>5 · Tunnels / port forwarding</h2>
+<p class="lead">The encrypted pipe can carry any port. Two directions:</p>
+<div class="grid">
+  <div class="card">
+    <h3>Local forward <code>-L</code> — the one you'll use</h3>
+    <p class="lead">A port on <b>your</b> machine reaches a service near the <b>server</b>. Classic: Jupyter on a remote box, listening only on its own <code>localhost:8888</code>.</p>
+    <pre><code>ssh -L 8888:localhost:8888 alice@server.example.com</code></pre>
+    <pre><code>browser → localhost:8888 ══(encrypted)══►
+  server → its localhost:8888 (jupyter)</code></pre>
+    <p class="lead">Now <code>http://localhost:8888</code> is the remote notebook. Remote PostgreSQL: <code>-L 5433:localhost:5432</code>, point your client at 5433.</p>
+  </div>
+  <div class="card">
+    <h3>Remote forward <code>-R</code> — the mirror image</h3>
+    <p class="lead">A port on the <b>server</b> reaches a service on <b>your</b> machine — e.g. show your local dev server to someone on the remote side.</p>
+    <pre><code>ssh -R 9000:localhost:3000 alice@server.example.com</code></pre>
+    <pre><code>someone on server → server:9000 ══(encrypted)══►
+  you → your localhost:3000</code></pre>
+    <p class="lead"><code>-N</code> = no remote command — tunnel only, no shell opens. Handy with <code>-L</code>/<code>-R</code>.</p>
+  </div>
+</div>
+
+<!-- ============ GITHUB ============ -->
+<h2>6 · SSH for GitHub</h2>
+<div class="card">
+  <p class="lead">GitHub uses SSH keys for <code>git push</code>/<code>pull</code> over <code>git@github.com:</code> URLs — same keypair mechanics; paste your <code>.pub</code> into GitHub → Settings → SSH keys. Test the connection:</p>
+  <pre><code>ssh -T git@github.com</code></pre>
+  <p class="lead"><code>-T</code> disables the terminal request (GitHub gives no shell); success = <i>"Hi username! You've successfully authenticated…"</i>. Full setup and SSH-vs-HTTPS remotes: <a href="github_cheatsheet.html">GitHub sheet</a>.</p>
+</div>
+
+<!-- ============ TROUBLESHOOTING ============ -->
+<h2>7 · Troubleshooting</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>Permission denied (publickey)</code></td><td class="desc">server only accepts keys and didn't accept yours: wrong user, key not in <code>authorized_keys</code>, or wrong key offered — debug with <code>-v</code>, pin the key with <code>IdentityFile</code></td></tr>
+    <tr><td class="cmd"><code>UNPROTECTED PRIVATE KEY FILE</code></td><td class="desc">permissions too open; fix: <code>chmod 600 ~/.ssh/id_ed25519</code> (and <code>chmod 700 ~/.ssh</code>)</td></tr>
+    <tr><td class="cmd"><code>REMOTE HOST IDENTIFICATION HAS CHANGED!</code></td><td class="desc">server's host key ≠ the one cached in <code>~/.ssh/known_hosts</code>. Either the server was rebuilt, <b>or</b> a <b>MITM</b> (man-in-the-middle — an attacker relaying traffic between you and the server). Verify out-of-band before <code>ssh-keygen -R hostname</code></td></tr>
+    <tr><td class="cmd"><code>ssh -v alice@server.example.com</code></td><td class="desc"><b>v</b>erbose: shows the whole negotiation — keys offered, auth methods tried. <code>-vv</code>/<code>-vvv</code> for more</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  <b>Host-key fingerprint &amp; TOFU.</b> On first connect, SSH shows the server's key fingerprint and asks "are you sure?". Yes = cached in <code>known_hosts</code>; every later connect silently verifies it's still the same machine. This first-connect leap of faith = <b>TOFU</b> — <i>trust on first use</i>. The careful version: compare the fingerprint with one from your hosting console before accepting.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Ending a session — teardown</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Normal exit</h3>
+    <table>
+      <tr><td class="cmd"><code>exit</code> / <code>logout</code> / <kbd>Ctrl-D</kbd></td><td class="desc">leave the remote shell (<kbd>Ctrl-D</kbd> = end-of-file)</td></tr>
+      <tr><td class="cmd"><code>exit</code> the carrying shell</td><td class="desc">closes a foreground tunnel; <kbd>Ctrl-C</kbd> if running with <code>-N</code></td></tr>
+      <tr><td class="cmd"><code>ps aux | grep "ssh -"</code> → <code>kill &lt;PID&gt;</code></td><td class="desc">find/kill a background (<code>-f</code>) tunnel</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Hung session &amp; cleanup</h3>
+    <table>
+      <tr><td class="cmd"><kbd>Enter</kbd> then <code>~.</code></td><td class="desc"><b>kill a frozen session</b> — client-side escape, works when the remote is dead</td></tr>
+      <tr><td class="cmd"><kbd>Enter</kbd> then <code>~?</code></td><td class="desc">list all escape sequences</td></tr>
+      <tr><td class="cmd"><code>ssh-add -D</code></td><td class="desc">forget loaded keys (shared machine)</td></tr>
+      <tr><td class="cmd"><code>ssh-keygen -R host</code></td><td class="desc">drop a server from your <code>known_hosts</code></td></tr>
+      <tr><td class="cmd">edit server's <code>authorized_keys</code></td><td class="desc">revoke your own access: delete your line</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout">
+  The <code>~</code> escapes are read by your <b>local</b> ssh client, not the remote shell — that's why they work even when the far side is unresponsive. They're only recognized at the start of a line, hence <kbd>Enter</kbd> first.
+</div>
+
+<h2>9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>SSH</b></td><td class="desc">Secure Shell — encrypted terminal, file transfer, tunnels (Ylönen, 1995; replaced telnet/rlogin)</td></tr>
+    <tr><td class="cmd"><b>OpenSSH</b></td><td class="desc">the standard implementation (OpenBSD project)</td></tr>
+    <tr><td class="cmd"><b>Keypair</b></td><td class="desc">public key (shareable padlock) + private key (never leaves your machine)</td></tr>
+    <tr><td class="cmd"><b>Ed25519 / RSA</b></td><td class="desc">key algorithms; prefer Ed25519, RSA-4096 for legacy</td></tr>
+    <tr><td class="cmd"><b>authorized_keys</b></td><td class="desc">server-side list of accepted public keys</td></tr>
+    <tr><td class="cmd"><b>known_hosts</b></td><td class="desc">client-side cache of server host keys (the TOFU record)</td></tr>
+    <tr><td class="cmd"><b>ssh-agent</b></td><td class="desc">session daemon holding decrypted keys — passphrase once</td></tr>
+    <tr><td class="cmd"><b>Port forwarding</b></td><td class="desc"><code>-L</code> (local→remote) and <code>-R</code> (remote→local) tunnels</td></tr>
+    <tr><td class="cmd"><b>MITM</b></td><td class="desc">man-in-the-middle — attacker relaying traffic between you and the server</td></tr>
+    <tr><td class="cmd"><b>TOFU</b></td><td class="desc">trust on first use — accept a fingerprint once, verify it forever after</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://www.openssh.com/manual.html">OpenSSH manual pages</a> ·
+  <a href="https://www.ssh.com/academy/ssh">SSH Academy (ssh.com)</a> ·
+  <a href="https://docs.github.com/en/authentication/connecting-to-github-with-ssh">GitHub: Connecting with SSH</a> ·
+  <a href="https://www.digitalocean.com/community/tutorials/ssh-essentials-working-with-ssh-servers-clients-and-keys">DigitalOcean: SSH essentials</a> ·
+  <a href="https://en.wikibooks.org/wiki/OpenSSH">OpenSSH cookbook (Wikibooks)</a>
+</p>
+
+</div>
+</body>
+</html>

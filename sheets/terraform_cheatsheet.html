@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terraform Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Terraform Cheat Sheet</h1>
+<p class="sub">Infrastructure as Code on GCP: write · init · plan · apply · started 2026-06-06 · twin of <code>Tools/terraform_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Terraform</b> = the Infrastructure-as-Code tool HashiCorp released in 2014. You <i>declare</i> the cloud resources you want in text files; Terraform talks to the cloud provider's API (Application Programming Interface) to make reality match the files. It is <b>declarative</b> — you describe the <i>end state</i> ("one bucket, EU region"), not the steps to get there. Terraform computes the steps.
+</div>
+<div class="callout good">
+  <b>IaC</b> (Infrastructure as Code) = managing infrastructure (VMs, buckets, networks, IAM — Identity and Access Management) through machine-readable definition files instead of manual console operations.
+  <b>HCL</b> (HashiCorp Configuration Language) = the language Terraform files (<code>.tf</code>) are written in. Looks like JSON's friendlier cousin: blocks, labels, <code>key = value</code> pairs.
+</div>
+<div class="callout">
+  <b>Why code instead of clicks?</b> Clicking in the Cloud Console creates infrastructure, but the <i>recipe</i> lives only in your memory. Analogy from the Vim sheet: <b>the console is Vim's insert mode — live edits with no saved file. Terraform is the saved file</b>: the <code>.tf</code> config is the durable artifact, and the cloud is just its current render. Lose the project? <code>terraform apply</code> re-renders it. (Even better: with the Git sheet, the config is a <i>committed</i> file — diffable, reviewable, revertible.)
+</div>
+<div class="card">
+  <h3>What IaC buys you over console clicking</h3>
+  <table>
+    <tr><td class="cmd"><b>Reproducible</b></td><td class="desc">same files → same infra, in dev, staging, prod, or after a disaster</td></tr>
+    <tr><td class="cmd"><b>Reviewable</b></td><td class="desc">infra changes go through pull requests like any code</td></tr>
+    <tr><td class="cmd"><b>Diffable</b></td><td class="desc"><code>terraform plan</code> shows exactly what would change <i>before</i> it changes</td></tr>
+    <tr><td class="cmd"><b>Self-documenting</b></td><td class="desc">the config <i>is</i> the up-to-date inventory; no stale wiki page</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>The core loop:</b>
+  <pre><code>   write .tf files ──► terraform init ──► terraform plan ──► terraform apply
+   (declare intent)    (download the      (preview diff:     (make the cloud
+        ▲               GCP provider,      + ~ - symbols)     match the files)
+        │               set up backend)         │                  │
+        └───────── edit &amp; re-plan ◄─────────────┘                  │
+                                                                   ▼
+                                                        terraform destroy
+                                                        (tear it all down)</code></pre>
+  <b><code>init</code></b> — once per project (and after adding providers/modules/backends). <b><code>plan</code> → <code>apply</code></b> — every change cycle; plan is free and safe, apply mutates. <b><code>destroy</code></b> — the whole point of practice projects: clean teardown, zero forgotten-VM bills.
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> <i>"I plan applies"</i> — <b>i</b>nit, <b>p</b>lan, <b>a</b>pply. Init once, plan always, apply deliberately.
+</div>
+<div class="callout good">
+  <b>Command grammar:</b> <code>terraform &lt;verb&gt; [options]</code>, run <b>from the directory containing your <code>.tf</code> files</b> (the "root module"). Terraform reads <i>all</i> <code>.tf</code> files in that directory and merges them — file names are for humans (<code>main.tf</code>, <code>variables.tf</code>, <code>outputs.tf</code> is the convention, not a rule).
+</div>
+
+<!-- ============ HCL ANATOMY ============ -->
+<h2>1 · HCL anatomy — the five block types you need</h2>
+<p class="lead">HCL is built from <b>blocks</b>: <code>TYPE "label" "label" { body }</code>.</p>
+<div class="grid">
+  <div class="card">
+    <h3><code>provider</code> — which cloud, which credentials</h3>
+    <pre><code>provider "google" {
+  project = "my-gcp-project-id"
+  region  = "europe-west1"
+}</code></pre>
+    <p class="lead">A <b>provider</b> is the plugin that translates Terraform's plan into real API calls. <code>init</code> downloads it from the Terraform Registry. The <code>google</code> provider covers GCP; there are providers for AWS, Azure, GitHub, even Spotify.</p>
+  </div>
+  <div class="card">
+    <h3><code>resource</code> — the thing you want to exist (the key grammar)</h3>
+    <pre><code>resource "google_storage_bucket" "learning" {
+  name     = "demo-learning-bucket"
+  location = "EU"
+}</code></pre>
+    <p class="lead">Read the header as <b>resource "TYPE" "LOCAL_NAME"</b>:</p>
+    <table>
+      <tr><td class="cmd"><code>"google_storage_bucket"</code></td><td class="desc">the <b>resource type</b>, fixed vocabulary defined by the provider (always <code>&lt;provider&gt;_&lt;product&gt;</code>). You look these up in the registry docs; you can't invent them.</td></tr>
+      <tr><td class="cmd"><code>"learning"</code></td><td class="desc">the <b>local name</b>, <i>your</i> nickname for this block, used only inside your config to refer to it: <code>google_storage_bucket.learning.name</code>. It is <b>not</b> the bucket's name in GCP — that's the <code>name</code> argument inside.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3><code>variable</code> — parameterize, reference with <code>var.</code></h3>
+    <pre><code>variable "project_id" {
+  type        = string
+  description = "GCP project to deploy into"
+}
+# used elsewhere as:  project = var.project_id</code></pre>
+    <p class="lead">Values come from (in priority order): <code>-var</code> flags &gt; <code>*.tfvars</code> files &gt; <code>TF_VAR_project_id</code> environment variables &gt; the <code>default</code> in the block.</p>
+  </div>
+  <div class="card">
+    <h3><code>output</code> — print useful values after apply</h3>
+    <pre><code>output "bucket_url" {
+  value = google_storage_bucket.learning.url
+}</code></pre>
+    <p class="lead">Shown at the end of <code>apply</code>, retrievable any time with <code>terraform output</code>. Outputs are how modules hand values to their callers.</p>
+  </div>
+  <div class="card">
+    <h3><code>data</code> — read existing infrastructure (look, don't touch)</h3>
+    <pre><code>data "google_project" "current" {
+  project_id = var.project_id
+}
+# read-only reference:  data.google_project.current.number</code></pre>
+    <p class="lead"><code>resource</code> <i>manages</i> a thing; <code>data</code> only <i>queries</i> a thing that already exists (often created by someone else or by the console). Note the <code>data.</code> prefix when referencing.</p>
+  </div>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> type = the <i>species</i> (set by the provider), local name = the <i>pet name</i> (set by you). GCP sees the species and the <code>name</code> argument; only your config knows the pet name.
+</div>
+
+<!-- ============ STATE ============ -->
+<h2>2 · State — the sacred file</h2>
+<p class="lead"><code>terraform.tfstate</code> is Terraform's <b>memory</b>: a JSON map from your config blocks to the real resource IDs in GCP. <code>plan</code> works by comparing three things: <b>config (desired) vs. state (last known) vs. reality (refreshed)</b>.</p>
+<div class="callout warn">
+  <b>Why it's sacred:</b>
+  <ul style="margin:6px 0 0;padding-left:20px;">
+    <li>Delete it and Terraform forgets it ever created anything — next <code>apply</code> tries to create duplicates, and <code>destroy</code> can't clean up.</li>
+    <li>It contains <b>resource attributes in plaintext</b> — potentially secrets (generated passwords, keys). Treat it like a credentials file.</li>
+    <li><b>Never commit <code>terraform.tfstate</code> to Git.</b> Add it to <code>.gitignore</code> along with <code>.terraform/</code> (the provider download cache).</li>
+  </ul>
+</div>
+<div class="card">
+  <h3>Remote state in a GCS bucket (the GCP-native answer)</h3>
+  <p class="lead">Local state breaks down with teammates or multiple machines. Store it in <b>GCS</b> (Google Cloud Storage) instead, via a <b>backend</b> block:</p>
+  <pre><code>terraform {
+  backend "gcs" {
+    bucket = "my-tfstate-bucket"   # create this one manually (or console) —
+    prefix = "tf/state"      # chicken-and-egg: state can't store itself
+  }
+}</code></pre>
+  <p class="lead">Re-run <code>terraform init</code> after adding it; Terraform offers to migrate existing state. GCS backends also give you <b>state locking</b> (two applies can't stomp each other) and versioning if enabled on the bucket.</p>
+</div>
+
+<!-- ============ COMMAND TABLE ============ -->
+<h2>3 · Command table</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>terraform init</code></td><td class="desc">download providers/modules, configure backend. Run first, and after changing any of those.</td></tr>
+    <tr><td class="cmd"><code>terraform validate</code></td><td class="desc">syntax + internal consistency check (no API calls)</td></tr>
+    <tr><td class="cmd"><code>terraform fmt</code></td><td class="desc">auto-format <code>.tf</code> files to canonical style (like <code>gofmt</code>)</td></tr>
+    <tr><td class="cmd"><code>terraform plan</code></td><td class="desc">dry-run diff: what would <code>apply</code> do? Always read it.</td></tr>
+    <tr><td class="cmd"><code>terraform plan -out=tf.plan</code></td><td class="desc">save the plan so <code>apply tf.plan</code> executes <i>exactly</i> what you reviewed</td></tr>
+    <tr><td class="cmd"><code>terraform apply</code></td><td class="desc">plan, ask for confirmation (<code>yes</code>), then execute</td></tr>
+    <tr><td class="cmd"><code>terraform apply -auto-approve</code></td><td class="desc">skip the prompt — for CI (Continuous Integration), not for fingers</td></tr>
+    <tr><td class="cmd"><code>terraform destroy</code></td><td class="desc">delete everything this config manages. The free-tier student's best friend.</td></tr>
+    <tr><td class="cmd"><code>terraform state list</code></td><td class="desc">list every resource currently tracked in state</td></tr>
+    <tr><td class="cmd"><code>terraform show</code></td><td class="desc">human-readable dump of state (or of a saved plan)</td></tr>
+    <tr><td class="cmd"><code>terraform output</code></td><td class="desc">re-print output values from state</td></tr>
+    <tr><td class="cmd"><code>terraform import &lt;addr&gt; &lt;id&gt;</code></td><td class="desc">adopt an existing (console-made) resource into state — write the matching block first</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Memory hook for the daily four:</b> <b>i v p a</b> — <i>"init, validate, plan, apply"</i> — alphabetical flow except init leads.
+</div>
+
+<!-- ============ MINIMAL EXAMPLE ============ -->
+<h2>4 · Minimal complete GCP example (annotated)</h2>
+<p class="lead">One file, <code>main.tf</code> — a provider, a bucket, an output:</p>
+<pre><code>terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"   # registry address of the provider
+      version = "~&gt; 6.0"             # "~&gt;" = allow 6.x, block 7.0 surprises
+    }
+  }
+}
+
+provider "google" {
+  project = var.project_id           # comes from terraform.tfvars
+  region  = "europe-west1"
+}
+
+variable "project_id" {
+  type        = string
+  description = "GCP project to deploy into"
+}
+
+resource "google_storage_bucket" "demo" {   # type + local name
+  name                        = "${var.project_id}-tf-demo"  # globally unique
+  location                    = "EU"
+  force_destroy               = true        # allow destroy even if non-empty
+  uniform_bucket_level_access = true        # IAM-only access (best practice)
+}
+
+output "bucket_url" {
+  value = google_storage_bucket.demo.url    # printed after apply
+}</code></pre>
+<p class="lead">Run it:</p>
+<pre><code>gcloud auth application-default login   # how Terraform gets GCP credentials
+terraform init                          # downloads the google provider
+terraform plan                          # expect: Plan: 1 to add, 0 to change, 0 to destroy
+terraform apply                         # type "yes" → bucket exists
+terraform destroy                       # type "yes" → bucket gone, wallet safe</code></pre>
+
+<!-- ============ PLAN SYMBOLS ============ -->
+<h2>5 · Reading plan output — the symbols</h2>
+<div class="callout warn">
+  <code>plan</code> prefixes every affected resource with a symbol. <b>Always scan for <code>-</code> and <code>-/+</code> before typing <code>yes</code>.</b>
+</div>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>+</code></td><td class="desc"><b>create</b> — new resource · <span style="color:var(--accent2)">safe</span></td></tr>
+    <tr><td class="cmd"><code>~</code></td><td class="desc"><b>update in-place</b> — change an argument, resource survives · <span style="color:var(--accent2)">usually safe</span></td></tr>
+    <tr><td class="cmd"><code>-</code></td><td class="desc"><b>destroy</b> — resource will be deleted · <span style="color:var(--warn)">⚠ data loss possible</span></td></tr>
+    <tr><td class="cmd"><code>-/+</code></td><td class="desc"><b>replace</b> — destroy then re-create (a "forced replacement"; the plan marks the guilty argument with <code># forces replacement</code>) · <span style="color:var(--warn)">⚠⚠ downtime + data loss</span></td></tr>
+    <tr><td class="cmd"><code>&lt;=</code></td><td class="desc">read a data source · <span style="color:var(--accent2)">harmless</span></td></tr>
+  </table>
+</div>
+<p class="lead">The summary line is your sanity check: <code>Plan: 1 to add, 0 to change, 0 to destroy.</code> — if you expected a rename and see <code>1 to destroy</code>, stop and read why.</p>
+
+<!-- ============ MODULES ============ -->
+<h2>6 · Modules in brief</h2>
+<p class="lead">A <b>module</b> is a folder of <code>.tf</code> files used as a reusable unit — a function for infrastructure. Your working directory is already the <b>root module</b>; calling another one looks like:</p>
+<pre><code>module "network" {
+  source  = "terraform-google-modules/network/google"  # from the registry
+  version = "~&gt; 9.0"
+  project_id   = var.project_id    # module's input variables
+  network_name = "my-vpc"
+}
+# consume its outputs:  module.network.network_self_link</code></pre>
+<p class="lead"><code>source</code> can be a registry address, a Git URL, or a local path (<code>./modules/x</code>). Run <code>terraform init</code> again after adding one. For ACE-level learning: <i>use</i> well-known Google modules before <i>writing</i> your own.</p>
+
+<!-- ============ TFVARS & SECRETS ============ -->
+<h2>7 · .tfvars and secrets hygiene</h2>
+<p class="lead"><code>terraform.tfvars</code> (auto-loaded) or <code>anything.auto.tfvars</code> supply variable values, keeping environment-specific data out of the config:</p>
+<pre><code># terraform.tfvars
+project_id = "my-gcp-project-id"</code></pre>
+<div class="callout warn">
+  <b>Rules that prevent a very bad week:</b>
+  <ul style="margin:6px 0 0;padding-left:20px;">
+    <li><b>Never commit credentials.</b> No service-account JSON keys in the repo, no secrets in <code>.tf</code> or <code>.tfvars</code> files that get committed. Prefer <code>gcloud auth application-default login</code> locally and Workload Identity in CI.</li>
+    <li><b>Never commit state</b> (<code>terraform.tfstate*</code>) — it can echo secrets in plaintext.</li>
+    <li>Minimum <code>.gitignore</code>: <span class="pill">.terraform/</span> <span class="pill">*.tfstate</span> <span class="pill">*.tfstate.*</span> <span class="pill">*.tfvars</span> (commit a sanitized <code>terraform.tfvars.example</code> instead), and any <code>*.json</code> key files.</li>
+    <li>Mark sensitive variables <code>sensitive = true</code> so plan output redacts them — but remember they still land in state.</li>
+  </ul>
+</div>
+<div class="callout">
+  <b>Licensing note (checked 2026-06):</b> in August 2023 HashiCorp moved Terraform from the open-source MPL (Mozilla Public License) to the <b>BSL</b> (Business Source License) — source-available, but restricting competing commercial use. The community response was <b>OpenTofu</b>, an MPL-2.0 fork now under the Linux Foundation — a near drop-in replacement (<code>tofu init/plan/apply</code>, same HCL, same providers). IBM acquired HashiCorp in 2025; the BSL remains in place as of mid-2026. For learning and for the ACE exam mindset, the two are interchangeable; just know both names exist and why.
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>8 · Teardown</h2>
+<p class="lead"><code>destroy</code> closes the loop the sheet opened with — but read before you type <code>yes</code>.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>terraform destroy</code></td><td class="desc">destroy everything this config manages — shows a destroy plan first; <b>read it</b> (every line is a <code>-</code>) before approving</td></tr>
+    <tr><td class="cmd"><code>terraform destroy -target=google_storage_bucket.demo</code></td><td class="desc">destroy one resource only — surgical; use sparingly (targeting fights the declarative model)</td></tr>
+    <tr><td class="cmd"><code>terraform state rm &lt;addr&gt;</code></td><td class="desc">forget a resource <i>without</i> destroying it — removes it from state; the real resource lives on, unmanaged</td></tr>
+    <tr><td class="cmd"><b>What NOT to do</b></td><td class="desc">hand-delete resources in the console → <b>state drift</b>: state says it exists, reality disagrees; next <code>plan</code> gets confused. Let Terraform do the deleting. <span style="color:var(--warn)">⚠</span></td></tr>
+    <tr><td class="cmd"><b>Safe to delete</b></td><td class="desc"><code>.terraform/</code> (provider cache — <code>init</code> rebuilds it) and <code>*.tfplan</code> files</td></tr>
+    <tr><td class="cmd"><b>Never delete</b></td><td class="desc"><code>terraform.tfstate</code> — the sacred file (§2). Deleting it orphans every resource it tracks. <span style="color:var(--warn)">⚠</span></td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> destroy through Terraform, never around it — the state file only knows about deletions it performed itself.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>IaC</b></td><td class="desc">Infrastructure as Code: infra defined in versioned text files, not console clicks</td></tr>
+    <tr><td class="cmd"><b>Terraform</b></td><td class="desc">declarative IaC tool (HashiCorp, 2014); makes cloud reality match <code>.tf</code> files</td></tr>
+    <tr><td class="cmd"><b>HCL</b></td><td class="desc">HashiCorp Configuration Language, the syntax of <code>.tf</code> files</td></tr>
+    <tr><td class="cmd"><b>Provider</b></td><td class="desc">plugin translating Terraform plans into one platform's API calls (e.g. <code>google</code>)</td></tr>
+    <tr><td class="cmd"><b>Resource</b></td><td class="desc">a managed infrastructure object; header grammar = <code>resource "type" "local_name"</code></td></tr>
+    <tr><td class="cmd"><b>Data source</b></td><td class="desc">read-only lookup of existing infrastructure (<code>data.</code> prefix)</td></tr>
+    <tr><td class="cmd"><b>State (<code>terraform.tfstate</code>)</b></td><td class="desc">Terraform's memory mapping config to real resource IDs. Sacred; never commit.</td></tr>
+    <tr><td class="cmd"><b>Backend</b></td><td class="desc">where state lives (e.g. a GCS bucket, with locking)</td></tr>
+    <tr><td class="cmd"><b>Module</b></td><td class="desc">reusable folder of <code>.tf</code> files; your working dir is the root module</td></tr>
+    <tr><td class="cmd"><b>Plan</b></td><td class="desc">the computed diff between desired config and reality (<code>+ ~ - -/+</code>)</td></tr>
+    <tr><td class="cmd"><b>BSL / OpenTofu</b></td><td class="desc">HashiCorp's 2023 source-available license, and the Linux Foundation's open-source fork it provoked</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://developer.hashicorp.com/terraform/docs">Terraform docs</a> ·
+  <a href="https://developer.hashicorp.com/terraform/tutorials/gcp-get-started">Terraform + GCP get-started tutorial</a> ·
+  <a href="https://registry.terraform.io/providers/hashicorp/google/latest/docs">Google provider reference</a> ·
+  <a href="https://developer.hashicorp.com/terraform/cli/commands">Terraform CLI command reference</a> ·
+  <a href="https://developer.hashicorp.com/terraform/language/backend/gcs">GCS backend docs</a> ·
+  <a href="https://opentofu.org/">OpenTofu</a> (<a href="https://opentofu.org/blog/opentofu-announces-fork-of-terraform/">fork announcement</a>) ·
+  <a href="https://cloud.google.com/docs/terraform">Google Cloud: Terraform on GCP overview</a>
+</p>
+
+</div>
+</body>
+</html>

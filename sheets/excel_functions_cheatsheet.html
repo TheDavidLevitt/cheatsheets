@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Excel Functions Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Excel Functions Cheat Sheet</h1>
+<p class="sub">The favourites: LAMBDA · CUBEVALUE · DATEDIF · EOMONTH · started 2026-06-06 · twin of <code>Tools/excel_functions_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL ============ -->
+<h2>0 · The mental model &amp; formula grammar (read once)</h2>
+<div class="callout good">
+  <b>Excel function</b> = a named, built-in formula that takes <b>arguments</b> (inputs, separated by commas) and returns a value into the cell where it's written. The grammar is always <code>=NAME(arg1, arg2, …)</code> — the leading <code>=</code> tells Excel "this is a formula, not text."
+  <br><br>
+  The four headliners share a theme: each one replaces something clunkier — LAMBDA replaces VBA macros for custom math, CUBEVALUE replaces fragile GETPIVOTDATA dashboards, DATEDIF replaces hand-rolled date subtraction, and EOMONTH replaces error-prone month-end arithmetic. (Scope: Windows Excel, Microsoft 365.)
+</div>
+<div class="callout">
+  <b>Four functions, four jobs:</b>
+  <pre><code>  LAMBDA      →  "teach Excel a new verb"        (custom reusable functions)
+  CUBEVALUE   →  "ask the Data Model directly"   (dashboard cells, no pivot table)
+  DATEDIF     →  "how long between two dates?"   (tenure, durations — hidden but stable)
+  EOMONTH     →  "snap to a month boundary"      (close dates, billing periods)</code></pre>
+  Memory hook: <b>L</b>earn, <b>C</b>onsult, <b>D</b>uration, <b>D</b>eadline — the first two <i>create and query</i>, the last two <i>do calendar math</i>.
+</div>
+<div class="callout good">
+  <b>Formula grammar:</b> <code>=FUNCTION(required, [optional], …)</code>
+  <ul style="margin:8px 0 0;padding-left:20px">
+    <li><code>=</code> — starts a formula.</li>
+    <li><code>FUNCTION</code> — case-insensitive; Excel capitalizes it for you.</li>
+    <li><code>[square brackets]</code> in documentation mean <i>optional argument</i> — you never type the brackets themselves.</li>
+    <li>Arguments are separated by <code>,</code> (or <code>;</code> on systems with European regional settings — France included; worth knowing when sharing files across regions).</li>
+    <li><b>Cell reference</b> = an address like <code>B2</code>; <b>range</b> = a rectangle like <code>B2:B13</code>; <b>structured reference</b> = a table-column name like <code>Wells[Spud_Date]</code> (readable, auto-expanding — prefer these).</li>
+  </ul>
+</div>
+
+<!-- ============ LAMBDA ============ -->
+<h2>1 · LAMBDA — reusable custom functions, no VBA</h2>
+<p class="lead"><b>LAMBDA</b> lets you define your own function in pure formula language and call it by name anywhere in the workbook. Named after <b>lambda calculus</b> (Alonzo Church, 1930s), the mathematical notation for anonymous functions that underlies functional programming. Before LAMBDA (added to Microsoft 365 in 2021), custom functions required <b>VBA</b> (Visual Basic for Applications — Excel's embedded macro language), which means macro-enabled <code>.xlsm</code> files, security warnings, and code most colleagues can't read.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Syntax grammar</h3>
+    <pre><code>=LAMBDA(parameter1, [parameter2, …], calculation)
+        └────────── names you invent ──────────┘ └─ formula using them ─┘</code></pre>
+    <p class="lead">Up to 253 parameters; the <b>last</b> argument is always the calculation. A bare LAMBDA in a cell returns <code>#CALC!</code> — it's a function <i>definition</i>, not a result. To test it inline, append arguments in a second parenthesis pair: <code>=LAMBDA(x, x^2)(4)</code> → <code>16</code>.</p>
+  </div>
+  <div class="card">
+    <h3>The define-in-Name-Manager workflow (this is the whole trick)</h3>
+    <table>
+      <tr><td class="cmd">1. <b>Formulas ▸ Name Manager ▸ New…</b></td><td class="desc">shortcut <kbd>Ctrl</kbd>+<kbd>F3</kbd></td></tr>
+      <tr><td class="cmd">2. <b>Name:</b></td><td class="desc">what you'll type in formulas, e.g. <code>WACC</code></td></tr>
+      <tr><td class="cmd">3. <b>Refers to:</b></td><td class="desc">the full LAMBDA, starting with <code>=</code></td></tr>
+      <tr><td class="cmd">4. OK</td><td class="desc">now <code>=WACC(…)</code> works in any cell of that workbook, with IntelliSense</td></tr>
+    </table>
+  </div>
+</div>
+
+<h2 style="font-size:14px;text-transform:none;letter-spacing:0;border:none;margin:22px 0 8px;">Worked examples</h2>
+<p class="lead"><b>Custom WACC</b> (Weighted Average Cost of Capital — the blended cost of a project's debt + equity financing, the discount rate in NPV screening):</p>
+<pre><code>Name:      WACC
+Refers to: =LAMBDA(equity, debt, cost_e, cost_d, tax,
+              (equity*cost_e + debt*cost_d*(1-tax)) / (equity+debt))
+
+Usage:     =WACC(700, 300, 0.12, 0.06, 0.25)   → 0.0975  (9.75%)</code></pre>
+
+<p class="lead"><b>Unit conversion</b> — barrels to cubic metres (1 bbl = 0.158987 m³):</p>
+<pre><code>Name:      BBL2M3
+Refers to: =LAMBDA(bbl, bbl * 0.158987)
+Usage:     =BBL2M3(50000)   → 7949.35</code></pre>
+
+<p class="lead"><b>Pair with LET for readability.</b> <b>LET</b> assigns names to intermediate values inside a formula — <code>=LET(name1, value1, …, calculation)</code> — so a complex LAMBDA reads like a small program instead of a one-liner:</p>
+<pre><code>Name:      DECLINE        (exponential production decline: rate after t years)
+Refers to: =LAMBDA(q0, d, t,
+              LET(decay, EXP(-d*t),
+                  q0 * decay))
+Usage:     =DECLINE(1200, 0.15, 3)   → 765.2 bbl/d</code></pre>
+
+<div class="card" style="margin-top:14px">
+  <h3>Helper functions that take a LAMBDA as input</h3>
+  <table>
+    <tr><td class="cmd"><code>MAP(array, LAMBDA(x, …))</code></td><td class="desc">Apply the LAMBDA to every cell of an array, return same-shaped array.</td></tr>
+    <tr><td class="cmd"><code>BYROW(array, LAMBDA(row, …))</code></td><td class="desc">One result per <b>row</b> — e.g. <code>=BYROW(B2:E13, LAMBDA(r, MAX(r)))</code> = monthly peak per well.</td></tr>
+    <tr><td class="cmd"><code>BYCOL(array, LAMBDA(col, …))</code></td><td class="desc">Same, per column.</td></tr>
+    <tr><td class="cmd"><code>SCAN(init, array, LAMBDA(acc, x, …))</code></td><td class="desc">Running accumulation — e.g. cumulative production: <code>=SCAN(0, B2:B13, LAMBDA(a, v, a+v))</code>.</td></tr>
+    <tr><td class="cmd"><code>REDUCE(init, array, LAMBDA(acc, x, …))</code></td><td class="desc">Like SCAN but returns only the final value.</td></tr>
+  </table>
+</div>
+
+<div class="callout warn">
+  <b>Gotchas.</b> Names live <b>per workbook</b> — copy a sheet to a new workbook and the LAMBDA names come along, but a fresh workbook starts empty (share via a template or the Advanced Formula Environment add-in). No self-documentation of parameter order — name parameters descriptively (<code>cost_of_equity</code>, not <code>x</code>). Recursion is allowed (a LAMBDA can call itself by its defined name) but easy to crash — there's a recursion depth limit.
+</div>
+<p class="lead">Related:
+  <span class="pill">LET</span><span class="pill">MAP</span><span class="pill">BYROW</span><span class="pill">BYCOL</span><span class="pill">SCAN</span><span class="pill">REDUCE</span><span class="pill">MAKEARRAY</span><span class="pill">ISOMITTED</span>
+</p>
+
+<!-- ============ CUBEVALUE ============ -->
+<h2>2 · CUBEVALUE — query the Data Model directly</h2>
+<p class="lead"><b>Cube functions</b> (the seven <code>CUBE…</code> functions) pull single values straight out of an <b>OLAP cube</b> — including the workbook's own <b>Data Model</b> (the in-memory Power Pivot engine inside Excel) — without needing a pivot table on the sheet.</p>
+
+<div class="callout">
+  <b>OLAP</b> (Online Analytical Processing) = a database organized for slice-and-dice analysis: numeric <b>measures</b> (e.g. Total CAPEX) viewed across <b>dimensions</b> (e.g. Project, Month, Cost Category).
+  <br><b>MDX</b> (MultiDimensional eXpressions) = the query language for OLAP cubes. Cube-function member strings like <code>"[Project].[Name].[Alpha]"</code> are MDX paths: <code>[Dimension].[Hierarchy].[Member]</code>.
+  <br><b>Member</b> = one item in a dimension ("Project Alpha", "2026-05"); <b>measure</b> = the number being aggregated (<code>[Measures].[Total Spend]</code>).
+</div>
+
+<pre><code>=CUBEVALUE(connection, member_expression1, [member_expression2, …])
+           └─ usually "ThisWorkbookDataModel" ─┘ └─ filters that intersect ─┘</code></pre>
+<p class="lead">Each member expression narrows the slice; the result is the measure value at their intersection — exactly one cell of an imaginary pivot table.</p>
+
+<p class="lead"><b>KPI cell</b> — May 2026 spend on one project, no pivot table needed:</p>
+<pre><code>=CUBEVALUE("ThisWorkbookDataModel",
+           "[Measures].[Total Spend]",
+           "[Projects].[Name].[Alpha Compression]",
+           "[Calendar].[Month].[2026-05]")</code></pre>
+
+<p class="lead"><b>Better layout — CUBEMEMBER in helper cells.</b> <b>CUBEMEMBER</b> fetches one member as a reusable handle; point CUBEVALUE at those cells so a whole dashboard re-targets by editing one cell:</p>
+<pre><code>B1: =CUBEMEMBER("ThisWorkbookDataModel","[Projects].[Name].[Alpha Compression]")
+B2: =CUBEMEMBER("ThisWorkbookDataModel","[Calendar].[Month].[2026-05]")
+B4: =CUBEVALUE("ThisWorkbookDataModel","[Measures].[Total Spend]", B1, B2)
+B5: =CUBEVALUE("ThisWorkbookDataModel","[Measures].[Budget]",      B1, B2)
+B6: =B4/B5            ← spend vs budget KPI, plain arithmetic on cube results</code></pre>
+
+<p class="lead"><b>Slicer connection trick.</b> A <b>slicer</b> (the clickable filter buttons) can drive CUBEVALUE directly — pass the slicer's name as an argument:</p>
+<pre><code>=CUBEVALUE("ThisWorkbookDataModel","[Measures].[Total Spend]", Slicer_Project)</code></pre>
+<p class="lead">Find the slicer's formula name under <i>Slicer Settings ▸ Name to use in formulas</i>. Now clicking the slicer re-filters your hand-built dashboard with no pivot table anywhere.</p>
+
+<div class="callout good">
+  <b>Why it beats GETPIVOTDATA for dashboards.</b> <b>GETPIVOTDATA</b> reads values <i>off an existing pivot table</i>, so the pivot must stay on a sheet and keep its layout — collapse a field or refresh differently and your references break. CUBEVALUE talks to the Data Model itself: cells go <b>anywhere</b>, formatted however you like, immune to pivot-layout changes. Memory hook: <i>GETPIVOTDATA scrapes the report; CUBEVALUE asks the database.</i>
+</div>
+
+<div class="callout warn">
+  <b>Gotchas.</b> Requires data loaded <b>to the Data Model</b> (Power Pivot, or Power Query with "Add to Data Model" checked) — plain ranges/tables won't answer. <code>#N/A</code> while connecting is normal for a moment; persistent <code>#N/A</code> usually means a typo in the MDX path — type member strings slowly, Excel autocompletes the path segments inside the quotes. Misspelled measure/member names fail silently to <code>#N/A</code> with no hint where. Many CUBEVALUEs recalculate per refresh; thousands of them get slow — batch via CUBEMEMBER handles.
+</div>
+<p class="lead">Related:
+  <span class="pill">CUBEMEMBER</span><span class="pill">CUBESET</span> (define a set, e.g. "top 5 wells") <span class="pill">CUBESETCOUNT</span><span class="pill">CUBERANKEDMEMBER</span> (nth item of a set) <span class="pill">CUBEMEMBERPROPERTY</span><span class="pill">CUBEKPIMEMBER</span>
+</p>
+
+<!-- ============ DATEDIF ============ -->
+<h2>3 · DATEDIF — the famous "hidden" date-difference function</h2>
+<p class="lead"><b>DATEDIF</b> returns the difference between two dates in whole years, months, or days. It's Excel's most famous ghost: inherited from <b>Lotus 1-2-3</b> (the dominant 1980s spreadsheet Excel had to stay compatible with), it works in every Excel version but Microsoft barely documents it — no autocomplete, no tooltip, no entry in the function wizard. Undocumented but stable: it's been there ~30 years and isn't going anywhere.</p>
+
+<pre><code>=DATEDIF(start_date, end_date, unit)
+         └─ earlier ─┘ └─ later ─┘ └─ a text code, in quotes ─┘</code></pre>
+<p class="lead"><code>start_date</code> must be ≤ <code>end_date</code>, or you get <code>#NUM!</code> (it never returns negatives — swap the arguments instead).</p>
+
+<div class="card">
+  <h3>Unit codes</h3>
+  <table>
+    <tr><td class="cmd" style="width:14%"><b>Unit</b></td><td class="desc" style="width:52%"><b>Returns</b></td><td class="desc" style="width:34%"><b>Example (2024-03-15 → 2026-06-06)</b></td></tr>
+    <tr><td class="cmd"><code>"Y"</code></td><td class="desc">Complete years</td><td class="desc">2</td></tr>
+    <tr><td class="cmd"><code>"M"</code></td><td class="desc">Complete months</td><td class="desc">26</td></tr>
+    <tr><td class="cmd"><code>"D"</code></td><td class="desc">Days (same as plain subtraction)</td><td class="desc">813</td></tr>
+    <tr><td class="cmd"><code>"YM"</code></td><td class="desc">Months, <b>ignoring years</b> — the remainder after "Y"</td><td class="desc">2</td></tr>
+    <tr><td class="cmd"><code>"MD"</code></td><td class="desc">Days, ignoring months &amp; years — ⚠ <b>buggy, avoid</b></td><td class="desc">22 (when it works)</td></tr>
+    <tr><td class="cmd"><code>"YD"</code></td><td class="desc">Days, ignoring years</td><td class="desc">83</td></tr>
+  </table>
+</div>
+
+<div class="callout warn">
+  ⚠ <b>The "MD" bug</b> — Microsoft's own documentation warns that <code>"MD"</code> can return wrong (even negative) results around month boundaries, because of how it borrows days from months of different lengths. Don't use it. For the "leftover days" part of a duration, compute it yourself:
+  <code>end_date - EDATE(start_date, DATEDIF(start_date, end_date, "M"))</code>.
+</div>
+
+<p class="lead"><b>Service tenure in words</b> (employee start date in <code>B2</code>):</p>
+<pre><code>=DATEDIF(B2, TODAY(), "Y") &amp; " yr " &amp; DATEDIF(B2, TODAY(), "YM") &amp; " mo"
+→ "7 yr 4 mo"</code></pre>
+
+<p class="lead"><b>Project phase duration in whole months</b> (FID date in <code>B2</code>, first-oil forecast in <code>C2</code> — FID = Final Investment Decision):</p>
+<pre><code>=DATEDIF(B2, C2, "M")     → 26    (complete months between sanction and first oil)</code></pre>
+
+<p class="lead"><b>Contract days elapsed / remaining</b> (award <code>B2</code>, completion <code>C2</code>):</p>
+<pre><code>Elapsed:   =DATEDIF(B2, TODAY(), "D")
+Remaining: =C2 - TODAY()             ← plain subtraction is fine for days</code></pre>
+
+<div class="callout warn">
+  <b>Gotchas.</b> You must type it <b>blind</b> — no autocomplete or argument tooltip appears; that's normal, not a sign it's broken. "Complete" units truncate, never round: 1 year 11 months → <code>"Y"</code> returns 1. <code>#NUM!</code> = your start date is after your end date. For <i>working-day</i> counts use <code>NETWORKDAYS(start, end, [holidays])</code> instead — DATEDIF counts calendar days.
+</div>
+<p class="lead">Related:
+  <span class="pill">YEARFRAC</span> (fractional years — good for interest/depreciation) <span class="pill">NETWORKDAYS</span><span class="pill">NETWORKDAYS.INTL</span> (business days) <span class="pill">EDATE</span><span class="pill">TODAY</span>
+</p>
+
+<!-- ============ EOMONTH ============ -->
+<h2>4 · EOMONTH — month-end arithmetic</h2>
+<p class="lead"><b>EOMONTH</b> (<b>E</b>nd <b>O</b>f <b>MONTH</b>) returns the serial number of the last day of the month that is N months from a start date. Excel stores dates as <b>serial numbers</b> (days elapsed since 1900-01-01), so "last day of the month" is genuinely fiddly to compute by hand — months have 28/29/30/31 days — and EOMONTH does it in one call.</p>
+
+<pre><code>=EOMONTH(start_date, months)
+         └─ anchor ─┘ └─ offset: 0 = this month, 1 = next, -1 = previous ─┘</code></pre>
+<p class="lead">Format the result cell as a date — otherwise you'll see the raw serial number.</p>
+
+<p class="lead"><b>Month-end close date</b> for the month containing any transaction date <code>B2</code>:</p>
+<pre><code>=EOMONTH(B2, 0)          → 2026-06-30   (for any B2 in June 2026)</code></pre>
+
+<p class="lead"><b>Invoice due date — end of next month</b> (common "net EOM+1" payment terms):</p>
+<pre><code>=EOMONTH(B2, 1)          → 2026-07-31</code></pre>
+
+<p class="lead"><b>Quarter-end</b> from any date (jump to the month that closes the quarter):</p>
+<pre><code>=EOMONTH(B2, 2 - MOD(MONTH(B2)-1, 3))</code></pre>
+
+<div class="callout good">
+  <b>The pattern worth memorizing: first of next month.</b>
+  <pre><code>=EOMONTH(date, 0) + 1    → first day of the NEXT month
+=EOMONTH(date,-1) + 1    → first day of the CURRENT month</code></pre>
+  Memory hook: <i>the day after month-end is always the 1st.</i> This pair generates clean period boundaries for accrual schedules, depreciation start dates, and monthly bucketing — e.g. a 12-row schedule of period starts:
+  <pre><code>=EOMONTH(start, SEQUENCE(12,1,0)) + 1</code></pre>
+</div>
+
+<div class="card">
+  <h3>EDATE — the sibling</h3>
+  <p class="lead"><b>EDATE</b> shifts a date by N months but keeps the <b>same day-of-month</b> (clamping when the day doesn't exist: Jan 31 + 1 month → Feb 28/29):</p>
+  <pre><code>=EDATE("2026-01-15", 6)   → 2026-07-15    (6-month review date)
+=EDATE(spud_date, 18)     → 18-month milestone, same day-of-month</code></pre>
+  <p class="lead">Rule of thumb: <b>EDATE preserves the day; EOMONTH snaps to the end.</b></p>
+</div>
+
+<div class="callout warn">
+  <b>Gotchas.</b> Unformatted result shows a number like <code>46203</code> — that's the date serial, not an error; apply a date format. Negative <code>months</code> goes backward — handy, easy to forget it's allowed. Text dates like <code>"2026-06-06"</code> usually coerce fine, but real date serials (or <code>DATE(2026,6,6)</code>) are safer across regional settings. For "last <i>working</i> day of the month": <code>=WORKDAY(EOMONTH(B2,0)+1, -1)</code>.
+</div>
+<p class="lead">Related:
+  <span class="pill">EDATE</span><span class="pill">WORKDAY</span><span class="pill">WORKDAY.INTL</span><span class="pill">DATE</span><span class="pill">DAY</span><span class="pill">MONTH</span><span class="pill">SEQUENCE</span>
+</p>
+
+<!-- ============ EXTENSIONS ============ -->
+<h2>5 · Natural extensions — six modern functions to adopt next</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>LET(n1, v1, …, calc)</code></td><td class="desc">Name intermediate values inside a formula — long formulas become readable and compute each step once.</td></tr>
+    <tr><td class="cmd"><code>XLOOKUP(find, in, return)</code></td><td class="desc">The modern lookup: replaces VLOOKUP/HLOOKUP/INDEX-MATCH, looks any direction, exact-match by default, has an if-not-found argument.</td></tr>
+    <tr><td class="cmd"><code>FILTER(array, condition)</code></td><td class="desc">Pull all rows matching a condition into a live spilled range — e.g. all open AFEs (Authorization For Expenditure) over budget.</td></tr>
+    <tr><td class="cmd"><code>SEQUENCE(rows, [cols], [start], [step])</code></td><td class="desc">Generate number/date series in one formula — period numbers, schedule rows, loop indexes for LAMBDA helpers.</td></tr>
+    <tr><td class="cmd"><code>TEXTSPLIT(text, delimiter)</code></td><td class="desc">Split "WELL-A12/Zone3" style codes into columns by delimiter — Text-to-Columns as a live formula.</td></tr>
+    <tr><td class="cmd"><code>SUMIFS(sum_range, criteria_range1, criteria1, …)</code></td><td class="desc">Conditional totals across multiple criteria — spend by project AND month AND cost code in one call.</td></tr>
+  </table>
+</div>
+<p class="lead">These all <b>spill</b>: a formula returning an array fills neighbouring cells automatically (blue border); <code>#SPILL!</code> means something is blocking the landing zone.</p>
+
+<div class="callout">
+  <b>When Excel → Python/pandas is the better tool.</b> Excel wins for interactive what-if work, shared dashboards, and anything a colleague must open and audit. Switch to <b>pandas</b> (Python's table-manipulation library) when: data exceeds ~500k rows or Excel slows to a crawl; the same clean-merge-pivot pipeline runs every week (script it once, rerun forever); you need joins across many files; logic needs version control and testing (Git diffs work on <code>.py</code>, not <code>.xlsx</code>); or the output feeds another system rather than a human. Rule of thumb: <i>Excel for thinking and showing, pandas for repeating and scaling.</i> A LAMBDA library is often the last comfortable stop before that switch.
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>6 · Teardown — cleaning a workbook before it leaves you</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Remove a LAMBDA</b></td><td class="desc"><b>Formulas ▸ Name Manager</b> (<kbd>Ctrl</kbd>+<kbd>F3</kbd>) ▸ select ▸ <b>Delete</b> — any formula still calling it turns <code>#NAME?</code>, so find-and-replace usages first</td></tr>
+    <tr><td class="cmd"><b>Freeze formulas to static values</b></td><td class="desc">select ▸ copy ▸ <b>Paste Special ▸ Values</b> — locks results in place so recipients see numbers, not formulas that may break on their machine</td></tr>
+    <tr><td class="cmd"><b>Break external workbook links</b></td><td class="desc"><b>Data ▸ Edit Links ▸ Break Link</b> — referenced values become static; no more "this workbook contains links" prompts</td></tr>
+    <tr><td class="cmd"><b>Disconnect CUBEVALUE from its source</b></td><td class="desc"><b>Data ▸ Queries &amp; Connections</b> ▸ delete the connection — but value-freeze the CUBE cells <i>first</i>, or they all go <code>#N/A</code></td></tr>
+    <tr><td class="cmd"><b>Why bother before emailing?</b></td><td class="desc">recipients lack your Data Model, file paths, and named LAMBDAs — without teardown they open a file full of update prompts, <code>#NAME?</code> and <code>#N/A</code></td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>7 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Function / arguments</b></td><td class="desc">named built-in formula; the inputs it takes</td></tr>
+    <tr><td class="cmd"><b>LAMBDA</b></td><td class="desc">define a custom reusable function in formula language (named for lambda calculus)</td></tr>
+    <tr><td class="cmd"><b>VBA</b></td><td class="desc">Visual Basic for Applications, Excel's legacy macro language; LAMBDA avoids it</td></tr>
+    <tr><td class="cmd"><b>LET</b></td><td class="desc">name intermediate values inside a formula for readability</td></tr>
+    <tr><td class="cmd"><b>Name Manager</b></td><td class="desc">workbook registry of named formulas (<kbd>Ctrl</kbd>+<kbd>F3</kbd>); where LAMBDAs are installed</td></tr>
+    <tr><td class="cmd"><b>OLAP</b></td><td class="desc">Online Analytical Processing; database shaped for measures × dimensions analysis</td></tr>
+    <tr><td class="cmd"><b>Data Model</b></td><td class="desc">Excel's in-memory OLAP engine (Power Pivot)</td></tr>
+    <tr><td class="cmd"><b>MDX</b></td><td class="desc">MultiDimensional eXpressions; the path language in cube-function member strings</td></tr>
+    <tr><td class="cmd"><b>Member / measure</b></td><td class="desc">one item of a dimension / the number being aggregated</td></tr>
+    <tr><td class="cmd"><b>GETPIVOTDATA</b></td><td class="desc">reads values off a pivot table's layout (fragile); CUBEVALUE queries the model (robust)</td></tr>
+    <tr><td class="cmd"><b>DATEDIF</b></td><td class="desc">hidden Lotus 1-2-3-era date-difference function; stable, but <code>"MD"</code> unit is buggy</td></tr>
+    <tr><td class="cmd"><b>Serial number</b></td><td class="desc">Excel's internal date representation: days since 1900-01-01</td></tr>
+    <tr><td class="cmd"><b>EOMONTH / EDATE</b></td><td class="desc">snap to month-end / shift months keeping day-of-month</td></tr>
+    <tr><td class="cmd"><b>Spill</b></td><td class="desc">a formula's array result auto-filling adjacent cells</td></tr>
+    <tr><td class="cmd"><b>WACC</b></td><td class="desc">Weighted Average Cost of Capital; blended discount rate for project economics</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://support.microsoft.com/en-us/office/lambda-function-bd212d27-1cd1-4321-a34a-ccbf254b8b67">LAMBDA — Microsoft Support</a> ·
+  <a href="https://support.microsoft.com/en-us/office/let-function-34842dd8-b92b-4d3f-b325-b8b8f9908999">LET — Microsoft Support</a> ·
+  <a href="https://support.microsoft.com/en-us/office/cubevalue-function-8733da24-26d1-4e34-9b3a-84a8f00dcbe0">CUBEVALUE — Microsoft Support</a> ·
+  <a href="https://support.microsoft.com/en-us/office/cubemember-function-0f6a15b9-2c18-4819-ae89-e1b5c8b398ad">CUBEMEMBER — Microsoft Support</a> ·
+  <a href="https://support.microsoft.com/en-us/office/datedif-function-25dba1a4-2812-480b-84dd-8b32a451b35c">DATEDIF — Microsoft Support</a> (includes the official "MD" warning) ·
+  <a href="https://support.microsoft.com/en-us/office/eomonth-function-7314ffa1-2bc9-4005-9d66-f49db127d628">EOMONTH — Microsoft Support</a> ·
+  <a href="https://support.microsoft.com/en-us/office/edate-function-3c920eb2-6e66-44e7-a1f5-753ae47ee4f5">EDATE — Microsoft Support</a> ·
+  <a href="https://support.microsoft.com/en-us/office/xlookup-function-b7fd680e-6d10-43e6-84f9-88eae8bf5929">XLOOKUP — Microsoft Support</a> ·
+  <a href="https://support.microsoft.com/en-us/office/excel-functions-alphabetical-b3944572-255d-4efb-bb96-c6d90033e188">Excel functions (alphabetical) — Microsoft Support</a>
+</p>
+
+</div>
+</body>
+</html>

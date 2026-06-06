@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azure &amp; Microsoft Data Services Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+
+  /* ---- extras for this sheet: sticky nav + details cards ---- */
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+  nav.mini button{background:var(--kbd);color:var(--ink);border:1px solid var(--border);
+    border-radius:14px;padding:2px 10px;font-size:12px;cursor:pointer;margin-left:auto;}
+  nav.mini button:hover{border-color:var(--accent);color:var(--accent);}
+  nav.mini button + button{margin-left:0;}
+  details.svc{background:var(--card);border:1px solid var(--border);border-radius:10px;
+    margin:12px 0;padding:0;}
+  details.svc>summary{cursor:pointer;list-style:none;padding:12px 16px;font-size:15px;
+    font-weight:600;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  details.svc>summary::-webkit-details-marker{display:none;}
+  details.svc>summary::before{content:"▸";color:var(--accent);font-size:13px;}
+  details.svc[open]>summary::before{content:"▾";}
+  details.svc>summary .tag{color:var(--muted);font-weight:400;font-size:12.5px;}
+  details.svc .body{padding:0 16px 14px;border-top:1px solid var(--border);}
+  .gcp{color:var(--accent2);font-family:ui-monospace,monospace;font-size:12px;
+    background:var(--code);border-radius:5px;padding:1px 7px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Azure &amp; Microsoft Data Services Cheat Sheet</h1>
+<p class="sub">Platform orientation + SharePoint Lists · Dataverse · Fabric · SQL · Cosmos · Blob · started 2026-06-06 · twin of <code>Tools/azure_cheatsheet.md</code></p>
+
+<nav class="mini">
+  <a href="#orient">Orientation</a>
+  <a href="#splists">SP Lists</a>
+  <a href="#dataverse">Dataverse</a>
+  <a href="#fabric">Fabric</a>
+  <a href="#sql">Azure SQL</a>
+  <a href="#cosmos">Cosmos</a>
+  <a href="#blob">Blob</a>
+  <a href="#when">Which-when</a>
+  <a href="#teardown">Teardown</a>
+  <a href="#glossary">Glossary</a>
+  <button id="expandAll" type="button">Expand all</button>
+  <button id="collapseAll" type="button">Collapse all</button>
+</nav>
+
+<!-- ============ PART 1: ORIENTATION ============ -->
+<h2 id="orient">Part 1 · Orientation — the shape of the platform</h2>
+<div class="callout good">
+  <b>Azure</b> = Microsoft's public cloud (2010). Same league as GCP/AWS; its trait is deep integration with the corporate Microsoft stack — <b>Entra ID</b> identity, Microsoft&nbsp;365, Power Platform. In a SharePoint/Windows company you're already half inside Azure.
+</div>
+<div class="callout">
+  <b>The resource hierarchy</b> — policy, billing and access flow down this tree:
+  <pre><code>Azure                                       GCP equivalent
+Tenant (one Entra ID directory)        ≈    Organization
+  └─ Management groups (nestable)      ≈      Folders
+       └─ Subscriptions (billing)      ≈        Projects
+            └─ Resource groups         ≈          (no GCP equivalent!)
+                 └─ Resources          ≈            Resources</code></pre>
+  <b>Tenant</b> = one org's Entra ID directory. <b>Subscription</b> = billing/quota unit ≈ GCP project — but Azure shops have <i>few</i> subscriptions and many <b>resource groups</b> (mandatory lifecycle bags: delete the RG, delete the app). The RG has <b>no GCP equivalent</b> — that's the #1 translation gotcha. Day-to-day you live in the RG, the way you live in a GCP project.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Entra ID (formerly Azure AD) <span class="gcp">≈ Cloud Identity + IAM</span></h3>
+    <p class="lead"><b>Microsoft Entra ID</b> = the cloud identity directory, renamed from <b>Azure Active Directory (Azure&nbsp;AD)</b> in 2023 — colleagues and old docs still say "Azure AD". Holds users, groups, <b>service principals</b> (≈ GCP service accounts), app registrations; authenticates the portal, Microsoft 365, SharePoint, Power Platform. Roles via <b>RBAC</b> (Role-Based Access Control), inherited down the hierarchy like GCP IAM. Not the same as on-prem <b>Active Directory</b> — that's the classic domain controller, usually <i>synced</i> into Entra ID.</p>
+  </div>
+  <div class="card">
+    <h3>Regions, in one line</h3>
+    <p class="lead">A <b>region</b> = a geographic datacenter cluster (60+, e.g. <code>westeurope</code>, <code>uaenorth</code>); resources are created in one, regions come in <b>pairs</b> for disaster recovery, zones exist too — maps 1:1 to GCP regions/zones.</p>
+  </div>
+</div>
+<div class="grid" style="margin-top:16px;">
+  <div class="card">
+    <h3>az CLI grammar <span class="gcp">≈ gcloud</span></h3>
+    <pre><code>az group list --output table
+│   │     │    └─ flag: table | json | tsv | yaml
+│   │     └─ verb: list/create/delete/show/update
+│   └─ command group (group, storage, vm, sql…)
+└─ the program</code></pre>
+    <table>
+      <tr><td class="cmd"><code>az login</code></td><td class="desc">authenticate ≈ <code>gcloud auth login</code></td></tr>
+      <tr><td class="cmd"><code>az account list -o table</code></td><td class="desc">list subscriptions ≈ <code>gcloud projects list</code></td></tr>
+      <tr><td class="cmd"><code>az account set --subscription "Prod"</code></td><td class="desc">switch subscription ≈ <code>gcloud config set project</code></td></tr>
+      <tr><td class="cmd"><code>az group create --name rg-demo --location westeurope</code></td><td class="desc">create a resource group</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Portal · PowerShell · Cloud Shell</h3>
+    <table>
+      <tr><td class="cmd"><b>Portal</b> <code>portal.azure.com</code></td><td class="desc">web console ≈ Cloud Console</td></tr>
+      <tr><td class="cmd"><b>Az PowerShell module</b></td><td class="desc">what Windows admins actually use; cmdlets are always <code>Verb-AzNoun</code>: <code>Get-AzResourceGroup</code>, <code>New-AzResourceGroup -Name rg-demo -Location westeurope</code></td></tr>
+      <tr><td class="cmd"><b>Cloud Shell</b></td><td class="desc">browser terminal with both pre-installed ≈ GCP Cloud Shell</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ PART 2: DATA LANDSCAPE ============ -->
+<h2>Part 2 · The data landscape — drill-ins</h2>
+<div class="callout good">
+  Lightest → heaviest: <b>SharePoint List → Dataverse → Azure SQL → Fabric</b>, with Cosmos DB (NoSQL apps) and Blob (files) on the side. Click a card to expand.
+</div>
+
+<!-- (a) SharePoint Lists -->
+<details class="svc" id="splists">
+  <summary><a href="https://learn.microsoft.com/en-us/sharepoint/manage-large-lists-and-libraries">SharePoint Lists</a> <span class="tag">lightweight tables, not a real DB · ≈ a Google Sheet used as a database</span></summary>
+  <div class="body">
+    <p class="lead">A table-with-a-form bolted onto a SharePoint site — columns, views, attachments, versioning. The default place corporate data accumulates, because anyone can build one. <b>Not a database:</b> no joins, no transactions, weak typing.</p>
+    <div class="callout warn">
+      <b>The 5,000-item view threshold.</b> A list can <i>store</i> 30M items, but any view/query touching &gt; 5,000 items is throttled or fails unless its filter/sort columns are <b>indexed</b>. Symptom: works for months, then "this view cannot be displayed". Fix: index filter columns <i>before</i> the list grows; keep views filtered below the threshold.
+    </div>
+    <p class="lead"><b>REST endpoint</b> — every site exposes an <b>OData</b> (Open Data Protocol: the <code>$filter</code>/<code>$select</code>/<code>$top</code> REST query grammar) API:</p>
+    <pre><code>GET https://contoso.sharepoint.com/sites/TeamSite/_api/web/lists/
+      getbytitle('Tasks')/items?$select=Title,Status&amp;$filter=Status eq 'Open'&amp;$top=100
+Accept: application/json;odata=nometadata</code></pre>
+    <p class="lead"><b>Automation:</b> <b>Power Automate</b> (M365 workflow tool, ex-"Flow") has first-class triggers ("when an item is created…"); programmatic access increasingly via <b>Microsoft Graph API</b>: <code>graph.microsoft.com/v1.0/sites/{site-id}/lists/{list-id}/items</code>.</p>
+  </div>
+</details>
+
+<!-- (b) Dataverse -->
+<details class="svc" id="dataverse">
+  <summary><a href="https://learn.microsoft.com/en-us/power-apps/maker/data-platform/data-platform-intro">Dataverse</a> <span class="tag">Power Platform's real database · ≈ a relational, permissioned Firestore-as-app-backend</span></summary>
+  <div class="body">
+    <p class="lead">The managed relational backbone under <b>Power Platform</b> (Power Apps, Power Automate) and Dynamics 365. Real <b>typed tables</b> (ex-"entities"), real <b>relationships</b> (1:N, N:N), business rules, row- and column-level <b>security roles</b>, auditing. Runs on Azure SQL underneath but is sold as SaaS — you never see the server.</p>
+    <table>
+      <tr><th></th><th>SharePoint List</th><th>Dataverse</th></tr>
+      <tr><td class="cmd"><b>Typing / schema</b></td><td class="desc">loose, optional</td><td class="desc">enforced column types</td></tr>
+      <tr><td class="cmd"><b>Relationships</b></td><td class="desc">shallow lookup column</td><td class="desc">real 1:N / N:N + cascade rules</td></tr>
+      <tr><td class="cmd"><b>Security</b></td><td class="desc">per-list/item, coarse</td><td class="desc">role-based, row + column level</td></tr>
+      <tr><td class="cmd"><b>Scale comfort</b></td><td class="desc">&lt; 5,000 items/view</td><td class="desc">millions of rows</td></tr>
+      <tr><td class="cmd"><b>Transactions</b></td><td class="desc">none</td><td class="desc">yes</td></tr>
+      <tr><td class="cmd"><b>Cost</b></td><td class="desc">included in M365</td><td class="desc">Power Apps premium licensing</td></tr>
+      <tr><td class="cmd"><b>Right for</b></td><td class="desc">team tracker, intake form</td><td class="desc">line-of-business app, multi-table data</td></tr>
+    </table>
+    <p class="lead" style="margin-top:10px;"><b>Web API</b> — same OData grammar as SharePoint, different host; tables addressed by plural logical name (<code>accounts</code>, <code>cr123_projects</code> for custom):</p>
+    <pre><code>GET https://yourorg.api.crm.dynamics.com/api/data/v9.2/accounts
+      ?$select=name,revenue&amp;$filter=revenue gt 100000&amp;$orderby=name&amp;$top=10
+Authorization: Bearer &lt;Entra ID token&gt;</code></pre>
+  </div>
+</details>
+
+<!-- (c) Fabric -->
+<details class="svc" id="fabric">
+  <summary><a href="https://learn.microsoft.com/en-us/fabric/fundamentals/microsoft-fabric-overview">Microsoft Fabric</a> <span class="tag">analytics umbrella · ≈ BigQuery + Dataproc + Looker sold as one SaaS box</span></summary>
+  <div class="body">
+    <p class="lead">Microsoft's all-in-one SaaS analytics platform (GA 2023) — bundles the former Synapse, Data Factory and Power BI into one product, one storage layer, one capacity-based license. <b>Key idea: one copy of data in OneLake, many engines over it</b> — the same Delta table is queried by Spark, T-SQL and Power BI without copying.</p>
+    <table>
+      <tr><th>Workload</th><th>What it is</th><th>Language</th><th>GCP analogue</th></tr>
+      <tr><td class="cmd"><b>OneLake</b></td><td class="desc">the single org-wide data lake all workloads share; open Delta/Parquet format</td><td class="desc">—</td><td class="desc">GCS layer under BigLake</td></tr>
+      <tr><td class="cmd"><b>Lakehouse</b></td><td class="desc">files + tables on OneLake, Spark notebooks</td><td class="desc">PySpark, Spark SQL</td><td class="desc">Dataproc / BigLake</td></tr>
+      <tr><td class="cmd"><b>Warehouse</b></td><td class="desc">classic SQL warehouse over the same data</td><td class="desc">T-SQL</td><td class="desc">BigQuery</td></tr>
+      <tr><td class="cmd"><b>Data Factory</b></td><td class="desc">ingestion / ETL pipelines</td><td class="desc">low-code</td><td class="desc">Data Fusion / Dataflow</td></tr>
+      <tr><td class="cmd"><b>Real-Time Intelligence</b></td><td class="desc">streaming + log/telemetry analytics</td><td class="desc">KQL</td><td class="desc">Pub/Sub + BQ streaming</td></tr>
+      <tr><td class="cmd"><b>Power BI</b></td><td class="desc">BI/reporting layer; reads OneLake via DirectLake (no import copy)</td><td class="desc">DAX, M</td><td class="desc">Looker / Looker Studio</td></tr>
+    </table>
+    <p class="lead" style="margin-top:10px;"><b>Taste of KQL</b> (Kusto Query Language — pipe-based, reads like a Unix pipeline):</p>
+    <pre><code>PageViews
+| where Timestamp &gt; ago(7d)
+| summarize views = count() by Country
+| top 10 by views</code></pre>
+  </div>
+</details>
+
+<!-- (d) Azure SQL -->
+<details class="svc" id="sql">
+  <summary><a href="https://learn.microsoft.com/en-us/azure/azure-sql/azure-sql-iaas-vs-paas-what-is-overview">Azure SQL family</a> <span class="tag">Database / Managed Instance / SQL on VM · ≈ Cloud SQL ↔ SQL Server on Compute Engine</span></summary>
+  <div class="body">
+    <p class="lead">Three ways to run Microsoft SQL Server, on a PaaS→IaaS slider (PaaS = Platform as a Service, managed; IaaS = Infrastructure as a Service, your VM, your patching).</p>
+    <table>
+      <tr><th></th><th>SQL Database</th><th>Managed Instance</th><th>SQL on Azure VM</th></tr>
+      <tr><td class="cmd"><b>Model</b></td><td class="desc">PaaS, single DB</td><td class="desc">PaaS, near-full instance</td><td class="desc">IaaS</td></tr>
+      <tr><td class="cmd"><b>Compatibility</b></td><td class="desc">most features</td><td class="desc">~100% (cross-DB, SQL Agent…)</td><td class="desc">whatever you install</td></tr>
+      <tr><td class="cmd"><b>You manage</b></td><td class="desc">schema + queries</td><td class="desc">almost nothing extra</td><td class="desc">OS, patching, backups, HA</td></tr>
+      <tr><td class="cmd"><b>Typical use</b></td><td class="desc">new cloud apps</td><td class="desc">lift-and-shift legacy unchanged</td><td class="desc">full OS control</td></tr>
+      <tr><td class="cmd"><b>GCP analogue</b></td><td class="desc">Cloud SQL (SQL Server)</td><td class="desc">Cloud SQL, closest fit</td><td class="desc">SQL Server on GCE</td></tr>
+    </table>
+    <p class="lead" style="margin-top:10px;">CLI: <code>az sql server create …</code> then <code>az sql db create --name mydb …</code>. Query in ordinary <b>T-SQL</b> (Transact-SQL, Microsoft's dialect): <code>SELECT TOP 10 * FROM Sales.Orders WHERE Total &gt; 1000;</code> — note <code>TOP 10</code>, not <code>LIMIT 10</code>, the classic T-SQL tell.</p>
+  </div>
+</details>
+
+<!-- (e) Cosmos DB -->
+<details class="svc" id="cosmos">
+  <summary><a href="https://learn.microsoft.com/en-us/azure/cosmos-db/introduction">Cosmos DB</a> <span class="tag">globally distributed NoSQL · ≈ Firestore / Bigtable hybrid</span></summary>
+  <div class="body">
+    <p class="lead">One service, several APIs: document/NoSQL, MongoDB-compatible, Cassandra, Gremlin graph, table. Single-digit-ms reads, turnkey multi-region replication; throughput billed in <b>RU/s</b> (Request Units per second — Cosmos's currency for "how much work a query costs"). Think Firestore's document-DB developer experience + Bigtable's scale ambitions in one product — and like Bigtable, <b>partition-key choice dominates cost and performance</b>.</p>
+    <pre><code>SELECT c.name, c.city FROM c WHERE c.city = "Lisbon" ORDER BY c.name
+-- c = conventional alias for the container (≈ Firestore collection)</code></pre>
+  </div>
+</details>
+
+<!-- (f) Blob -->
+<details class="svc" id="blob">
+  <summary><a href="https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction">Storage accounts / Blob</a> <span class="tag">object storage · ≈ GCS</span></summary>
+  <div class="body">
+    <p class="lead">A <b>storage account</b> (globally unique name) wraps four primitives: <b>Blob</b> (objects ≈ GCS), <b>Files</b> (SMB shares), <b>Queues</b> (simple messaging), <b>Tables</b> (key-value, mostly superseded by Cosmos). Structure: account → <b>container</b> (≈ bucket) → blob (≈ object). Tiers <b>hot / cool / cold / archive</b> ≈ GCS standard / nearline / coldline / archive.</p>
+    <pre><code>az storage account create --name stdemo123 --resource-group rg-demo --location westeurope
+az storage container create --name docs --account-name stdemo123
+az storage blob upload --account-name stdemo123 --container-name docs \
+    --name report.pdf --file ./report.pdf   # ≈ gcloud storage cp</code></pre>
+  </div>
+</details>
+
+<!-- ============ PART 3 ============ -->
+<h2 id="when">Part 3 · Which data store when — a corporate PM's decision walk</h2>
+<div class="callout good">
+  Walk down, stop at the first "yes":
+  <table style="margin-top:8px;">
+    <tr><td class="cmd"><b>1 · Team tracker / intake form, &lt; a few thousand rows?</b></td><td class="desc">→ <b>SharePoint List</b>. Free with M365. Index your filter columns on day one — the 5,000-item threshold is coming.</td></tr>
+    <tr><td class="cmd"><b>2 · Real app data — related tables, security roles, outlives the team?</b></td><td class="desc">→ <b>Dataverse</b>. Accept the premium licensing; it's the price of not rebuilding on SQL later.</td></tr>
+    <tr><td class="cmd"><b>3 · Developers, custom app, full SQL + transactions?</b></td><td class="desc">→ <b>Azure SQL Database</b> (Managed Instance if migrating on-prem SQL Server unchanged).</td></tr>
+    <tr><td class="cmd"><b>4 · Analytics across systems — dashboards, history, big aggregations?</b></td><td class="desc">→ <b>Fabric</b>: land in OneLake, report with Power BI. Analytics = read workloads over <i>copies</i>; don't run reports on the operational store.</td></tr>
+    <tr><td class="cmd"><b>Side doors</b></td><td class="desc">planet-scale NoSQL app → <b>Cosmos DB</b>; files/objects → <b>Blob</b>.</td></tr>
+  </table>
+  <p style="margin:10px 0 0;"><b>Rule of thumb:</b> Lists are for tracking, Dataverse is for apps, SQL is for developers, Fabric is for questions about the past.</p>
+</div>
+
+<!-- ============ PART 4: TEARDOWN ============ -->
+<h2 id="teardown">Part 4 · Teardown</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>az group delete --name rg-demo</code></td><td class="desc">delete an app and <b>everything in the resource group</b> in one command — this lifecycle power is the reason resource groups exist ≈ <code>gcloud projects delete</code></td></tr>
+    <tr><td class="cmd"><code>az logout</code></td><td class="desc">sign out of the CLI; clears cached credentials ≈ <code>gcloud auth revoke</code></td></tr>
+    <tr><td class="cmd"><b>Remove a SharePoint List</b></td><td class="desc">site owner: List settings → Delete; lands in the site Recycle Bin ~93 days. Low ceremony — whoever built it can usually kill it.</td></tr>
+    <tr><td class="cmd"><b>Delete Dataverse tables</b></td><td class="desc">needs a <b>System Administrator/Customizer</b> security role in the environment; blocked while other tables/apps depend on it. Deliberately harder than Lists — it's app infrastructure.</td></tr>
+    <tr><td class="cmd"><b>Delete a Fabric workspace</b></td><td class="desc">Workspace Admin → workspace settings → Remove; takes its items (lakehouses, reports) with it. OneLake data in <i>other</i> workspaces untouched.</td></tr>
+    <tr><td class="cmd"><b>Stop paying entirely</b></td><td class="desc">cancel the subscription in the portal (or downgrade Power Apps/Fabric capacity licenses) — resources are disabled, then permanently deleted after a grace period</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Tenant</b></td><td class="desc">one org's Entra ID directory; root of everything</td></tr>
+    <tr><td class="cmd"><b>Subscription</b></td><td class="desc">billing/quota unit ≈ GCP project</td></tr>
+    <tr><td class="cmd"><b>Resource group</b></td><td class="desc">mandatory lifecycle bag for resources; no GCP equivalent</td></tr>
+    <tr><td class="cmd"><b>Entra ID</b></td><td class="desc">cloud identity directory, ex-Azure AD ≈ Cloud Identity + IAM</td></tr>
+    <tr><td class="cmd"><b>RBAC</b></td><td class="desc">Role-Based Access Control — Azure's IAM role model</td></tr>
+    <tr><td class="cmd"><b>OData</b></td><td class="desc">Open Data Protocol — the <code>$filter</code>/<code>$select</code> REST query grammar (SharePoint, Dataverse)</td></tr>
+    <tr><td class="cmd"><b>Microsoft Graph</b></td><td class="desc">unified REST API over Microsoft 365</td></tr>
+    <tr><td class="cmd"><b>Dataverse</b></td><td class="desc">Power Platform's managed relational database</td></tr>
+    <tr><td class="cmd"><b>OneLake</b></td><td class="desc">Fabric's single org-wide data lake (Delta/Parquet)</td></tr>
+    <tr><td class="cmd"><b>KQL</b></td><td class="desc">Kusto Query Language — pipe-based, for logs/telemetry</td></tr>
+    <tr><td class="cmd"><b>T-SQL</b></td><td class="desc">Transact-SQL, the SQL Server dialect (<code>TOP n</code>, not <code>LIMIT</code>)</td></tr>
+    <tr><td class="cmd"><b>RU/s</b></td><td class="desc">Request Units per second — Cosmos DB's throughput currency</td></tr>
+    <tr><td class="cmd"><b>Blob / container</b></td><td class="desc">Azure object / bucket ≈ GCS object / bucket</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-setup-guide/organize-resources">Resource hierarchy</a> ·
+  <a href="https://learn.microsoft.com/en-us/entra/fundamentals/whatis">Entra ID</a> ·
+  <a href="https://learn.microsoft.com/en-us/cli/azure/reference-index">az CLI</a> ·
+  <a href="https://learn.microsoft.com/en-us/sharepoint/manage-large-lists-and-libraries">SP list threshold</a> ·
+  <a href="https://learn.microsoft.com/en-us/sharepoint/dev/sp-add-ins/get-to-know-the-sharepoint-rest-service">SP REST</a> ·
+  <a href="https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/query-data-web-api">Dataverse Web API</a> ·
+  <a href="https://learn.microsoft.com/en-us/fabric/fundamentals/microsoft-fabric-overview">Fabric</a> ·
+  <a href="https://learn.microsoft.com/en-us/kusto/query/">KQL</a> ·
+  <a href="https://learn.microsoft.com/en-us/azure/azure-sql/azure-sql-iaas-vs-paas-what-is-overview">Azure SQL</a> ·
+  <a href="https://learn.microsoft.com/en-us/azure/cosmos-db/introduction">Cosmos DB</a> ·
+  <a href="https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction">Blob</a>
+</p>
+
+</div>
+<script>
+  var cards = document.querySelectorAll('details.svc');
+  document.getElementById('expandAll').addEventListener('click', function(){
+    cards.forEach(function(d){ d.open = true; });
+  });
+  document.getElementById('collapseAll').addEventListener('click', function(){
+    cards.forEach(function(d){ d.open = false; });
+  });
+  // If the URL targets a collapsed card (via mini-nav anchor), open it.
+  function openTarget(){
+    var t = location.hash && document.querySelector(location.hash);
+    if (t && t.tagName === 'DETAILS') t.open = true;
+  }
+  window.addEventListener('hashchange', openTarget);
+  openTarget();
+</script>
+</body>
+</html>

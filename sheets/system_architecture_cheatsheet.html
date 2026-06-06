@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Architecture Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>System Architecture Cheat Sheet</h1>
+<p class="sub">From silicon to your script: languages · kernels · containers · started 2026-06-06 · twin of <code>Tools/system_architecture_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model: the layer cake (read once)</h2>
+<div class="callout">
+  <b>One picture for the whole sheet.</b> Software is layers; each layer talks only to its neighbours and pretends the ones below don't exist:
+  <pre><code>┌─────────────────────────────────────────────────────┐
+│ YOUR CODE        app.py, script.sh, main.go         │ ← what you write
+├─────────────────────────────────────────────────────┤
+│ RUNTIME/LIBS     Python interpreter, libc, numpy,   │ ← what runs it
+│                  JVM, Node.js, shared libraries     │
+├─────────────────────────────────────────────────────┤
+│ OS USER SPACE    shell (zsh), ls/cp, daemons, GUI   │ ← the OS you see
+├──────────────── syscall boundary ───────────────────┤
+│ KERNEL           scheduler, memory mgr, drivers,    │ ← the OS you don't
+│                  filesystems, network stack         │
+├─────────────────────────────────────────────────────┤
+│ HARDWARE         CPU, RAM, disk, NIC, GPU           │ ← the silicon
+└─────────────────────────────────────────────────────┘</code></pre>
+  Going <b>down</b> = asking the layer below for a service. Going <b>up</b> = hiding ugly details. That hiding is <b>abstraction</b> — the most load-bearing idea in computing.
+</div>
+<div class="callout good">
+  <b>Why it matters:</b> every tool lives at exactly one layer. <code>zsh</code> = user space. <code>venv</code> = runtime. Docker = a wall <i>inside</i> user space. A VM = a copy of everything from the kernel up. The layer tells you what a tool can and cannot isolate.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Vocabulary anchors</h3>
+    <table>
+      <tr><td class="cmd"><b>CPU</b> (Central Processing Unit)</td><td class="desc">the chip executing instructions, billions/sec</td></tr>
+      <tr><td class="cmd"><b>OS</b> (Operating System)</td><td class="desc">kernel + user-space programs shipped together</td></tr>
+      <tr><td class="cmd"><b>Binary / executable</b></td><td class="desc">file of machine code the CPU runs directly</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Etymology hooks</h3>
+    <table>
+      <tr><td class="cmd"><b>Kernel</b></td><td class="desc">the core of a nut/seed — the essential part once you strip the <i>shell</i> (yes, bash/zsh is named as its complement)</td></tr>
+      <tr><td class="cmd"><b>Daemon</b></td><td class="desc">background service (<code>sshd</code>, <code>dockerd</code> — trailing <code>d</code> is the tell); from Maxwell's demon, adopted at MIT in the 1960s. Pronounced "demon".</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ LANGUAGES ============ -->
+<h2>1 · Languages — how code becomes execution</h2>
+<p class="lead">The CPU understands one language: <b>machine code</b> — raw numeric instructions. <b>Assembly</b> = machine code with human mnemonics (<code>mov</code>, <code>add</code>, <code>jmp</code>), translated 1:1 by an assembler. Everything compiles down to it eventually.</p>
+<div class="card">
+  <h3>Three strategies, three trade-offs</h3>
+  <table>
+    <tr><td class="cmd"><b>Compiled</b><br>C, C++, Rust, Go</td><td class="desc">compiler translates whole source → native binary <i>ahead of time</i>. Fastest execution; slowest iteration (edit→recompile→run); binary is per-OS/CPU.</td></tr>
+    <tr><td class="cmd"><b>Interpreted</b><br>Python, Ruby, shell</td><td class="desc">interpreter executes at runtime. Python: source → <b>bytecode</b> (instructions for a fake portable CPU, the <code>.pyc</code> files) → its <b>virtual machine</b> loop runs it. Instant iteration; 10–100× slower for tight loops.</td></tr>
+    <tr><td class="cmd"><b>JIT</b> (Just-In-Time)<br>JavaScript (V8), Java/JVM, C#</td><td class="desc">starts interpreting, watches for hot code, compiles those parts to machine code mid-flight. Near-compiled speed after warm-up; slower startup.</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>"Python is slow but numpy is fast" decoded:</b> numpy's array math is compiled C (and Fortran) in a thin Python skin. <code>a + b</code> on two numpy arrays = one Python call dispatching into a C loop crunching a million elements at native speed. Same trick in pandas, PyTorch, <code>sqlite3</code> — Python as <i>glue</i> over compiled cores. Rule: Python <i>loops</i> are slow; Python <i>calls to compiled code</i> are fast.
+</div>
+<p class="lead"><b>Source code</b> = text you write → <b>bytecode</b> = instructions for a VM → <b>machine code</b> = the only thing the CPU runs.</p>
+
+<!-- ============ KERNEL ============ -->
+<h2>2 · The kernel — the part of the OS you never see</h2>
+<div class="grid">
+  <div class="card">
+    <h3>The kernel's four jobs</h3>
+    <table>
+      <tr><td class="cmd"><b>Scheduling</b></td><td class="desc">which process gets the CPU next, switching 1000s of times/sec — how 4 cores "run" 400 processes</td></tr>
+      <tr><td class="cmd"><b>Memory management</b></td><td class="desc"><b>virtual memory</b>: each process gets a private fake address space mapped to real RAM; A can't read B's memory</td></tr>
+      <tr><td class="cmd"><b>Drivers</b></td><td class="desc">translate "write these bytes" into each device's specific incantations</td></tr>
+      <tr><td class="cmd"><b>Filesystems</b></td><td class="desc">the illusion of named files/folders over raw disk blocks (APFS, ext4)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Processes vs threads</h3>
+    <table>
+      <tr><td class="cmd"><b>Process</b></td><td class="desc">a running program; own private virtual memory; created by <code>fork</code>/<code>exec</code>; a crash stays contained</td></tr>
+      <tr><td class="cmd"><b>Thread</b></td><td class="desc">a worker <i>inside</i> a process; shares memory with sibling threads; one bad thread can corrupt the whole process</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout">
+  <b>User mode vs kernel mode &amp; syscalls.</b> The CPU enforces two privilege levels: your code runs in <b>user mode</b> (no hardware access), the kernel in <b>kernel mode</b> (anything). The only doorway between them is the <b>syscall</b> (system call): <code>open</code>, <code>read</code>, <code>write</code>, <code>fork</code>, <code>exec</code>, <code>exit</code>… a few hundred total.
+  <pre><code>$ strace -c python3 -c 'print("hi")'   # Linux: count every syscall
+  openat ~90×   read ~60×   mmap ~70×   write 1×  ← the print!</code></pre>
+  <code>strace</code> (macOS: <code>dtruss</code>) shows a program's entire conversation with the kernel.
+</div>
+<div class="callout good">
+  <b>Kernel family tree — why your Mac terminal feels like Linux:</b>
+  <pre><code>Unix (Bell Labs, 1969)
+ ├─► BSD (Berkeley, 1977) ──► Darwin/XNU ──► macOS, iOS
+ └─► (ideas, POSIX std) ────► Linux (Torvalds, 1991) ─► Android, servers, cloud
+Windows NT (1993) — separate lineage entirely</code></pre>
+  <b>POSIX</b> (Portable Operating System Interface) = the IEEE standard freezing the Unix API — why <code>ls</code>/<code>grep</code> work across the family. <b>Linux</b> shares no Unix code, only the interface. <b>XNU</b> ("X is Not Unix") = macOS's kernel (Mach + BSD); macOS is a certified Unix — your Mac commands transfer almost unchanged to a Linux server. <b>Windows NT</b> descends from VMS, not Unix; WSL bolts a real Linux kernel alongside.
+</div>
+
+<!-- ============ VIRTUALIZATION ============ -->
+<h2>3 · Virtualization — VMs vs containers</h2>
+<p class="lead">Two ways to slice one machine into many isolated environments. The difference: <b>which layer gets duplicated</b>.</p>
+<div class="card">
+  <h3>VM vs container</h3>
+  <table>
+    <tr><td class="cmd"><b>VM</b> (Virtual Machine)</td><td class="desc">duplicates everything: fake hardware + full guest kernel + user space, via a <b>hypervisor</b> (VMware, KVM). Boots in minutes, weighs GBs, strongest isolation, can run a different OS (Linux VM on a Mac).</td></tr>
+    <tr><td class="cmd"><b>Container</b></td><td class="desc">duplicates user space only — all containers <b>share the host kernel</b>. Boots in ms, weighs MBs; a kernel exploit escapes all containers; Linux containers need a Linux kernel (Docker on macOS quietly runs a Linux VM underneath!).</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>The two kernel features behind containers:</b> <b>namespaces</b> = scoping what a process can <i>see</i> (own process list, network, hostname, filesystem root — inside one, a container believes it's the whole machine); <b>cgroups</b> (control groups) = limits on what it can <i>use</i> (CPU share, RAM, I/O) so one container can't starve the rest.
+</div>
+<div class="callout good">
+  <b>Etymology hook:</b> named after the 1956 standardized steel <b>shipping container</b> that made cargo machine-handleable anywhere. Same promise for software: pack the app with its entire user space so it runs identically on any compatible kernel. "Works on my machine" → ship the machine (minus the kernel).
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Docker vocabulary</h3>
+    <table>
+      <tr><td class="cmd"><b>Image</b></td><td class="desc">read-only template: frozen user-space filesystem + metadata — the "class"</td></tr>
+      <tr><td class="cmd"><b>Layer</b></td><td class="desc">images are stacked diffs; layers cached &amp; shared (10 Python images ≈ one base layer on disk)</td></tr>
+      <tr><td class="cmd"><b>Container</b></td><td class="desc">running instance of an image + thin writable layer — the "object"</td></tr>
+      <tr><td class="cmd"><b>Registry</b></td><td class="desc">server hosting images; Docker Hub = the GitHub of images</td></tr>
+      <tr><td class="cmd"><b>Dockerfile</b></td><td class="desc">the recipe (<code>FROM</code>, <code>COPY</code>, <code>RUN</code>) that builds an image</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Docker commands</h3>
+    <table>
+      <tr><td class="cmd"><code>docker run -it ubuntu bash</code></td><td class="desc">pull if needed, start a container, interactive shell inside</td></tr>
+      <tr><td class="cmd"><code>docker ps</code> / <code>ps -a</code></td><td class="desc">list running / all containers</td></tr>
+      <tr><td class="cmd"><code>docker exec -it &lt;name&gt; bash</code></td><td class="desc">shell into an already-running container</td></tr>
+      <tr><td class="cmd"><code>docker build -t myapp .</code></td><td class="desc">build image <code>myapp</code> from the Dockerfile here</td></tr>
+      <tr><td class="cmd"><code>docker images</code></td><td class="desc">list local images</td></tr>
+    </table>
+  </div>
+</div>
+<div class="card" style="margin-top:16px">
+  <h3>When to use what</h3>
+  <table>
+    <tr><td class="cmd"><b>Bare metal</b></td><td class="desc">every drop of performance or direct hardware access (GPU training, high-frequency anything)</td></tr>
+    <tr><td class="cmd"><b>VM</b></td><td class="desc">different OS than host; hard multi-tenant security boundaries; legacy systems</td></tr>
+    <tr><td class="cmd"><b>Container</b></td><td class="desc">the default for deploying services: fast, light, reproducible, the unit every cloud speaks</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>Kubernetes in one callout:</b> <b>Kubernetes</b> (K8s, Greek for "helmsman") = <b>container orchestration</b> — given hundreds of containers across many machines, it decides placement, restarts crashes, scales replicas, routes traffic. Its atom is the <b>pod</b>: one or more containers deployed and scheduled as a single unit.
+</div>
+<div class="callout warn">
+  <b>Serverless isn't serverless — and you're soaking in it:</b> cloud "serverless" (AWS Lambda, Cloud Run) = your code dropped into a container or <b>microVM</b> (a stripped-down, ms-boot VM like Firecracker) created and destroyed on demand. Live example: the Cowork/Claude sandbox that ran shell commands to build this very file is an isolated Linux environment — your Mac folders mounted into a contained Linux user space. The layer cake isn't theory; it's where this sentence was built.
+</div>
+
+<!-- ============ TRACE ============ -->
+<h2>4 · Tying it together — <code>python app.py</code>, keystroke to CPU</h2>
+<pre><code>$ python app.py
+1. Shell parses        zsh (user space) splits command + arg, finds python via $PATH
+2. fork + exec         shell's two syscalls: clone itself, replace clone with the
+                       python binary — first kernel involvement
+3. Kernel loads        maps the binary into fresh VIRTUAL MEMORY, wires libc,
+                       sets instruction pointer to Python's entry point
+4. Interpreter boots   the python binary (compiled C!) inits its runtime:
+                       built-in types, sys.path, import machinery
+5. Source → bytecode   reads app.py (openat + read syscalls), compiles to
+                       bytecode, caches in __pycache__/
+6. VM loop runs        interpreter executes bytecode instruction by instruction —
+                       each one a chunk of the interpreter's machine code on the CPU
+7. I/O = syscalls      every print() → a write syscall: CPU flips to kernel mode,
+                       kernel drives the device, flips back (scheduler slicing
+                       your process in and out the whole time)
+8. Exit                exit syscall → kernel frees memory, hands the waiting
+                       shell the exit status (echo $? — 0 = success). Prompt returns.</code></pre>
+<p class="lead">Every layer appeared once: your code (5–6), runtime (4–6), user space (1), syscall boundary (2, 7, 8), kernel (3, 7, 8), hardware (everywhere, invisibly).</p>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>5 · Teardown (containers &amp; processes)</h2>
+<p class="lead">How to stop things at each layer — gently first, forcefully if needed.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>docker stop &lt;name&gt;</code></td><td class="desc">stop politely — sends <b>SIGTERM</b> (please clean up), waits ~10 s, then SIGKILL</td></tr>
+    <tr><td class="cmd"><code>docker kill &lt;name&gt;</code></td><td class="desc">stop instantly — straight to <b>SIGKILL</b>, no grace period; no chance to flush or clean up</td></tr>
+    <tr><td class="cmd"><code>docker rm &lt;name&gt;</code></td><td class="desc">delete a stopped container (the "object"); the image stays</td></tr>
+    <tr><td class="cmd"><code>docker rmi &lt;image&gt;</code></td><td class="desc">delete an image (the "class"); fails if containers still use it</td></tr>
+    <tr><td class="cmd"><code>docker system prune</code></td><td class="desc">bulk cleanup — deletes <span style="color:var(--warn)">⚠</span> all stopped containers, dangling images, unused networks, build cache; <code>-a</code> adds unused <i>tagged</i> images too. Read the prompt.</td></tr>
+    <tr><td class="cmd"><code>kill &lt;pid&gt;</code> vs <code>kill -9 &lt;pid&gt;</code></td><td class="desc">SIGTERM (catchable — graceful) vs SIGKILL (uncatchable — last resort; no cleanup runs)</td></tr>
+    <tr><td class="cmd"><b>Shut down vs power off</b></td><td class="desc">a clean shutdown lets the kernel flush buffers and <b>unmount filesystems</b>; yanking power risks data in RAM never reaching disk — SIGTERM vs SIGKILL, one layer down</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> the pattern repeats at every layer — <i>ask first</i> (SIGTERM / <code>docker stop</code> / shutdown), <i>force only when asking fails</i> (SIGKILL / <code>docker kill</code> / power cut).
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>6 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Abstraction</b></td><td class="desc">each layer hiding the details of the layer below</td></tr>
+    <tr><td class="cmd"><b>Kernel</b></td><td class="desc">core OS program with full hardware authority (kernel of a nut)</td></tr>
+    <tr><td class="cmd"><b>Syscall</b></td><td class="desc">the only doorway from user mode into kernel mode</td></tr>
+    <tr><td class="cmd"><b>User / kernel mode</b></td><td class="desc">CPU-enforced privilege levels</td></tr>
+    <tr><td class="cmd"><b>Virtual memory</b></td><td class="desc">per-process private fake address space mapped to RAM</td></tr>
+    <tr><td class="cmd"><b>Process / thread</b></td><td class="desc">isolated running program / shared-memory worker inside one</td></tr>
+    <tr><td class="cmd"><b>Daemon</b></td><td class="desc">background service process (Maxwell's demon, via MIT)</td></tr>
+    <tr><td class="cmd"><b>Compiler / interpreter / JIT</b></td><td class="desc">translate ahead-of-time / execute-as-you-read / compile hot parts mid-flight</td></tr>
+    <tr><td class="cmd"><b>Bytecode</b></td><td class="desc">instructions for a virtual machine, not a real CPU</td></tr>
+    <tr><td class="cmd"><b>POSIX</b></td><td class="desc">the standard freezing the Unix API across the family</td></tr>
+    <tr><td class="cmd"><b>Hypervisor</b></td><td class="desc">software multiplexing hardware into fake machines (VMs)</td></tr>
+    <tr><td class="cmd"><b>Namespace / cgroup</b></td><td class="desc">kernel features scoping what a process <i>sees</i> / limiting what it <i>uses</i> — together: containers</td></tr>
+    <tr><td class="cmd"><b>Image / container</b></td><td class="desc">frozen user-space template / running instance of one</td></tr>
+    <tr><td class="cmd"><b>Kubernetes / pod</b></td><td class="desc">container orchestrator / its smallest deployable unit</td></tr>
+    <tr><td class="cmd"><b>microVM</b></td><td class="desc">ms-boot stripped VM; the substrate of "serverless"</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">OSTEP (free OS textbook)</a> ·
+  <a href="https://docs.kernel.org/">Linux kernel docs</a> ·
+  <a href="https://docs.docker.com/get-started/overview/">Docker overview</a> ·
+  <a href="https://kubernetes.io/docs/concepts/overview/">Kubernetes concepts</a> ·
+  <a href="https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/Architecture/Architecture.html">Apple XNU architecture</a> ·
+  <a href="https://devguide.python.org/internals/interpreter/">CPython bytecode VM</a> ·
+  <a href="https://firecracker-microvm.github.io/">Firecracker microVM</a>
+</p>
+
+</div>
+</body>
+</html>

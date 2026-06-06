@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PowerShell Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>PowerShell Cheat Sheet</h1>
+<p class="sub">Objects · Verb-Noun · pipeline · discovery — for bash speakers on corporate Windows · started 2026-06-06 · twin of <code>Tools/powershell_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>PowerShell</b> = Microsoft's shell + scripting language built on <b>.NET</b> (Microsoft's application framework/runtime), by Jeffrey Snover, 2006. Two flavors: <b>Windows PowerShell 5.1</b> (ships with Windows, legacy) and <b>PowerShell 7+</b> (<code>pwsh</code>, cross-platform, open source). A <b>cmdlet</b> ("command-let") = a native PowerShell command, always named <code>Verb-Noun</code>.
+</div>
+<div class="callout">
+  <b>The big idea: objects flow through the pipe, not text.</b> bash pipes pass bytes; you re-parse columns forever. PowerShell pipes pass typed .NET <b>objects</b> with named <b>properties</b> (data) and <b>methods</b> (actions) — you refer to fields by name, never by column position.
+  <pre><code>bash:        ls -l | awk '{print $5, $9}' | sort -n
+             (text → re-parse → hope the format holds)
+
+PowerShell:  Get-ChildItem | Sort-Object Length | Select-Object Length, Name
+             (objects → properties BY NAME → format-proof)</code></pre>
+  What you see on screen is just default <i>formatting</i>, applied at the very end. The data underneath is always the full object — pipe to <code>Get-Member</code> to see it.
+</div>
+<div class="callout good">
+  <b>Command grammar:</b> <code>Verb-Noun -Parameter Value</code>. Verbs come from an approved list (<code>Get-Verb</code> shows ~100); nouns are <b>singular</b>; parameters are one dash + whole word (<code>-Recurse</code>). Case-insensitive. <b>Memory hook:</b> know the noun, derive the family — <code>Get-Service</code>, <code>Start-Service</code>, <code>Stop-Service</code>, <code>Restart-Service</code>. bash makes you memorize names; PowerShell lets you guess them.
+</div>
+<div class="card">
+  <h3>The discovery trio — never memorize, always ask</h3>
+  <table>
+    <tr><td class="cmd"><code>Get-Command -Noun *process*</code></td><td class="desc">"what commands exist for X?" (search by noun/verb)</td></tr>
+    <tr><td class="cmd"><code>Get-Help Get-Process -Examples</code></td><td class="desc">"how do I use it?" (<code>-Online</code> opens web docs — works without admin)</td></tr>
+    <tr><td class="cmd"><code>something | Get-Member</code></td><td class="desc">"what properties/methods does this object have?"</td></tr>
+  </table>
+</div>
+
+<!-- ============ TRANSLATION ============ -->
+<h2>1 · bash → PowerShell translation</h2>
+<p class="lead">Built-in <b>aliases</b> keep bash muscle memory working at the prompt (<code>Get-Alias ls</code> shows what an alias points to). Fine interactively — use real cmdlet names in scripts.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Files &amp; navigation</h3>
+    <table>
+      <tr><td class="cmd"><code>ls</code> / <code>dir</code> → <code>Get-ChildItem</code></td><td class="desc"><code>-Recurse</code> ≈ <code>-R</code>; <code>-Force</code> ≈ <code>-a</code> (hidden)</td></tr>
+      <tr><td class="cmd"><code>cd</code> → <code>Set-Location</code></td><td class="desc"><code>cd ~</code> works; <code>Push-/Pop-Location</code> ≈ <code>pushd/popd</code></td></tr>
+      <tr><td class="cmd"><code>pwd</code> → <code>Get-Location</code></td><td class="desc">alias <code>pwd</code></td></tr>
+      <tr><td class="cmd"><code>cat</code> → <code>Get-Content</code></td><td class="desc"><code>-Tail 20 -Wait</code> ≈ <code>tail -f</code></td></tr>
+      <tr><td class="cmd"><code>cp</code> → <code>Copy-Item</code></td><td class="desc"><code>-Recurse</code> for dirs</td></tr>
+      <tr><td class="cmd"><code>mv</code> → <code>Move-Item</code></td><td class="desc">also renames (or <code>Rename-Item</code>)</td></tr>
+      <tr><td class="cmd"><code>rm</code> → <code>Remove-Item</code></td><td class="desc"><code>-Recurse -Force</code> ≈ <code>rm -rf</code> ⚠ same danger</td></tr>
+      <tr><td class="cmd"><code>mkdir</code> → <code>New-Item -ItemType Directory</code></td><td class="desc">alias <code>mkdir</code> takes just a path</td></tr>
+      <tr><td class="cmd"><code>touch</code> → <code>New-Item file.txt</code></td><td class="desc">no direct touch; creates the file</td></tr>
+      <tr><td class="cmd"><code>find</code> → <code>gci -Recurse -Filter *.py</code></td><td class="desc">filter while walking the tree</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Text, processes, system</h3>
+    <table>
+      <tr><td class="cmd"><code>grep</code> → <code>Select-String</code></td><td class="desc">alias <code>sls</code>; <code>sls -Pattern "err" *.log</code></td></tr>
+      <tr><td class="cmd"><code>which</code> → <code>Get-Command</code></td><td class="desc">shows path AND type</td></tr>
+      <tr><td class="cmd"><code>ps</code> → <code>Get-Process</code></td><td class="desc">objects! <code>(Get-Process chrome).CPU</code></td></tr>
+      <tr><td class="cmd"><code>kill</code> → <code>Stop-Process</code></td><td class="desc"><code>Stop-Process -Name notepad</code></td></tr>
+      <tr><td class="cmd"><code>echo</code> → <code>Write-Output</code></td><td class="desc">just typing <code>"hello"</code> also outputs</td></tr>
+      <tr><td class="cmd"><code>man</code> → <code>Get-Help</code></td><td class="desc">alias <code>help</code> pages the output</td></tr>
+      <tr><td class="cmd"><code>history</code> → <code>Get-History</code></td><td class="desc"><kbd>Ctrl+R</kbd> reverse-search works too</td></tr>
+      <tr><td class="cmd"><code>wc -l</code> → <code>Measure-Object -Line</code></td><td class="desc"><code>gc f.txt | Measure-Object -Line</code></td></tr>
+      <tr><td class="cmd"><code>head/tail</code> → <code>Select-Object -First/-Last n</code></td><td class="desc">or <code>Get-Content -TotalCount</code> / <code>-Tail</code></td></tr>
+      <tr><td class="cmd"><code>env</code> → <code>Get-ChildItem env:</code></td><td class="desc">see the <code>$env:</code> drive below</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Trap:</b> on 5.1, <code>curl</code> and <code>wget</code> are aliases for <code>Invoke-WebRequest</code>, NOT the real tools — flags like <code>-O</code> fail. PowerShell 7 removed those aliases.
+</div>
+
+<!-- ============ PIPELINE ============ -->
+<h2>2 · Pipeline workhorses: Where · Sort · Select</h2>
+<p class="lead">PowerShell's <code>grep</code>/<code>sort</code>/<code>cut</code> — but on object properties, not text columns.</p>
+<div class="grid">
+  <div class="card">
+    <h3>The trio</h3>
+    <table>
+      <tr><td class="cmd"><code>Where-Object</code> (<code>where</code>, <code>?</code>)</td><td class="desc">filter objects by condition ≈ grep on properties</td></tr>
+      <tr><td class="cmd"><code>Sort-Object</code> (<code>sort</code>)</td><td class="desc">sort by any property; <code>-Descending</code></td></tr>
+      <tr><td class="cmd"><code>Select-Object</code> (<code>select</code>)</td><td class="desc">pick properties / first-last N ≈ cut + head</td></tr>
+    </table>
+    <p class="lead"><b><code>$_</code></b> = the current object in the pipe (no bash equivalent — bash pipes have no "current object"). Comparison operators are <b>words</b>: <span class="pill">-eq</span> <span class="pill">-ne</span> <span class="pill">-gt</span> <span class="pill">-lt</span> <span class="pill">-like</span> <span class="pill">-match</span> — because <code>&gt;</code> means redirection in a shell. <code>10MB</code>, <code>1GB</code> are built-in literals.</p>
+  </div>
+  <div class="card">
+    <h3>Examples</h3>
+    <pre><code># Top 5 memory-hungry processes
+Get-Process | Sort-Object WS -Descending |
+  Select-Object -First 5 Name, Id, WS
+
+# Files over 10 MB, biggest first
+Get-ChildItem -Recurse |
+  Where-Object { $_.Length -gt 10MB } |
+  Sort-Object Length -Descending |
+  Select-Object Name, Length
+
+# Stopped services mentioning 'update'
+Get-Service | Where-Object {
+  $_.Status -eq 'Stopped' -and $_.Name -like '*update*' }</code></pre>
+  </div>
+</div>
+
+<!-- ============ VARIABLES ============ -->
+<h2>3 · Variables &amp; the $env: drive</h2>
+<div class="grid">
+  <div class="card">
+    <h3>bash vs PowerShell</h3>
+    <table>
+      <tr><td class="cmd"><code>x=5</code> → <code>$x = 5</code></td><td class="desc">always <code>$</code>, even when setting; spaces fine</td></tr>
+      <tr><td class="cmd"><code>"value is $x"</code></td><td class="desc">interpolation in double quotes — same rule as bash</td></tr>
+      <tr><td class="cmd"><code>$HOME</code> → <code>$env:USERPROFILE</code></td><td class="desc">env vars live on the <code>env:</code> drive</td></tr>
+      <tr><td class="cmd"><code>export X=v</code> → <code>$env:X = "v"</code></td><td class="desc">this session only</td></tr>
+      <tr><td class="cmd"><code>env</code> → <code>Get-ChildItem env:</code></td><td class="desc">list all env vars</td></tr>
+    </table>
+    <p class="lead">Variables hold typed objects: <code>$x = Get-Date</code> then <code>$x.Year</code> just works.</p>
+  </div>
+  <div class="card">
+    <h3>Drives &amp; providers</h3>
+    <p class="lead"><b>Providers</b> expose many data stores as navigable drives: filesystem (<code>C:</code>), env vars (<code>env:</code>), Windows registry (<code>HKCU:</code>), certificates (<code>Cert:</code>), variables (<code>Variable:</code>). Same cmdlets everywhere — <code>Get-ChildItem env:</code> lists env vars exactly like <code>Get-ChildItem C:\</code> lists files. One grammar, many stores.</p>
+  </div>
+</div>
+
+<!-- ============ EXECUTION POLICY ============ -->
+<h2>4 · Execution policy — why scripts won't run at work</h2>
+<p class="lead"><b>Execution policy</b> = a gate on running <code>.ps1</code> script <i>files</i>. Microsoft's own words: NOT a security boundary — a seatbelt against accidental script execution. Interactive commands are never blocked.</p>
+<div class="grid">
+  <div class="card">
+    <h3>The policies</h3>
+    <table>
+      <tr><td class="cmd"><code>Restricted</code></td><td class="desc">no scripts at all — 5.1 default on Windows clients, the usual culprit</td></tr>
+      <tr><td class="cmd"><code>RemoteSigned</code></td><td class="desc">local scripts run; downloaded ones need a signature (PS 7 default, sane)</td></tr>
+      <tr><td class="cmd"><code>AllSigned</code></td><td class="desc">everything must be signed</td></tr>
+      <tr><td class="cmd"><code>Bypass</code></td><td class="desc">nothing blocked, no warnings</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Safe fixes (no admin needed)</h3>
+    <pre><code>Get-ExecutionPolicy -List   # policy at every scope
+
+# your user account only:
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# this window only, vanishes on close:
+Set-ExecutionPolicy Bypass -Scope Process
+
+# one-off, no policy change:
+powershell -ExecutionPolicy Bypass -File .\script.ps1</code></pre>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Group Policy override:</b> if IT sets policy via Group Policy (centralized Windows config management), the <code>MachinePolicy</code>/<code>UserPolicy</code> scopes win and <code>Set-ExecutionPolicy</code> errors out. <code>-Scope Process</code> or the <code>-ExecutionPolicy Bypass</code> launch flag is the remaining legitimate, logged route. If that's blocked too, it's a deliberate IT decision — ask, don't fight.
+</div>
+
+<!-- ============ PROFILE ============ -->
+<h2>5 · $PROFILE — your .bashrc</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Setup &amp; reload</h3>
+    <pre><code>$PROFILE              # show the path
+Test-Path $PROFILE    # exists?
+New-Item $PROFILE -Force   # create (+ parent dirs)
+notepad $PROFILE      # edit
+. $PROFILE            # reload — dot-source, like bash 'source'</code></pre>
+  </div>
+  <div class="card">
+    <h3>Gotchas</h3>
+    <p class="lead">5.1 path: <code>Documents\WindowsPowerShell\…_profile.ps1</code>; PS 7: <code>Documents\PowerShell\…</code> — <b>separate profiles</b>, they don't share. The profile is itself a script → subject to execution policy: under <code>Restricted</code> it silently won't load.</p>
+  </div>
+</div>
+
+<!-- ============ 5.1 vs 7 / CORPORATE ============ -->
+<h2>6 · 5.1 vs 7, and the corporate cage</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Which PowerShell am I in? (<code>$PSVersionTable</code>)</h3>
+    <table>
+      <tr><td class="cmd"><b>Windows PowerShell 5.1</b></td><td class="desc"><code>powershell.exe</code> · ships with Windows · Windows-only (.NET Framework) · maintenance only · your corporate baseline</td></tr>
+      <tr><td class="cmd"><b>PowerShell 7+</b></td><td class="desc"><code>pwsh.exe</code> · separate install · Windows/macOS/Linux · actively developed, open source</td></tr>
+    </table>
+    <p class="lead">Side-by-side install, no conflict. Nearly everything on this sheet works in both.</p>
+  </div>
+  <div class="card">
+    <h3>Locked-down box: what still works</h3>
+    <p class="lead"><b>Constrained Language Mode</b> (applied via AppLocker / WDAC, Windows application-control systems) blocks arbitrary .NET method calls, <code>Add-Type</code>, COM. Check: <code>$ExecutionContext.SessionState.LanguageMode</code> → <code>FullLanguage</code> or <code>ConstrainedLanguage</code>.</p>
+    <p class="lead"><b>Still works:</b> all built-in cmdlets, the pipeline, Where/Sort/Select, variables, <code>$env:</code>, file ops in your folders, <code>CurrentUser</code>/<code>Process</code> scopes, the full discovery trio. The cage blocks .NET escape hatches, not the shell — 90% of learning happens fine inside it.</p>
+  </div>
+</div>
+
+<!-- ============ FULL LOOP ============ -->
+<h2>7 · The whole loop in one example</h2>
+<pre><code>$PSVersionTable.PSVersion                    # 1. which PowerShell am I in?
+Set-Location ~\Documents                     # 2. cd
+Get-ChildItem -Filter *.log                  # 3. ls *.log
+Get-Content .\app.log -Tail 20               # 4. tail -20 app.log
+Select-String -Pattern "ERROR" *.log |       # 5. grep ERROR *.log
+  Select-Object Filename, LineNumber, Line   #    ...pick properties, not columns
+Get-Process | Sort-Object CPU -Descending |  # 6. busiest processes
+  Select-Object -First 5 Name, Id, CPU
+Get-Process firefox | Get-Member             # 7. "what IS this object?" — build the habit</code></pre>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>8 · Teardown — getting out</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>exit</code></td><td class="desc">leave the session (bash: <code>exit</code> / <kbd>ctrl</kbd> <kbd>d</kbd>)</td></tr>
+    <tr><td class="cmd"><kbd>Ctrl</kbd> <kbd>C</kbd></td><td class="desc">kill the foreground command — same as bash</td></tr>
+    <tr><td class="cmd"><code>Stop-Process -Name notepad</code></td><td class="desc">kill by name (bash: <code>pkill notepad</code>)</td></tr>
+    <tr><td class="cmd"><code>Stop-Process -Id 1234 -Force</code></td><td class="desc">kill by PID, forcefully (bash: <code>kill -9 1234</code>)</td></tr>
+    <tr><td class="cmd"><code>Remove-Item Env:MY_VAR</code></td><td class="desc">remove an env var — session only (bash: <code>unset MY_VAR</code>)</td></tr>
+    <tr><td class="cmd"><code>Remove-Variable myVar</code></td><td class="desc">remove a PowerShell variable (no <code>$</code> in the name here)</td></tr>
+    <tr><td class="cmd"><code>Set-ExecutionPolicy Restricted -Scope CurrentUser</code></td><td class="desc">undo an execution-policy change (or <code>Undefined</code> to fall back to the wider scope)</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  Scope matters on the policy undo: revert in the <i>same</i> <code>-Scope</code> you changed (<code>CurrentUser</code> vs <code>Process</code>). <code>-Scope Process</code> changes die with the window anyway.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>PowerShell</b></td><td class="desc">Microsoft's object-pipeline shell + scripting language on .NET (Snover, 2006)</td></tr>
+    <tr><td class="cmd"><b>.NET</b></td><td class="desc">Microsoft's application framework/runtime supplying the objects</td></tr>
+    <tr><td class="cmd"><b>Cmdlet</b></td><td class="desc">native command, always Verb-Noun, emits objects</td></tr>
+    <tr><td class="cmd"><b>Object pipeline</b></td><td class="desc">pipes pass typed objects (properties + methods), not text</td></tr>
+    <tr><td class="cmd"><b>$_</b> / <b>$PSItem</b></td><td class="desc">the current object flowing through the pipe</td></tr>
+    <tr><td class="cmd"><b>Alias</b></td><td class="desc">cmdlet nickname (<code>ls</code> → <code>Get-ChildItem</code>); prompt yes, scripts no</td></tr>
+    <tr><td class="cmd"><b>Provider / drive</b></td><td class="desc">exposes data stores (env vars, registry) as drives (<code>env:</code>, <code>HKCU:</code>)</td></tr>
+    <tr><td class="cmd"><b>Execution policy</b></td><td class="desc">gate on running <code>.ps1</code> files; seatbelt, not security boundary</td></tr>
+    <tr><td class="cmd"><b>$PROFILE</b></td><td class="desc">path to the per-user startup script (PowerShell's <code>.bashrc</code>)</td></tr>
+    <tr><td class="cmd"><b>Constrained Language Mode</b></td><td class="desc">lockdown blocking .NET escape hatches; cmdlets keep working</td></tr>
+    <tr><td class="cmd"><b>pwsh</b></td><td class="desc">PowerShell 7+ executable vs <code>powershell.exe</code> (legacy 5.1)</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://learn.microsoft.com/en-us/powershell/">PowerShell docs (Microsoft Learn)</a> ·
+  <a href="https://learn.microsoft.com/en-us/powershell/scripting/learn/ps101/00-introduction">PowerShell 101</a> ·
+  <a href="https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands">Approved Verbs</a> ·
+  <a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies">about_Execution_Policies</a> ·
+  <a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles">about_Profiles</a> ·
+  <a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_language_modes">about_Language_Modes</a> ·
+  <a href="https://learn.microsoft.com/en-us/powershell/scripting/whats-new/differences-from-windows-powershell">5.1 vs 7 differences</a>
+</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP Big Data &amp; Analytics Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td,th{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  th{text-align:left;color:var(--accent);font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:34%;}
+  td.desc{width:66%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  .doclink{font-size:12.5px;color:var(--muted);margin:6px 0 0;}
+  /* ---- timeline ---- */
+  .timeline{margin:14px 0;border-left:3px solid var(--accent);padding-left:0;}
+  .tl-item{position:relative;padding:8px 14px 10px 22px;}
+  .tl-item::before{content:"";position:absolute;left:-8px;top:15px;width:13px;height:13px;
+    border-radius:50%;background:var(--bg);border:3px solid var(--accent);}
+  .tl-item.google::before{border-color:var(--accent2);}
+  .tl-item .yr{font-family:ui-monospace,monospace;font-size:12px;color:var(--warn);}
+  .tl-item .who{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-left:8px;}
+  .tl-item p{margin:2px 0 0;font-size:13.5px;color:var(--muted);}
+  .tl-item b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GCP Big Data &amp; Analytics Cheat Sheet</h1>
+<p class="sub">Colossus · Hadoop anatomy · Dataproc vs Dataflow vs BigQuery · Pub/Sub — the lineage story that explains all the names · ACE-exam oriented · 2026-06-06</p>
+
+<!-- ============ LINEAGE ============ -->
+<h2>0 · The lineage story (read once — it decodes every name below)</h2>
+<div class="callout good">
+  Google had a web-scale data problem before anyone else, solved it internally, <b>published the papers</b>, watched the open-source world rebuild the ideas as <b>Hadoop</b>, quietly moved on to better internal systems — and now <b>sells managed open-source back to you</b> (Dataproc) next to its own next-generation engines (BigQuery, Dataflow). Every product name in this sheet is a chapter of that story.
+</div>
+
+<div class="timeline">
+  <div class="tl-item google"><span class="yr">2003</span><span class="who">Google · paper</span>
+    <p><b>GFS paper</b> — the Google File System: chunk petabytes across thousands of cheap machines, replicate for failure tolerance.</p></div>
+  <div class="tl-item google"><span class="yr">2004</span><span class="who">Google · paper</span>
+    <p><b>MapReduce paper</b> — a processing model: split data, <i>map</i> in parallel, shuffle, <i>reduce</i>. Programmers write two functions; the framework handles distribution and failures.</p></div>
+  <div class="tl-item"><span class="yr">2006</span><span class="who">Open source · Yahoo / Apache</span>
+    <p><b>Hadoop</b> is born — open-source clones of both papers: <b>HDFS</b> (Hadoop Distributed File System ≈ GFS) + <b>MapReduce</b>. Named after creator Doug Cutting's son's <b>toy elephant</b> — hence the elephant logos all over the ecosystem.</p></div>
+  <div class="tl-item google"><span class="yr">~2010</span><span class="who">Google · internal</span>
+    <p>Google moves on: GFS → <b>Colossus</b> (its successor file system); MapReduce → newer engines (Dremel → BigQuery; FlumeJava/Millwheel → Dataflow). The papers keep coming (Dremel 2010, Spanner 2012…).</p></div>
+  <div class="tl-item"><span class="yr">2012–14</span><span class="who">Open source</span>
+    <p>Hadoop 2 splits scheduling out as <b>YARN</b>; <b>Apache Spark</b> arrives — in-memory processing, ~10–100× faster than disk-based MapReduce, and largely replaces it as the ecosystem's engine.</p></div>
+  <div class="tl-item google"><span class="yr">2014–16</span><span class="who">Google Cloud</span>
+    <p>Google sells it all as services: <b>BigQuery</b> (Dremel, GA 2011), <b>Dataproc</b> (managed Hadoop/Spark, 2016), <b>Dataflow</b> (2015; its programming model donated to Apache as <b>Beam</b>).</p></div>
+</div>
+
+<div class="callout good">
+  <b>Memory hook:</b> green dots = Google's internal world, blue dots = the open-source echo. Dataproc is Google <i>hosting the echo</i>; BigQuery and Dataflow are Google selling <i>what it built after moving on</i>. When an exam question says "existing Hadoop/Spark jobs" → echo world → Dataproc. "New pipeline / serverless" → Google's own next-gen → Dataflow or BigQuery.
+</div>
+<p class="doclink">Docs: <a href="https://research.google/pubs/the-google-file-system/">GFS paper</a> · <a href="https://research.google/pubs/mapreduce-simplified-data-processing-on-large-clusters/">MapReduce paper</a> · <a href="https://hadoop.apache.org/">Apache Hadoop</a></p>
+
+<!-- ============ COLOSSUS ============ -->
+<h2>1 · Colossus — the floor under (almost) everything</h2>
+<p class="lead"><b>Colossus</b> is Google's cluster-level file system, the successor to GFS. You never touch it directly and it has no console page — but it sits underneath nearly every GCP storage product: <b>Cloud Storage, BigQuery storage, Firestore, Bigtable, Spanner, Persistent Disk snapshots…</b></p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Why you should care #1 — durability for free</h3>
+    <p class="lead">Colossus encodes and replicates data across many disks and machines automatically. That's why Cloud Storage can promise <b>11 nines (99.999999999%) annual durability</b> on every class, and why you never run <code>fsck</code> or worry about a dead disk in GCP. The hard distributed-systems work is amortized across all of Google.</p>
+  </div>
+  <div class="card">
+    <h3>Why you should care #2 — storage is separated from compute</h3>
+    <p class="lead">This is <b>the</b> architectural idea of modern GCP analytics. In classic Hadoop, data lives on the disks of the same machines that process it (HDFS) — to get more compute you buy more disks too, and vice versa. On GCP, data sits in Colossus-backed storage and <b>compute is rented separately, by the second</b>. BigQuery can throw <i>thousands of CPUs</i> at data it doesn't store locally, because Google's internal network (Jupiter) is fast enough to make remote reads feel local.</p>
+  </div>
+</div>
+
+<div class="callout">
+  <b>Consequences of separation:</b>
+  <ul style="margin:6px 0 0;padding-left:20px;">
+    <li>Scale storage and compute <b>independently</b> — petabytes stored, zero CPUs idle.</li>
+    <li>Clusters become <b>disposable</b>: a Dataproc cluster reading from Cloud Storage can be deleted after the job with no data loss. Pay for compute only while it runs.</li>
+    <li>Many engines can read the <b>same data</b> simultaneously (BigQuery, Dataproc, Dataflow all reading one Cloud Storage bucket).</li>
+  </ul>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> Colossus is the <i>foundation slab</i> — invisible, shared, load-bearing. Products are rooms built on it. You rent rooms (compute); the slab (durable storage) is part of the building.
+</div>
+<p class="doclink">Docs: <a href="https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system">A peek behind Colossus</a> · <a href="https://cloud.google.com/storage/docs/availability-durability">Cloud Storage durability</a></p>
+
+<!-- ============ HADOOP ANATOMY ============ -->
+<h2>2 · Hadoop anatomy — three parts + an ecosystem</h2>
+<p class="lead">Core Hadoop = <b>storage + scheduler + processing model</b>. Know which layer each name belongs to.</p>
+
+<div class="card">
+  <table>
+    <tr><th style="width:22%">Layer</th><th style="width:24%">Component</th><th>What it does</th></tr>
+    <tr><td><b>Storage</b></td><td class="cmd"><b>HDFS</b></td><td class="desc">Hadoop Distributed File System — chunks files into blocks, replicates them (default 3×) across cluster nodes' local disks. The GFS clone. <b>This is the part Cloud Storage replaces on GCP.</b></td></tr>
+    <tr><td><b>Scheduler</b></td><td class="cmd"><b>YARN</b></td><td class="desc">Yet Another Resource Negotiator — decides which jobs get which CPUs/memory on the cluster. Added in Hadoop 2 so engines other than MapReduce (notably Spark) could share a cluster.</td></tr>
+    <tr><td><b>Processing</b></td><td class="cmd"><b>MapReduce</b></td><td class="desc">the original programming model (below). Mostly superseded by Spark, but the <i>model</i> still underlies everything.</td></tr>
+  </table>
+</div>
+
+<div class="grid" style="margin-top:16px;">
+  <div class="card">
+    <h3>MapReduce in one worked example — word count</h3>
+    <p class="lead">Count word frequencies across a huge pile of text files:</p>
+    <pre><code>SPLIT    input is chunked; each chunk goes to a worker
+
+MAP      each worker emits (word, 1) for every word it sees
+         worker A: ("data",1) ("cloud",1) ("data",1)
+         worker B: ("cloud",1) ("data",1)
+
+SHUFFLE  framework groups by key across workers
+         "data"  → [1,1,1]      "cloud" → [1,1]
+
+REDUCE   one worker per key sums its list
+         ("data", 3)            ("cloud", 2)</code></pre>
+    <p class="lead">You write only <code>map()</code> and <code>reduce()</code>; the framework handles splitting, shuffling, retries, and dead workers. That was the 2004 breakthrough: <b>parallelism without writing distributed code</b>.</p>
+  </div>
+  <div class="card">
+    <h3>"Hadoop" colloquially = the whole zoo</h3>
+    <p class="lead">In job ads and exam questions, "a Hadoop cluster" almost never means just HDFS — it means the <b>ecosystem</b> that grew on top:</p>
+    <table>
+      <tr><td class="cmd"><b>Spark</b></td><td class="desc">fast in-memory engine; the modern default for processing</td></tr>
+      <tr><td class="cmd"><b>Hive</b></td><td class="desc">SQL layer that compiles queries to MapReduce/Spark jobs</td></tr>
+      <tr><td class="cmd"><b>HBase</b></td><td class="desc">wide-column NoSQL database on HDFS (clone of Google's Bigtable paper)</td></tr>
+      <tr><td class="cmd"><b>Pig, Flink, Presto…</b></td><td class="desc">more engines and query layers; all elephant-adjacent logos</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;">Mapping: Hive → BigQuery, HBase → Bigtable, Spark → Dataproc/Dataflow. Migration questions are mostly this table.</p>
+  </div>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> HDFS = the warehouse, YARN = the foreman handing out shifts, MapReduce/Spark = the workers. "Hadoop" = the whole industrial park, elephant statue at the gate.
+</div>
+<p class="doclink">Docs: <a href="https://hadoop.apache.org/docs/stable/">Hadoop docs</a> · <a href="https://spark.apache.org/docs/latest/">Apache Spark docs</a></p>
+
+<!-- ============ TRIO ============ -->
+<h2>3 · The GCP processing trio — the decision table</h2>
+<p class="lead">Three ways to process big data on GCP. The exam tests whether you can pick the right one from a one-sentence scenario.</p>
+
+<div class="card">
+  <table>
+    <tr><th style="width:18%"></th><th style="width:27%">Dataproc</th><th style="width:27%">Dataflow</th><th>BigQuery</th></tr>
+    <tr><td class="cmd"><b>What it is</b></td><td class="desc">managed Hadoop/Spark <b>clusters</b></td><td class="desc"><b>serverless</b> pipeline runner for <b>Apache Beam</b></td><td class="desc"><b>serverless</b> SQL data warehouse</td></tr>
+    <tr><td class="cmd"><b>You manage</b></td><td class="desc">cluster size, machine types, lifetime (you create/delete clusters)</td><td class="desc">nothing — autoscales workers per pipeline</td><td class="desc">nothing — just write SQL</td></tr>
+    <tr><td class="cmd"><b>Best for</b></td><td class="desc"><b>lifting existing</b> Hadoop/Spark/Hive jobs to GCP with minimal rewrite</td><td class="desc"><b>new</b> ETL pipelines; one codebase for <b>batch + streaming</b></td><td class="desc">interactive analytics, dashboards, anything expressible as SQL</td></tr>
+    <tr><td class="cmd"><b>Storage</b></td><td class="desc">HDFS on cluster disks <i>or</i> (better) Cloud Storage via the <b>GCS connector</b> — swap <code>hdfs://</code> for <code>gs://</code> paths</td><td class="desc">reads/writes Cloud Storage, Pub/Sub, BigQuery, Bigtable…</td><td class="desc">its own Colossus-backed columnar storage + external tables</td></tr>
+    <tr><td class="cmd"><b>Pricing shape</b></td><td class="desc">per-second per-node while the cluster exists</td><td class="desc">per-second per-worker while the pipeline runs</td><td class="desc">per TB scanned (on-demand) or reserved slots</td></tr>
+  </table>
+</div>
+
+<div class="callout">
+  <b>Dataproc detail that matters:</b> because of storage/compute separation (§1), the modern pattern is <b>ephemeral clusters</b> — store data in Cloud Storage, spin up a cluster per job via the GCS connector, delete it when done. A long-lived, mostly idle cluster on HDFS is the anti-pattern (and a wrong answer on the exam).
+</div>
+<div class="callout">
+  <b>BigQuery as the endgame:</b> many migrations skip the cluster entirely — workloads that ran Hive-on-Hadoop "analytics clusters" are often <b>replaced outright by BigQuery</b>: same SQL idea, zero cluster management, scales further.
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <h3>Exam phrasings → answers</h3>
+  <table>
+    <tr><td class="cmd">"migrate <b>existing</b> Spark / Hadoop / Hive jobs with minimal changes"</td><td class="desc"><b>Dataproc</b></td></tr>
+    <tr><td class="cmd">"team has Hadoop expertise / wants to keep using Spark"</td><td class="desc"><b>Dataproc</b></td></tr>
+    <tr><td class="cmd">"build a <b>new</b> data pipeline", "ETL", "serverless data processing"</td><td class="desc"><b>Dataflow</b></td></tr>
+    <tr><td class="cmd">"process <b>both batch and streaming</b> with one codebase", "Apache Beam"</td><td class="desc"><b>Dataflow</b></td></tr>
+    <tr><td class="cmd">"streaming data from Pub/Sub needs transformation before storage"</td><td class="desc"><b>Dataflow</b></td></tr>
+    <tr><td class="cmd">"analyze with <b>standard SQL</b>", "data warehouse", "ad-hoc analytics, no infrastructure"</td><td class="desc"><b>BigQuery</b></td></tr>
+    <tr><td class="cmd">"analysts know SQL but not programming"</td><td class="desc"><b>BigQuery</b></td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> Data<b>proc</b> = <i>procure a cluster</i> (you own machines for a while). Data<b>flow</b> = <i>data flows, you don't manage</i> (serverless pipelines). Big<b>Query</b> = <i>the query is the interface</i> (SQL, nothing else).
+</div>
+<p class="doclink">Docs: <a href="https://cloud.google.com/dataproc/docs">Dataproc</a> · <a href="https://cloud.google.com/dataflow/docs">Dataflow</a> · <a href="https://cloud.google.com/dataproc/docs/concepts/connectors/cloud-storage">GCS connector for Hadoop</a> · <a href="https://beam.apache.org/">Apache Beam</a></p>
+
+<!-- ============ PUBSUB ============ -->
+<h2>4 · Pub/Sub — the messaging glue</h2>
+<p class="lead"><b>Pub/Sub</b> (publish/subscribe) is GCP's global, serverless messaging service — the shock absorber between systems that <i>produce</i> events and systems that <i>consume</i> them, at any rate, without either knowing about the other.</p>
+
+<div class="card">
+  <pre><code> publisher ──► TOPIC ──► subscription A ──► subscriber (e.g. Dataflow)
+ (app, IoT,         └──► subscription B ──► subscriber (e.g. archiver)
+  service)
+</code></pre>
+  <table>
+    <tr><td class="cmd"><b>Publisher</b></td><td class="desc">anything that sends a message (a web app, a sensor, a Cloud Function)</td></tr>
+    <tr><td class="cmd"><b>Topic</b></td><td class="desc">the named channel messages are published <i>to</i> — publishers know only the topic</td></tr>
+    <tr><td class="cmd"><b>Subscription</b></td><td class="desc">a named attachment to a topic; <b>each subscription gets its own full copy</b> of every message (fan-out). Messages wait here until acknowledged (up to 7 days by default).</td></tr>
+    <tr><td class="cmd"><b>Subscriber</b></td><td class="desc">consumes from a subscription — <b>pull</b> (subscriber asks) or <b>push</b> (Pub/Sub HTTP-POSTs to an endpoint)</td></tr>
+  </table>
+</div>
+
+<div class="callout">
+  <b>The canonical streaming pattern (memorize this pipeline):</b>
+  <pre><code>  events ──► Pub/Sub ──► Dataflow ──► BigQuery
+            (ingest,     (transform,   (store +
+             buffer)      window,       analyze)
+                          aggregate)</code></pre>
+  Pub/Sub absorbs bursts and guarantees at-least-once delivery; Dataflow reads the subscription, transforms/aggregates in streaming mode; BigQuery receives clean rows for analysis. Any exam question describing "ingest streaming events → process → analyze" is sketching this exact diagram.
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> Pub/Sub is a <i>post office with mailboxes</i> — publishers drop letters at the topic; every subscription is a separate mailbox that gets a copy; letters wait until the subscriber signs for them (acknowledges).
+</div>
+<p class="doclink">Docs: <a href="https://cloud.google.com/pubsub/docs/overview">Pub/Sub overview</a> · <a href="https://cloud.google.com/pubsub/docs/subscriber">Pull vs push subscriptions</a></p>
+
+<!-- ============ BIGQUERY ============ -->
+<h2>5 · BigQuery analytics depth</h2>
+<p class="lead">One layer below "serverless SQL warehouse": how it stores, how it charges, and how it reaches data it doesn't own.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Columnar storage — why scans are fast and billed per column</h3>
+    <p class="lead">Row stores (Cloud SQL) keep each record together — great for "fetch order #42". BigQuery stores each <b>column</b> together (Capacitor format, on Colossus). <code>SELECT revenue FROM sales</code> reads <i>only</i> the revenue column off disk — maybe 2% of the table's bytes. Analytics queries touch few columns of many rows, so columnar wins by orders of magnitude. Corollary: <b><code>SELECT *</code> reads every column and bills you for all of it.</b></p>
+  </div>
+  <div class="card">
+    <h3>Slots — the hidden compute units</h3>
+    <p class="lead">A <b>slot</b> is BigQuery's unit of query compute (roughly a virtual CPU + memory). When you run a query, BigQuery silently grabs hundreds or thousands of slots from a shared pool, fans the work out, and releases them — separation of storage and compute (§1) in its purest form. On-demand projects get a default pool (~2,000 slots); heavy users buy <b>reservations</b> (committed slots) for predictable cost.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3>Pricing + cost control</h3>
+  <table>
+    <tr><td class="cmd"><b>On-demand queries</b></td><td class="desc">pay <b>per TB of data scanned</b> (~$6.25/TB, first 1 TB/month free). The query's cost is set by bytes <i>read</i>, not rows returned.</td></tr>
+    <tr><td class="cmd"><b>Storage</b></td><td class="desc">cheap, per GB-month; drops ~50% automatically for tables untouched 90 days (long-term storage)</td></tr>
+    <tr><td class="cmd"><b>Partitioning</b></td><td class="desc">split a table by a date/integer column; a query filtered to <code>WHERE day = '2026-06-01'</code> scans <b>one partition</b>, not the whole table. Cost-control tool #1.</td></tr>
+    <tr><td class="cmd"><b>Clustering</b></td><td class="desc">sort data within partitions by up to 4 columns; filters on those columns skip blocks. Cost-control tool #2.</td></tr>
+    <tr><td class="cmd"><b>Dry run / preview</b></td><td class="desc">the console shows estimated bytes before you run; <code>bq query --dry_run</code> from the CLI. Table <b>preview is free</b> — don't <code>SELECT * LIMIT 10</code> to peek (LIMIT does <b>not</b> reduce bytes scanned).</td></tr>
+    <tr><td class="cmd"><b>Quotas</b></td><td class="desc">set <i>maximum bytes billed</i> per query or per user/day to cap accidents</td></tr>
+  </table>
+</div>
+
+<div class="grid" style="margin-top:16px;">
+  <div class="card">
+    <h3>External tables &amp; federated queries — query data BigQuery doesn't store</h3>
+    <table>
+      <tr><td class="cmd"><b>Cloud Storage</b></td><td class="desc">external tables over CSV/JSON/Parquet/Avro files in a bucket — query files in place, no load step</td></tr>
+      <tr><td class="cmd"><b>Bigtable</b></td><td class="desc">external table over a Bigtable instance — SQL over NoSQL for analytics</td></tr>
+      <tr><td class="cmd"><b>Cloud SQL / Spanner</b></td><td class="desc"><b>federated queries</b>: <code>EXTERNAL_QUERY()</code> pushes SQL to the live database and joins results with warehouse tables</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;">Trade-off: convenience over speed — external reads are slower than native Capacitor storage and skip some optimizations. Load the data natively when it's queried often.</p>
+  </div>
+  <div class="card">
+    <h3>The canonical pattern: export billing &amp; logs into BigQuery</h3>
+    <p class="lead">GCP's own answer to "analyze my GCP usage" is BigQuery:</p>
+    <table>
+      <tr><td class="cmd"><b>Billing export</b></td><td class="desc">enable in the Billing console → detailed cost rows land in a BigQuery dataset → SQL/dashboards over spend per project, service, label. <i>The</i> ACE answer to "analyze costs in detail".</td></tr>
+      <tr><td class="cmd"><b>Log sinks</b></td><td class="desc">Cloud Logging sink with a BigQuery destination → audit/app logs become queryable tables. The answer to "analyze logs with SQL" or "retain logs beyond Logging's retention".</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;">Pattern to recognize: <b>when any GCP service offers an "export for analysis" feature, the destination is BigQuery.</b></p>
+  </div>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> BigQuery bills like a <i>photocopier</i> — you pay per page <i>scanned</i>, not per page you keep. Partitioning/clustering = telling it which chapter to copy. <code>SELECT *</code> = photocopying the whole library.
+</div>
+<p class="doclink">Docs: <a href="https://cloud.google.com/bigquery/docs/storage_overview">BigQuery storage</a> · <a href="https://cloud.google.com/bigquery/docs/slots">Slots</a> · <a href="https://cloud.google.com/bigquery/docs/partitioned-tables">Partitioned tables</a> · <a href="https://cloud.google.com/bigquery/docs/external-data-sources">External data sources</a> · <a href="https://cloud.google.com/billing/docs/how-to/export-data-bigquery">Billing export</a></p>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>6 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>GFS</b></td><td class="desc">Google File System (2003 paper); distributed storage on commodity machines; ancestor of HDFS and Colossus</td></tr>
+    <tr><td class="cmd"><b>MapReduce</b></td><td class="desc">split → map → shuffle → reduce processing model (2004 paper); write two functions, get cluster parallelism</td></tr>
+    <tr><td class="cmd"><b>Hadoop</b></td><td class="desc">open-source rebuild of GFS+MapReduce (HDFS + YARN + MapReduce); colloquially the whole ecosystem; named for a toy elephant</td></tr>
+    <tr><td class="cmd"><b>HDFS</b></td><td class="desc">Hadoop Distributed File System — block storage on cluster nodes' local disks, 3× replicated</td></tr>
+    <tr><td class="cmd"><b>YARN</b></td><td class="desc">Yet Another Resource Negotiator — Hadoop's cluster scheduler</td></tr>
+    <tr><td class="cmd"><b>Spark</b></td><td class="desc">in-memory processing engine that largely replaced MapReduce; runs on Dataproc</td></tr>
+    <tr><td class="cmd"><b>Colossus</b></td><td class="desc">Google's GFS successor; invisible file system under Cloud Storage, BigQuery, Firestore et al.; enables storage/compute separation</td></tr>
+    <tr><td class="cmd"><b>Dataproc</b></td><td class="desc">managed Hadoop/Spark clusters — lift existing jobs; you size clusters; pair with the GCS connector and keep clusters ephemeral</td></tr>
+    <tr><td class="cmd"><b>Dataflow</b></td><td class="desc">serverless runner for Apache Beam pipelines — new pipelines, unified batch + streaming, autoscaling</td></tr>
+    <tr><td class="cmd"><b>Apache Beam</b></td><td class="desc">open-source pipeline programming model (Google-donated); Dataflow is its managed runner</td></tr>
+    <tr><td class="cmd"><b>BigQuery</b></td><td class="desc">serverless SQL warehouse; columnar storage, slot-based compute, per-TB-scanned pricing</td></tr>
+    <tr><td class="cmd"><b>Slot</b></td><td class="desc">BigQuery's unit of query compute (~1 vCPU + memory), allocated per query from a pool</td></tr>
+    <tr><td class="cmd"><b>Pub/Sub</b></td><td class="desc">serverless messaging: publisher → topic → subscription(s) → subscriber; feeds Dataflow for streaming</td></tr>
+    <tr><td class="cmd"><b>Federated query</b></td><td class="desc">BigQuery querying data it doesn't store (Cloud Storage, Bigtable, Cloud SQL) in place</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/dataproc/docs">Dataproc docs</a> ·
+  <a href="https://cloud.google.com/dataflow/docs">Dataflow docs</a> ·
+  <a href="https://cloud.google.com/bigquery/docs">BigQuery docs</a> ·
+  <a href="https://cloud.google.com/pubsub/docs">Pub/Sub docs</a> ·
+  <a href="https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system">Colossus blog post</a> ·
+  <a href="https://research.google/pubs/the-google-file-system/">GFS paper</a> ·
+  <a href="https://research.google/pubs/mapreduce-simplified-data-processing-on-large-clusters/">MapReduce paper</a> ·
+  <a href="https://hadoop.apache.org/">Apache Hadoop</a> ·
+  <a href="https://beam.apache.org/">Apache Beam</a>
+  — all examples fictional.
+</p>
+
+</div>
+</body>
+</html>

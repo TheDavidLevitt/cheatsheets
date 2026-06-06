@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP IAM &amp; Authentication Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GCP IAM &amp; Authentication Cheat Sheet</h1>
+<p class="sub">Google Cloud identity &amp; access: permissions → roles → bindings → policy, service accounts, ADC, and the auth command toolkit — ACE-exam depth.</p>
+
+<nav class="mini">
+  <a href="#spine">IAM spine</a>
+  <a href="#principals">Principals</a>
+  <a href="#roles">Roles</a>
+  <a href="#sa">Service accounts</a>
+  <a href="#adc">ADC &amp; gcloud auth</a>
+  <a href="#three">Keys vs IAM vs APIs</a>
+  <a href="#commands">Commands</a>
+  <a href="#glossary">Glossary</a>
+</nav>
+
+<!-- ============ THE SPINE ============ -->
+<h2 id="spine">0 · The IAM spine (read once)</h2>
+<div class="callout good">
+  <b>IAM</b> (Identity and Access Management) answers exactly one question: <b>who can do what on which resource</b>. Every concept in this sheet is a piece of that sentence: <i>who</i> = principal, <i>can do what</i> = role (a bundle of permissions), <i>on which resource</i> = the resource the policy is attached to.
+</div>
+<div class="callout">
+  <b>The chain, bottom-up:</b>
+  <pre><code>permission            compute.instances.get        (atomic; you can never grant one directly)
+   └─ bundled into ROLE      roles/compute.viewer    (smallest grantable unit)
+        └─ tied to PRINCIPAL by a BINDING            (role + members [+ optional condition])
+             └─ bindings collected in an ALLOW POLICY
+                  └─ policy ATTACHED to a resource
+                       └─ INHERITED down:  org → folder → project → resource</code></pre>
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Permission grammar: <code>service.resource.verb</code></h3>
+    <p class="lead">Permissions read like a sentence in reverse — service, then the resource type within it, then the action:</p>
+    <table>
+      <tr><td class="cmd"><code>compute.instances.get</code></td><td class="desc">Compute Engine · VM instances · read one</td></tr>
+      <tr><td class="cmd"><code>storage.objects.list</code></td><td class="desc">Cloud Storage · objects · enumerate</td></tr>
+      <tr><td class="cmd"><code>iam.serviceAccounts.actAs</code></td><td class="desc">IAM · service accounts · act as (the attach gate — §3)</td></tr>
+      <tr><td class="cmd"><code>resourcemanager.projects.delete</code></td><td class="desc">Resource Manager · projects · delete (scary verbs exist)</td></tr>
+    </table>
+    <p class="lead">Permissions usually map 1:1 to REST API methods — <code>compute.instances.get</code> guards the <code>instances.get</code> API call. That's the etymology: <b>permissions are API methods wearing IAM badges</b>.</p>
+  </div>
+  <div class="card">
+    <h3>Inheritance: the policy waterfall</h3>
+    <p class="lead">Effective access at a resource = the policy <i>on</i> it <b>union</b> every policy above it. Inheritance is <b>additive only</b> — a child policy can add access, never subtract what a parent granted. (Subtracting is the job of <i>deny policies</i> and org policies, beyond ACE basics.)</p>
+    <pre><code>Organization        ← grant here = everywhere
+  └─ Folder         ← grant here = whole department
+       └─ Project   ← the everyday grant level
+            └─ Resource (bucket, VM, topic…)</code></pre>
+    <p class="lead"><b>Mnemonic:</b> IAM flows like water — downhill only, and you can't un-pour it from below.</p>
+  </div>
+</div>
+<div class="callout">
+  <b>One binding, in the wild</b> (what <code>gcloud projects get-iam-policy</code> shows):
+  <pre><code>bindings:
+- role: roles/storage.objectViewer
+  members:
+  - group:data-readers@example.com
+  condition:                              # optional
+    title: business-hours
+    expression: request.time.getHours("Europe/Paris") &lt; 18</code></pre>
+  A <b>condition</b> is a CEL (Common Expression Language) test that must also pass — time windows, resource-name prefixes. The policy holding the bindings is officially the <b>allow policy</b> (older docs just say "IAM policy").
+</div>
+
+<!-- ============ PRINCIPALS ============ -->
+<h2 id="principals">1 · Principals — the "who"</h2>
+<p class="lead">A <b>principal</b> (older term: <i>member</i>) is any identity a binding can name. Each has a typed prefix in the policy:</p>
+<div class="card">
+  <table>
+    <tr><th>Principal</th><th>Example &amp; notes</th></tr>
+    <tr><td class="cmd"><code>user:</code></td><td class="desc"><code>user:alex@example.com</code> — one human Google account</td></tr>
+    <tr><td class="cmd"><code>group:</code></td><td class="desc"><code>group:devs@example.com</code> — a Google Group. <b>Best practice: grant to groups, not users</b> — membership changes become an admin click instead of a policy edit on every project.</td></tr>
+    <tr><td class="cmd"><code>serviceAccount:</code></td><td class="desc"><code>serviceAccount:app@example-project-123.iam.gserviceaccount.com</code> — a non-human identity (§3)</td></tr>
+    <tr><td class="cmd"><code>domain:</code></td><td class="desc"><code>domain:example.com</code> — everyone in a Cloud Identity / Workspace domain</td></tr>
+    <tr><td class="cmd"><code>allAuthenticatedUsers</code></td><td class="desc">anyone on Earth with <i>any</i> Google account — barely better than public</td></tr>
+    <tr><td class="cmd"><code>allUsers</code></td><td class="desc">literally everyone, no sign-in — this is how you make a bucket public (deliberately or catastrophically)</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  <b>Exam + real-life trap:</b> <code>allUsers</code> and <code>allAuthenticatedUsers</code> look harmless in a list of principal types. They are the two ways data leaks. Org policy <code>iam.allowedPolicyMemberDomains</code> (domain-restricted sharing) exists specifically to ban them.
+</div>
+
+<!-- ============ ROLES ============ -->
+<h2 id="roles">2 · Roles — the "can do what"</h2>
+<div class="callout good">
+  <b>Iron rule: you can never grant a single permission directly.</b> The smallest grantable unit is a <b>role</b>. Want exactly one permission? Build a <b>custom role</b> containing exactly that one.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Basic roles — the legacy three</h3>
+    <table>
+      <tr><td class="cmd"><code>roles/viewer</code></td><td class="desc">read everything in the project</td></tr>
+      <tr><td class="cmd"><code>roles/editor</code></td><td class="desc">viewer + modify almost everything</td></tr>
+      <tr><td class="cmd"><code>roles/owner</code></td><td class="desc">editor + manage IAM &amp; billing link</td></tr>
+    </table>
+    <p class="lead">Pre-2017 "primitive roles", renamed <b>basic</b>. They span <i>thousands</i> of permissions across every service — the opposite of least privilege. Fine for a solo sandbox; an audit finding everywhere else.</p>
+  </div>
+  <div class="card">
+    <h3>Predefined roles — the everyday answer</h3>
+    <table>
+      <tr><td class="cmd"><code>roles/compute.instanceAdmin.v1</code></td><td class="desc">manage VMs, nothing else</td></tr>
+      <tr><td class="cmd"><code>roles/storage.objectViewer</code></td><td class="desc">read bucket objects only</td></tr>
+      <tr><td class="cmd"><code>roles/pubsub.publisher</code></td><td class="desc">publish to topics only</td></tr>
+    </table>
+    <p class="lead">Curated per service by Google (1,000+ exist), updated as services grow. Naming grammar: <code>roles/SERVICE.persona</code>. Default exam answer for "least privilege".</p>
+  </div>
+  <div class="card">
+    <h3>Custom roles — your exact list</h3>
+    <p class="lead">A permission list <i>you</i> assemble, defined at <b>project or org level</b> (not folder). Use when no predefined role is tight enough. Maintenance is on you: when a service adds permissions, your custom role doesn't grow itself.</p>
+    <pre><code>gcloud iam roles create logReader \
+  --project=example-project-123 \
+  --title="Log Reader" \
+  --permissions=logging.logEntries.list</code></pre>
+  </div>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> basic = <i>blunt</i>, predefined = <i>precise</i>, custom = <i>crafted</i>. The exam's least-privilege ladder runs blunt → precise → crafted; climb only as far as you must.
+</div>
+
+<!-- ============ SERVICE ACCOUNTS ============ -->
+<h2 id="sa">3 · Service accounts — non-human identities</h2>
+<p class="lead">A <b>service account (SA)</b> is an identity for <i>code</i> — a VM, a Cloud Run service, a CI (Continuous Integration) pipeline. Email-shaped (<code>name@project-id.iam.gserviceaccount.com</code>) but no password, no inbox, no human. Twist to remember: an SA is <b>both a principal and a resource</b> — it can be granted roles, <i>and</i> roles can be granted <b>on</b> it (controlling who may use it).</p>
+<div class="callout warn">
+  <b>The default Compute Engine SA:</b> <code>PROJECT_NUMBER-compute@developer.gserviceaccount.com</code> (note: project <i>number</i>, e.g. <code>123456789012</code>, not the project ID). Historically it was auto-granted <b>Editor</b> on the whole project — so any process on any default VM could modify nearly anything. Modern guidance (and newer org policies) kill that grant. <b>Fix: create a dedicated SA per workload with only the predefined roles it needs, and attach that instead.</b>
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>ATTACH — the resource <i>wears</i> the identity</h3>
+    <p class="lead">You attach an SA to a resource (VM, Cloud Run, Cloud Function) at creation/update. Code on that resource then fetches tokens from the <b>metadata server</b> (<code>metadata.google.internal</code>, a link-local endpoint only the VM can reach) — no credential files anywhere.</p>
+    <pre><code>gcloud compute instances create vm1 \
+  --service-account=app-sa@example-project-123.iam.gserviceaccount.com \
+  --scopes=cloud-platform</code></pre>
+    <p class="lead"><b>Gate:</b> to attach an SA you need <code>iam.serviceAccounts.actAs</code> on it — carried by <code>roles/iam.serviceAccountUser</code>. This stops a low-privilege dev from deploying code as a high-privilege SA (privilege escalation by deputy).</p>
+  </div>
+  <div class="card">
+    <h3>IMPERSONATE — a principal <i>borrows</i> the identity</h3>
+    <p class="lead">Your own credentials ask Google's IAM Credentials API to mint <b>short-lived tokens</b> (default 1 h) for the SA. Nothing attached, nothing downloaded — access is auditable and expires by itself.</p>
+    <pre><code>gcloud storage ls \
+  --impersonate-service-account=\
+app-sa@example-project-123.iam.gserviceaccount.com</code></pre>
+    <p class="lead"><b>Gate:</b> <code>roles/iam.serviceAccountTokenCreator</code> on the SA. Standard way to test "what can my app's SA actually see?" from your laptop.</p>
+  </div>
+</div>
+<div class="callout good">
+  <b>Mnemonic:</b> <b>attach = wear it</b> (the VM puts the identity on like a uniform, via the metadata server) vs <b>impersonate = borrow it</b> (you check out a temporary badge). Gates rhyme with intent: <i>User</i> role to make a resource <i>use</i> it, <i>TokenCreator</i> role to <i>create tokens</i> as it.
+</div>
+<div class="callout warn">
+  <b>Why downloaded SA key files are the anti-pattern:</b> <code>gcloud iam service-accounts keys create key.json</code> hands you a private key that <b>never expires</b>, works from anywhere, and can't tell Google <i>who</i> is actually using it. Leaked keys (committed to Git, baked into images, pasted in chat) are a top cloud-breach vector. Every alternative above — attached SA, impersonation, and Workload Identity Federation for external systems like GitHub Actions — gives short-lived, auto-rotated, attributable credentials. Treat key creation as a last resort; org policy <code>iam.disableServiceAccountKeyCreation</code> can ban it outright.
+</div>
+
+<!-- ============ ADC ============ -->
+<h2 id="adc">4 · ADC — how code finds credentials</h2>
+<p class="lead"><b>ADC (Application Default Credentials)</b> is the search strategy baked into all Google client libraries: your code never names a credential, the library <i>looks</i> for one. Three steps, first hit wins:</p>
+<div class="callout">
+  <pre><code>1. $GOOGLE_APPLICATION_CREDENTIALS          env var → path to a credential JSON
+        ↓ not set?
+2. ~/.config/gcloud/application_default_credentials.json
+        ("well-known file", written by
+         gcloud auth application-default login)
+        ↓ not there?
+3. metadata server → the ATTACHED service account
+        (you're on GCP: GCE, Cloud Run, GKE…)
+        ↓ none?
+ERROR: could not find default credentials</code></pre>
+  <b>The elegance:</b> the same code uses <i>your</i> credentials on your laptop (step 2) and the attached SA in production (step 3) — zero code changes, zero key files.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Two logins, two credential stores</h3>
+    <table>
+      <tr><th>Command</th><th>Feeds</th></tr>
+      <tr><td class="cmd"><code>gcloud auth login</code></td><td class="desc">the <b>gcloud CLI itself</b> — every later <code>gcloud</code>/<code>gsutil</code>/<code>bq</code> command</td></tr>
+      <tr><td class="cmd"><code>gcloud auth application-default login</code></td><td class="desc"><b>ADC</b> — your code &amp; client libraries (and Terraform), via the well-known file</td></tr>
+    </table>
+    <p class="lead">Separate stores: logging into one does <i>nothing</i> for the other. The classic confusion: <code>gcloud</code> works fine but your Python script throws <i>"could not find default credentials"</i> — you did login #1 and skipped login #2.</p>
+  </div>
+  <div class="card">
+    <h3>Refresh token vs access token</h3>
+    <table>
+      <tr><td class="cmd"><b>Refresh token</b></td><td class="desc">long-lived, stored on disk at login; never sent to APIs — its only job is to mint access tokens</td></tr>
+      <tr><td class="cmd"><b>Access token</b></td><td class="desc">short-lived (~1 h) bearer token actually sent in <code>Authorization: Bearer …</code> headers</td></tr>
+    </table>
+    <p class="lead">OAuth 2.0 pattern: the refresh token is the <i>key to the mint</i>, access tokens are the <i>coins</i>. <code>gcloud auth print-access-token</code> shows you a coin.</p>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Managed-account reauth (the <code>invalid_rapt</code> error):</b> Workspace / Cloud Identity admins can enforce <b>session control</b> — cloud sessions expire (e.g. every 16 h) even though the refresh token exists. Symptom: commands that worked yesterday fail with <code>invalid_rapt</code> (ReAuth Proof Token) or "reauthentication required". <b>Fix: just log in again</b> — <code>gcloud auth login</code> and/or <code>gcloud auth application-default login</code>, matching whichever store expired. Personal gmail.com accounts never see this.
+</div>
+
+<!-- ============ THREE THINGS ============ -->
+<h2 id="three">5 · API keys vs IAM auth vs API enablement — three different things</h2>
+<p class="lead">Three mechanisms that beginners blur into one "make the API work" blob. Disambiguate:</p>
+<div class="card">
+  <table>
+    <tr><th></th><th>API key</th><th>IAM authentication</th><th>API enablement</th></tr>
+    <tr>
+      <td class="cmd"><b>What it is</b></td>
+      <td class="desc">an opaque string identifying the calling <i>project</i> (for billing/quota)</td>
+      <td class="desc">OAuth tokens proving <i>who</i> the caller is, checked against IAM policy</td>
+      <td class="desc">a per-project on/off switch for each service's API</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Answers</b></td>
+      <td class="desc">"whose quota do I bill?"</td>
+      <td class="desc">"who are you, and may you?"</td>
+      <td class="desc">"is this service even switched on here?"</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Carries identity?</b></td>
+      <td class="desc">no — anyone holding the string can use it</td>
+      <td class="desc">yes — principal, expiry, audit trail</td>
+      <td class="desc">n/a — not a credential at all</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Used for</b></td>
+      <td class="desc">a few public-data APIs (Maps, Translate); restrict by referrer/IP/API</td>
+      <td class="desc">everything that touches your resources — the normal path</td>
+      <td class="desc">prerequisite for <i>any</i> call: disabled API → <code>403 SERVICE_DISABLED</code> no matter how mighty your role</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Command</b></td>
+      <td class="desc"><code>gcloud services api-keys create</code></td>
+      <td class="desc"><code>gcloud auth …</code> + IAM bindings</td>
+      <td class="desc"><code>gcloud services enable compute.googleapis.com</code></td>
+    </tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Debug order when an API call fails:</b> ① is the API <i>enabled</i> in the project? ② are you <i>authenticated</i> as who you think (<code>gcloud auth list</code>)? ③ does that principal hold a role with the needed <i>permission</i>? Enablement → identity → permission; most "IAM problems" turn out to be ① or ②.
+</div>
+
+<!-- ============ COMMANDS ============ -->
+<h2 id="commands">6 · Command quick reference</h2>
+<div class="card">
+  <table>
+    <tr><th>Command</th><th>Does</th></tr>
+    <tr><td class="cmd"><code>gcloud auth list</code></td><td class="desc">show all logged-in accounts; <code>*</code> marks the active one</td></tr>
+    <tr><td class="cmd"><code>gcloud config set account alex@example.com</code></td><td class="desc">switch the active account (must already be in the list)</td></tr>
+    <tr><td class="cmd"><code>gcloud auth login</code></td><td class="desc">browser login → credentials for the <b>gcloud CLI</b> store</td></tr>
+    <tr><td class="cmd"><code>gcloud auth application-default login</code></td><td class="desc">browser login → credentials for the <b>ADC</b> store (well-known file)</td></tr>
+    <tr><td class="cmd"><code>gcloud auth application-default print-access-token</code></td><td class="desc">mint &amp; print an access token from ADC — handy for raw <code>curl</code> against Google APIs</td></tr>
+    <tr><td class="cmd"><code>gcloud projects get-iam-policy example-project-123</code></td><td class="desc">dump the project's allow policy (all bindings)</td></tr>
+    <tr><td class="cmd"><code>gcloud projects add-iam-policy-binding example-project-123 --member="group:devs@example.com" --role="roles/storage.objectViewer"</code></td><td class="desc">grant a role — note the typed <code>member</code> prefix and the full <code>roles/…</code> name</td></tr>
+    <tr><td class="cmd"><code>gcloud projects remove-iam-policy-binding …</code></td><td class="desc">same arguments, revokes the binding</td></tr>
+    <tr><td class="cmd"><code>gcloud iam roles describe roles/storage.objectViewer</code></td><td class="desc">list the exact permissions inside a role</td></tr>
+    <tr><td class="cmd"><code>gcloud iam roles create logReader --project=example-project-123 --permissions=logging.logEntries.list</code></td><td class="desc">create a custom role (also <code>update</code>, <code>list</code>, <code>delete</code>)</td></tr>
+    <tr><td class="cmd"><code>gcloud iam service-accounts create app-sa --display-name="App SA"</code></td><td class="desc">create a service account</td></tr>
+    <tr><td class="cmd"><code>gcloud &lt;anything&gt; --impersonate-service-account=app-sa@example-project-123.iam.gserviceaccount.com</code></td><td class="desc">run any single gcloud command as the SA (needs TokenCreator on it)</td></tr>
+    <tr><td class="cmd"><code>gcloud config set auth/impersonate_service_account app-sa@…</code></td><td class="desc">impersonate persistently for the whole config (unset to stop)</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Grammar hook:</b> grants live under <code>gcloud projects</code> (the policy belongs to the <i>resource</i>), role definitions under <code>gcloud iam roles</code>, identities under <code>gcloud iam service-accounts</code>, your own logins under <code>gcloud auth</code>. Ask "whose object is this?" and the command group follows.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">7 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>IAM</b></td><td class="desc">Identity and Access Management — who can do what on which resource</td></tr>
+    <tr><td class="cmd"><b>Permission</b></td><td class="desc">atomic capability, <code>service.resource.verb</code>; never directly grantable</td></tr>
+    <tr><td class="cmd"><b>Role</b></td><td class="desc">named bundle of permissions; basic (blunt) / predefined (precise) / custom (crafted)</td></tr>
+    <tr><td class="cmd"><b>Principal</b></td><td class="desc">an identity a binding can name: user, group, serviceAccount, domain, allUsers, allAuthenticatedUsers</td></tr>
+    <tr><td class="cmd"><b>Binding</b></td><td class="desc">one role ↔ list of principals (+ optional CEL condition)</td></tr>
+    <tr><td class="cmd"><b>Allow policy</b></td><td class="desc">the set of bindings attached to one resource; inherited down org → folder → project → resource</td></tr>
+    <tr><td class="cmd"><b>Service account (SA)</b></td><td class="desc">non-human identity for code; both a principal and a resource</td></tr>
+    <tr><td class="cmd"><b>Attach vs impersonate</b></td><td class="desc">resource wears the SA (metadata server; gate <code>actAs</code>/ServiceAccountUser) vs principal borrows it via short-lived tokens (gate TokenCreator)</td></tr>
+    <tr><td class="cmd"><b>Metadata server</b></td><td class="desc">link-local endpoint on GCP compute that hands the attached SA's tokens to local code</td></tr>
+    <tr><td class="cmd"><b>ADC</b></td><td class="desc">Application Default Credentials — client-library search order: env var → well-known file → metadata server</td></tr>
+    <tr><td class="cmd"><b>Refresh / access token</b></td><td class="desc">long-lived minter on disk vs short-lived bearer token sent to APIs</td></tr>
+    <tr><td class="cmd"><b>invalid_rapt</b></td><td class="desc">ReAuth Proof Token expired under managed-account session control; fix = log in again</td></tr>
+    <tr><td class="cmd"><b>API key</b></td><td class="desc">project-identifying string for quota/billing on a few public APIs; carries no identity</td></tr>
+    <tr><td class="cmd"><b>API enablement</b></td><td class="desc">per-project on/off switch for a service; off → 403 regardless of IAM</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/iam/docs/overview">IAM overview</a> ·
+  <a href="https://cloud.google.com/iam/docs/roles-overview">Roles overview</a> ·
+  <a href="https://cloud.google.com/iam/docs/service-account-overview">Service accounts overview</a> ·
+  <a href="https://cloud.google.com/iam/docs/service-account-impersonation">SA impersonation</a> ·
+  <a href="https://cloud.google.com/docs/authentication/application-default-credentials">ADC how-it-works</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/auth">gcloud auth reference</a> ·
+  <a href="https://cloud.google.com/docs/authentication/api-keys">API keys</a> ·
+  <a href="https://cloud.google.com/iam/docs/best-practices-service-accounts">SA best practices</a>
+</p>
+
+</div>
+</body>
+</html>

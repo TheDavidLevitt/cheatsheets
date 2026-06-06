@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Computer Hardware Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Computer Hardware Cheat Sheet</h1>
+<p class="sub">CPU · GPU · memory hierarchy · what matters for AI · started 2026-06-06 · twin of <code>Tools/hardware_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Hardware</b> = the physical machinery; <b>software</b> = the instructions it runs. Every design choice trades <b>speed vs capacity vs cost</b> — and in the AI era the bottleneck has moved from raw compute to <b>memory bandwidth</b>: how fast data can be <i>fed</i> to the compute.
+</div>
+<div class="callout">
+  <b>The big picture</b> — a few specialized blocks joined by <b>buses</b> (shared data highways; Latin <i>omnibus</i>, "for all" — many passengers, one road):
+  <pre><code>        ┌───────────────────────────────────────────┐
+        │                CPU package                │
+        │ ┌────────┐ ┌────────┐    ┌─────────────┐  │
+        │ │ Core 0 │ │ Core 1 │ …  │ L3 cache    │  │
+        │ │ L1/L2  │ │ L1/L2  │    │(shared SRAM)│  │
+        │ └────────┘ └────────┘    └─────────────┘  │
+        └────────────────┬──────────────────────────┘
+                         │ memory bus
+              ┌──────────┴──────────┐
+              │  RAM (DRAM)         │ ← working memory, volatile
+              └──────────┬──────────┘
+                         │ PCIe bus
+     ┌──────────────┬────┴─────────┬───────────────┐
+┌────┴─────┐  ┌─────┴──────┐  ┌────┴─────┐  ┌──────┴──────┐
+│ GPU      │  │ NVMe SSD   │  │ Network  │  │ USB,        │
+│ (+ VRAM) │  │(non-volat.)│  │ card     │  │ display, …  │
+└──────────┘  └────────────┘  └──────────┘  └─────────────┘</code></pre>
+  <b>CPU</b> (Central Processing Unit) = the general-purpose brain. <b>RAM</b> (Random-Access Memory) = fast working memory, erased at power-off; "random access" = any address costs the same, unlike winding a tape. <b>Storage</b> (SSD/HDD) = slow but permanent. <b>GPU</b> (Graphics Processing Unit) = massively parallel accelerator with its own <b>VRAM</b> (Video RAM). Every bus has a <b>bandwidth</b> (GB/s) — often the real limit.
+</div>
+<div class="callout warn">
+  <b>Von Neumann architecture</b> (1945): programs and data share one memory; the processor fetches from it one stream at a time. Nearly every computer since follows it. Its famous flaw — the <b>von Neumann bottleneck</b>: the CPU↔memory link is the choke point. The whole memory hierarchy (§3) and AI accelerators (§2) are workarounds for this 80-year-old problem.
+</div>
+
+<!-- ============ CPU ============ -->
+<h2>1 · CPUs — cores, clocks, caches, ISAs</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Anatomy</h3>
+    <table>
+      <tr><td class="cmd"><b>Core</b></td><td class="desc">one complete processing unit; a "12-core CPU" = 12 mini-CPUs on one chip. Heat limits (~2005) forced going <i>wide</i> instead of <i>fast</i>.</td></tr>
+      <tr><td class="cmd"><b>Clock speed</b></td><td class="desc">the metronome, in GHz (billions of ticks/sec). Stuck near 3–5 GHz for 20 years. At 4 GHz, light travels only ~7.5 cm per tick.</td></tr>
+      <tr><td class="cmd"><b>Cache</b></td><td class="desc">small fast on-chip memory (L1→L2→L3) so cores don't wait on RAM. French <i>cacher</i>, "to hide" — a stash near the worksite.</td></tr>
+      <tr><td class="cmd"><b>SMT / Hyper-Threading</b></td><td class="desc">Simultaneous Multi-Threading: one core juggles 2 instruction streams, working on B while A stalls on memory. "8 cores / 16 threads" = 8 workers, 2 to-do lists each. Gain ~15–30%, not 2×.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>ISA — Instruction Set Architecture</h3>
+    <p class="lead">The vocabulary of machine instructions a CPU understands — the hardware/software contract. Code compiled for one ISA won't run natively on another.</p>
+    <table>
+      <tr><td class="cmd"><b>x86-64</b></td><td class="desc">descends from Intel's 8086 (1978). Chips made by <b>Intel AND AMD</b> — AMD (Advanced Micro Devices) is a competing <i>vendor</i> of x86 chips, <b>not a separate ISA</b>. Desktops, Windows laptops, classic servers.</td></tr>
+      <tr><td class="cmd"><b>AMD64 lore</b></td><td class="desc">the 64-bit extension is named after AMD because AMD designed it (Opteron, 2003) while Intel bet on the incompatible Itanium — Intel had to adopt its rival's design. x86-64 = AMD64 = x64.</td></tr>
+      <tr><td class="cmd"><b>ARM</b></td><td class="desc">originally Acorn RISC Machine (UK, 1985). Arm Ltd. <b>licenses</b> designs; others build: Apple (M-series "Apple Silicon"), Qualcomm (phones), Amazon (<b>AWS Graviton</b> cloud servers).</td></tr>
+    </table>
+  </div>
+</div>
+<div class="grid" style="margin-top:16px">
+  <div class="card">
+    <h3>RISC vs CISC</h3>
+    <table>
+      <tr><td class="cmd"><b>CISC</b> (Complex Instruction Set Computer)</td><td class="desc">rich instructions that each do a lot; made sense when memory was scarce and humans wrote assembly. Example: x86-64.</td></tr>
+      <tr><td class="cmd"><b>RISC</b> (Reduced Instruction Set Computer)</td><td class="desc">few simple uniform instructions; complexity moves to the compiler (Berkeley/Stanford, early 1980s). Examples: ARM, RISC-V (open-source, license-free).</td></tr>
+      <tr><td class="cmd"><b>Today</b></td><td class="desc">blurred: modern x86 decodes CISC instructions into RISC-like micro-ops internally. Practical difference = licensing + ecosystem.</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ ACCELERATORS ============ -->
+<h2>2 · Accelerators — GPU, TPU, NPU, ASIC vs FPGA</h2>
+<div class="callout good">
+  <b>Why GPUs took over AI:</b> a CPU = few big clever cores tuned for <i>latency</i>; a GPU = thousands of small cores tuned for <i>throughput</i> — the same operation across huge arrays (<b>SIMD</b>: Single Instruction Multiple Data). Graphics applies the same math to millions of pixels; <b>deep learning is the same shape</b> — neural nets are mostly matrix multiplications. A video-game chip (made programmable by Nvidia's CUDA, 2007) became the AI engine by accidental fit.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>The accelerator zoo</h3>
+    <table>
+      <tr><td class="cmd"><b>GPU</b> — Graphics Processing Unit</td><td class="desc">thousands of small cores + very-high-bandwidth memory; programmable (CUDA, ROCm, Metal). Gaming → AI datacenters.</td></tr>
+      <tr><td class="cmd"><b>TPU</b> — Tensor Processing Unit</td><td class="desc"><b>Google's ASIC</b> for tensor (multi-dimensional array) math — a hard-wired multiply-accumulate grid ("systolic array"). Less flexible, more efficient. Google Cloud only.</td></tr>
+      <tr><td class="cmd"><b>NPU</b> — Neural Processing Unit</td><td class="desc">small power-sipping neural accelerator inside consumer chips for <b>on-device AI</b> — phone SoCs, Apple "Neural Engine", Copilot+ PCs.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>ASIC vs FPGA</h3>
+    <table>
+      <tr><td class="cmd"><b>ASIC</b> — Application-Specific Integrated Circuit</td><td class="desc">permanently etched for one job. Fastest/most efficient; huge upfront cost, cheap at volume. TPUs, Bitcoin miners.</td></tr>
+      <tr><td class="cmd"><b>FPGA</b> — Field-Programmable Gate Array</td><td class="desc">logic blocks you can rewire <i>after</i> manufacture ("in the field"). Flexibility tax on speed; no fab cost, pricey per chip. Prototyping, evolving algorithms.</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Why LLM work is memory-bandwidth hungry:</b> generating <i>each token</i> reads essentially <b>all model weights</b> from memory (70B parameters × 2 bytes ≈ 140 GB <i>per token</i>). The math units finish long before the next weights arrive — the von Neumann bottleneck at industrial scale. Inference speed ≈ bandwidth ÷ model size, hence <b>HBM</b> on AI GPUs, and why GB/s beats TFLOPS (trillions of floating-point ops/sec) as the spec to watch. Training adds a fit problem (weights + gradients + optimizer state) → multi-GPU clusters.
+</div>
+
+<!-- ============ MEMORY HIERARCHY ============ -->
+<h2>3 · Memory hierarchy — the speed/size/cost pyramid</h2>
+<p class="lead">No memory is fast AND large AND cheap, so computers stack layers — tiny-fast near the core, huge-slow further out, each layer caching the one below.</p>
+<pre><code>  ▲ faster, smaller, $$$/byte
+  │   registers      ~1 KB        (inside each core)
+  │   L1 cache       ~64 KB/core    ┐
+  │   L2 cache       ~1 MB/core     ├ SRAM
+  │   L3 cache       ~32 MB shared  ┘
+  │   RAM (DRAM)     8–192 GB
+  │   SSD (NVMe)     0.5–8 TB
+  │   HDD / network  ~∞
+  ▼ slower, bigger, ¢/byte</code></pre>
+<div class="grid">
+  <div class="card">
+    <h3>SRAM vs DRAM — why caches are small</h3>
+    <table>
+      <tr><td class="cmd"><b>SRAM</b> (Static RAM)</td><td class="desc"><b>6 transistors/bit</b> in a stable flip-flop — "static" = holds state while powered. Very fast, 6× the silicon → expensive → kept small (L1/L2/L3).</td></tr>
+      <tr><td class="cmd"><b>DRAM</b> (Dynamic RAM)</td><td class="desc"><b>1 transistor + 1 capacitor/bit</b> — the charge leaks, needs constant <b>refresh</b> ("dynamic"). Dense and cheap → gigabytes, but slower.</td></tr>
+      <tr><td class="cmd"><b>DDR5</b></td><td class="desc">Double Data Rate gen 5 — transfers on both clock edges (hence "double"); current CPU main memory.</td></tr>
+      <tr><td class="cmd"><b>HBM</b></td><td class="desc">High Bandwidth Memory — DRAM dies stacked vertically right next to the GPU with a very wide connection; standard on AI accelerators.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Storage &amp; volatility</h3>
+    <table>
+      <tr><td class="cmd"><b>SSD</b> (Solid-State Drive)</td><td class="desc">flash chips, no moving parts; <b>NVMe</b> (Non-Volatile Memory Express) attaches it straight to the PCIe bus, replacing disk-era SATA.</td></tr>
+      <tr><td class="cmd"><b>HDD</b> (Hard Disk Drive)</td><td class="desc">spinning magnetic platters + moving head — 1950s tech, still cheapest per TB; bulk/archive only.</td></tr>
+      <tr><td class="cmd"><b>Volatile</b></td><td class="desc">registers/SRAM/DRAM — contents fly away at power-off (Latin <i>volare</i>, "to fly").</td></tr>
+      <tr><td class="cmd"><b>Non-volatile</b></td><td class="desc">SSD/HDD — survives power-off. Booting = copying the OS from non-volatile storage into volatile RAM.</td></tr>
+    </table>
+  </div>
+</div>
+<div class="card" style="margin-top:16px">
+  <h3>The latency ladder — stretch 1 CPU cycle (~0.3 ns) to 1 second</h3>
+  <table>
+    <tr><td class="cmd">1 CPU cycle</td><td class="desc">~0.3 ns → <b>1 second</b></td></tr>
+    <tr><td class="cmd">L1 / L2 / L3 cache hit</td><td class="desc">~1 / 4 / 12 ns → ~3 s / 13 s / 40 s</td></tr>
+    <tr><td class="cmd">RAM (DRAM) access</td><td class="desc">~100 ns → <b>~5 minutes</b></td></tr>
+    <tr><td class="cmd">NVMe SSD read</td><td class="desc">~100 µs → <b>~4 days</b></td></tr>
+    <tr><td class="cmd">HDD seek</td><td class="desc">~10 ms → <b>~13 months</b></td></tr>
+    <tr><td class="cmd">Network round-trip (same continent)</td><td class="desc">~50 ms → <b>~5 years</b></td></tr>
+  </table>
+  <p class="lead">A cache miss = the core "goes out for coffee"; a disk read = "a long vacation". This is why caches and SMT exist, and why data layout dominates real performance.</p>
+</div>
+
+<!-- ============ SPEC DECODER ============ -->
+<h2>4 · Practical decoder — reading a spec sheet</h2>
+<p class="lead">Fictional listing: <b>"M-series chip: 12-core CPU, 16-core GPU, 16-core Neural Engine, 64 GB unified memory, 400 GB/s bandwidth, 1 TB SSD."</b></p>
+<div class="grid">
+  <div class="card">
+    <h3>Decoded</h3>
+    <table>
+      <tr><td class="cmd">12-core CPU</td><td class="desc">12 general cores, often split performance + efficiency cores (big fast vs small frugal).</td></tr>
+      <tr><td class="cmd">16-core GPU</td><td class="desc">16 GPU clusters of many small ALUs — vendors count differently; compare within a family only.</td></tr>
+      <tr><td class="cmd">16-core Neural Engine</td><td class="desc">the NPU — on-device AI features, small-model inference.</td></tr>
+      <tr><td class="cmd"><b>64 GB unified memory</b></td><td class="desc"><b>one RAM pool shared by CPU + GPU + NPU</b> on the same package — no separate VRAM, no PCIe copying. Effectively a 64 GB "VRAM" budget, vs 8–24 GB on typical discrete GPU cards. <b>The headline number for local LLMs.</b></td></tr>
+      <tr><td class="cmd">400 GB/s bandwidth</td><td class="desc">how fast that pool can be read — the tokens-per-second throttle.</td></tr>
+      <tr><td class="cmd">1 TB SSD</td><td class="desc">affects model <i>loading</i> and how many models fit, not generation speed.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>What matters for local LLM inference — in order</h3>
+    <table>
+      <tr><td class="cmd">1 · RAM/VRAM size</td><td class="desc">the model must <b>fit</b>: parameters × bytes/parameter + ~20%. 8B model <b>quantized</b> (weights compressed to fewer bits) at 4-bit ≈ 5 GB; 70B at 4-bit ≈ 40 GB — fine in 64 GB unified memory, impossible in 16 GB.</td></tr>
+      <tr><td class="cmd">2 · Memory bandwidth</td><td class="desc">sets tokens/sec once it fits — every token re-reads the weights. 400 GB/s ÷ 40 GB model ≈ ~10 tokens/s ceiling.</td></tr>
+      <tr><td class="cmd">3 · Compute (TFLOPS)</td><td class="desc">matters for prompt <i>ingestion</i> (parallelizes well) more than generation.</td></tr>
+      <tr><td class="cmd">4 · CPU cores, SSD</td><td class="desc">everything <i>around</i> the model: loading, tokenization, your other apps.</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>5 · Teardown / safe shutdown</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b><code>shutdown</code> beats pulling the plug</b></td><td class="desc">the OS flushes <b>dirty caches</b> (writes still sitting in RAM) to disk first — a power-cut can leave files half-written, forcing <code>fsck</code>/repair or corruption</td></tr>
+    <tr><td class="cmd"><b>Eject external drives before unplugging</b></td><td class="desc">writes are <b>write-back cached</b>: "copy complete" may mean "in RAM, not yet on the disk." Eject forces the flush</td></tr>
+    <tr><td class="cmd"><b>Sleep vs hibernate</b></td><td class="desc">sleep keeps RAM powered (it's <b>volatile</b> — battery dies, state gone); hibernate copies RAM to disk and powers off fully, so it survives an empty battery</td></tr>
+    <tr><td class="cmd"><b>SSD disposal</b></td><td class="desc">deleting files ≠ erasing them (<b>data remanence</b>); use the drive's secure-erase, or full-disk encryption from day one and destroy the key</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>6 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>CPU / GPU / TPU / NPU</b></td><td class="desc">Central / Graphics / Tensor / Neural Processing Unit</td></tr>
+    <tr><td class="cmd"><b>ISA</b></td><td class="desc">Instruction Set Architecture — the machine-language contract (x86-64, ARM, RISC-V)</td></tr>
+    <tr><td class="cmd"><b>AMD64 / x86-64 / x64</b></td><td class="desc">same 64-bit x86 ISA; designed by AMD, adopted by Intel</td></tr>
+    <tr><td class="cmd"><b>RISC / CISC</b></td><td class="desc">Reduced / Complex Instruction Set Computer design philosophies</td></tr>
+    <tr><td class="cmd"><b>SMT / Hyper-Threading</b></td><td class="desc">one core running two instruction streams to fill memory stalls</td></tr>
+    <tr><td class="cmd"><b>SIMD</b></td><td class="desc">Single Instruction Multiple Data — same op across many values</td></tr>
+    <tr><td class="cmd"><b>ASIC / FPGA</b></td><td class="desc">fixed-function vs field-reconfigurable custom silicon</td></tr>
+    <tr><td class="cmd"><b>SRAM / DRAM</b></td><td class="desc">6-transistor cache memory vs 1-transistor+capacitor main memory</td></tr>
+    <tr><td class="cmd"><b>DDR5 / HBM</b></td><td class="desc">current CPU memory standard / stacked high-bandwidth GPU memory</td></tr>
+    <tr><td class="cmd"><b>NVMe / SSD / HDD / PCIe</b></td><td class="desc">flash protocol / solid-state drive / hard disk / the expansion bus</td></tr>
+    <tr><td class="cmd"><b>Unified memory</b></td><td class="desc">single RAM pool shared by CPU+GPU+NPU (Apple Silicon model)</td></tr>
+    <tr><td class="cmd"><b>Volatile / non-volatile</b></td><td class="desc">loses vs keeps data at power-off</td></tr>
+    <tr><td class="cmd"><b>Quantization</b></td><td class="desc">compressing model weights to fewer bits to shrink memory needs</td></tr>
+    <tr><td class="cmd"><b>Von Neumann bottleneck</b></td><td class="desc">the CPU↔memory link as the limiting choke point</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://www.youtube.com/playlist?list=PL8dPuuaLjXtNlUrzyH5r6jN9ulIgZBpdo">Crash Course Computer Science</a> ·
+  <a href="https://www.elsevier.com/books/computer-organization-and-design-risc-v-edition/patterson/978-0-12-820331-6">Patterson &amp; Hennessy, Computer Organization and Design</a> ·
+  <a href="https://gist.github.com/jboner/2841832">Latency numbers every programmer should know</a> ·
+  <a href="https://cloud.google.com/blog/products/ai-machine-learning/an-in-depth-look-at-googles-first-tensor-processing-unit-tpu">Google TPU deep dive</a> ·
+  <a href="https://en.wikipedia.org/wiki/Apple_silicon">Apple Silicon (Wikipedia)</a> ·
+  <a href="https://en.wikipedia.org/wiki/X86-64">x86-64 / AMD64 history (Wikipedia)</a> ·
+  <a href="https://huyenchip.com/2024/07/25/genai-platform.html">Chip Huyen — GenAI platform sizing</a>
+</p>
+
+</div>
+</body>
+</html>

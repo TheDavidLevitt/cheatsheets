@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Obsidian Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Obsidian Cheat Sheet</h1>
+<p class="sub">Local-first notes: vault · links · plugins · started 2026-06-06 · twin of <code>Tools/obsidian_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Obsidian</b> = free note app (2020, by the makers of Dynalist): your notes are plain <b>Markdown</b> files in an ordinary folder on <i>your</i> disk — no database, no account, no lock-in. Name = geology pun: obsidian is volcanic glass, lava cooled fast into something hard and sharp. <b>Markdown</b> = Gruber's 2004 plain-text formatting syntax (<code># heading</code>, <code>**bold**</code>) — "mark<i>down</i>" jokes on "mark<i>up</i>". <b>Local-first</b> = your disk is the source of truth; cloud is an optional copy (opposite of Notion).
+</div>
+<div class="callout">
+  <b>Two layers</b> — the single most important idea:
+  <pre><code>layer 2:  the GRAPH   ← links between notes (Obsidian computes this)
+              ▲
+layer 1:  the VAULT   ← a plain folder of .md files (you own this)</code></pre>
+  <b>Vault</b> = the folder Obsidian opens; every note is a real <code>.md</code> file, subfolders are just subfolders. Delete the app and your notes still open in any editor. <b>Graph</b> = the link network Obsidian builds on top — links turn a pile of files into a <i>wiki</i>. Only app-private data is the hidden <code>.obsidian/</code> config folder (analogous to Git's <code>.git/</code>) — your content never lives there.
+</div>
+<div class="callout good">
+  <b>Personal-wiki fit:</b> one growing, interlinked, plain-text knowledge base is exactly what Obsidian is shaped for — and the vault can live in a Git repo (§7).
+</div>
+
+<!-- ============ MARKDOWN ============ -->
+<h2>1 · Markdown syntax Obsidian uses</h2>
+<p class="lead">Standard Markdown plus a few Obsidian extensions (⊕).</p>
+<div class="grid">
+  <div class="card">
+    <h3>Standard</h3>
+    <table>
+      <tr><td class="cmd"><code># H1 … ###### H6</code></td><td class="desc">headings (count of <code>#</code> = level)</td></tr>
+      <tr><td class="cmd"><code>**bold** / *italic*</code></td><td class="desc">bold / italic</td></tr>
+      <tr><td class="cmd"><code>- item / 1. item</code></td><td class="desc">bullet / numbered list (indent to nest)</td></tr>
+      <tr><td class="cmd"><code>- [ ] task</code></td><td class="desc">checkbox — click toggles to <code>- [x]</code></td></tr>
+      <tr><td class="cmd"><code>`code` / ``` fence</code></td><td class="desc">inline code / code block (add a language for highlighting)</td></tr>
+      <tr><td class="cmd"><code>&gt; quote</code></td><td class="desc">blockquote</td></tr>
+      <tr><td class="cmd"><code>[text](https://url)</code></td><td class="desc">standard Markdown link</td></tr>
+      <tr><td class="cmd"><code>![alt](image.png)</code></td><td class="desc">embed an image</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Obsidian extras ⊕</h3>
+    <table>
+      <tr><td class="cmd"><code>[[Note name]]</code></td><td class="desc">wikilink — see §2</td></tr>
+      <tr><td class="cmd"><code>![[Note name]]</code></td><td class="desc">embed (transclude) another note inline</td></tr>
+      <tr><td class="cmd"><code>==highlight==</code></td><td class="desc">highlighted text</td></tr>
+      <tr><td class="cmd"><code>%%hidden%%</code></td><td class="desc">comment — invisible in reading view</td></tr>
+      <tr><td class="cmd"><code>---</code></td><td class="desc">horizontal rule; at the very top it fences <b>frontmatter</b> — a YAML metadata block (tags, dates, custom fields)</td></tr>
+    </table>
+    <p class="lead"><b>YAML</b> = "YAML Ain't Markup Language" (recursive-acronym joke); human-readable <code>key: value</code> data format.</p>
+  </div>
+</div>
+
+<!-- ============ LINKS ============ -->
+<h2>2 · Links: wikilinks, backlinks, graph</h2>
+<p class="lead">Linking is the core skill — each note a node, each link an edge.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Link syntaxes</h3>
+    <table>
+      <tr><td class="cmd"><code>[[Attention]]</code></td><td class="desc"><b>wikilink</b> (from wiki software, WikiWikiWeb 1995 → Wikipedia). Type <code>[[</code> → autocomplete. The default, low-friction choice</td></tr>
+      <tr><td class="cmd"><code>[[Attention|see this]]</code></td><td class="desc">alias — <code>|</code> sets display text</td></tr>
+      <tr><td class="cmd"><code>[[Attention#History]]</code></td><td class="desc">link to a heading inside a note</td></tr>
+      <tr><td class="cmd"><code>[Attention](Attention.md)</code></td><td class="desc"><b>markdown link</b> — more portable, clumsier to type. Toggle in Settings → Files &amp; links</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Backlinks &amp; graph</h3>
+    <p class="lead"><b>Linking to a nonexistent note is fine</b> — link shows dimmed; clicking creates it. "Link first, write later" is how the wiki grows.</p>
+    <p class="lead"><b>Backlinks</b> = computed for free: every note's "Linked mentions" pane lists all notes pointing <i>to</i> it. You only write links forward.</p>
+    <p class="lead"><b>Graph view</b> (<kbd>⌘G</kbd> / <kbd>Ctrl+G</kbd>) = whole vault as a network. Good for spotting orphans &amp; clusters; the backlinks pane does the daily work.</p>
+  </div>
+</div>
+
+<!-- ============ TAGS VS LINKS VS FOLDERS ============ -->
+<h2>3 · Tags vs. links vs. folders</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Links</b> <code>[[...]]</code></td><td class="desc"><i>specific</i> note-to-note relationships — the primary tool, default to these</td></tr>
+    <tr><td class="cmd"><b>Tags</b> <code>#topic</code></td><td class="desc"><i>categories &amp; status</i> cutting across many notes (<code>#unread</code>, <code>#gcp/storage</code> — nesting works); click a tag to see everything carrying it</td></tr>
+    <tr><td class="cmd"><b>Folders</b></td><td class="desc"><i>coarse, mutually-exclusive</i> buckets only (<code>daily/</code>, <code>templates/</code>); a note lives in one folder but can carry many links/tags — weakest tool</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  Community rule of thumb: <b>link generously, tag sparingly, folder reluctantly.</b> Deep folder trees recreate the rigid hierarchy the link graph was supposed to free you from.
+</div>
+
+<!-- ============ HOTKEYS ============ -->
+<h2>4 · Essential hotkeys (Mac · Windows)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>The big three</h3>
+    <table>
+      <tr><td class="cmd"><kbd>⌘P</kbd> · <kbd>Ctrl+P</kbd></td><td class="desc"><b>Command palette</b> — fuzzy-search every command by name (like VS Code's <kbd>⌘⇧P</kbd>); finds any hotkey you forgot</td></tr>
+      <tr><td class="cmd"><kbd>⌘O</kbd> · <kbd>Ctrl+O</kbd></td><td class="desc"><b>Quick switcher</b> — fuzzy-jump to any note (<code>O</code> = open); type a new name + <kbd>Enter</kbd> to create it</td></tr>
+      <tr><td class="cmd"><kbd>⌘⇧F</kbd> · <kbd>Ctrl+Shift+F</kbd></td><td class="desc"><b>Search vault</b> — full-text, with <code>tag:</code> <code>path:</code> <code>file:</code> operators</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Next tier</h3>
+    <table>
+      <tr><td class="cmd"><kbd>⌘F</kbd> · <kbd>Ctrl+F</kbd></td><td class="desc">search current note</td></tr>
+      <tr><td class="cmd"><kbd>⌘N</kbd> · <kbd>Ctrl+N</kbd></td><td class="desc">new note</td></tr>
+      <tr><td class="cmd"><kbd>⌘E</kbd> · <kbd>Ctrl+E</kbd></td><td class="desc">toggle edit ↔ reading view</td></tr>
+      <tr><td class="cmd"><kbd>⌘G</kbd> · <kbd>Ctrl+G</kbd></td><td class="desc">graph view</td></tr>
+      <tr><td class="cmd"><kbd>⌘Click</kbd> · <kbd>Ctrl+Click</kbd></td><td class="desc">follow link under cursor</td></tr>
+      <tr><td class="cmd"><kbd>⌘,</kbd> · <kbd>Ctrl+,</kbd></td><td class="desc">settings (all hotkeys rebindable: Settings → Hotkeys)</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout">
+  <b>Vim-user note:</b> built-in <b>Vim mode</b> — Settings → Editor → "Vim key bindings". Modal editing (<code>hjkl</code>, operator+motion, <code>/</code> search) inside the note editor. A solid subset, not full Vim — no <code>.vimrc</code> (community plugin "Vimrc Support" adds one). See <code>vim_cheatsheet.html</code>.
+</div>
+
+<!-- ============ DAILY NOTES + TEMPLATES ============ -->
+<h2>5 · Daily notes &amp; templates</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Daily notes</h3>
+    <p class="lead">One auto-named note per day (default <code>YYYY-MM-DD.md</code> — already ISO). The answer to "where do I write this <i>right now</i>?"</p>
+    <table>
+      <tr><td class="cmd">Enable</td><td class="desc">Settings → Core plugins → Daily notes</td></tr>
+      <tr><td class="cmd">Open today</td><td class="desc">calendar ribbon icon, or bind a hotkey to "Open today's daily note"</td></tr>
+      <tr><td class="cmd">Configure</td><td class="desc">date format, target folder (e.g. <code>daily/</code>), template</td></tr>
+    </table>
+    <p class="lead"><b>Pattern:</b> daily note = <i>inbox</i> (chronological, disposable); wiki notes = <i>library</i> (topical, permanent). Links connect the two.</p>
+  </div>
+  <div class="card">
+    <h3>Templates</h3>
+    <p class="lead">A stub note inserted into the current note on demand — skeleton headings, frontmatter, boilerplate.</p>
+    <table>
+      <tr><td class="cmd">Enable</td><td class="desc">Settings → Core plugins → Templates; point at a folder (e.g. <code>templates/</code>)</td></tr>
+      <tr><td class="cmd">Insert</td><td class="desc">command palette → "Templates: Insert template"</td></tr>
+      <tr><td class="cmd">Placeholders</td><td class="desc"><code>{{title}}</code>, <code>{{date}}</code>, <code>{{time}}</code></td></tr>
+      <tr><td class="cmd">Daily-note template</td><td class="desc">set in Daily notes settings — every day starts with the same skeleton</td></tr>
+    </table>
+    <p class="lead">Need logic (conditionals, prompts, JS)? → <b>Templater</b> community plugin (§6).</p>
+  </div>
+</div>
+
+<!-- ============ COMMUNITY PLUGINS ============ -->
+<h2>6 · Community plugins</h2>
+<p class="lead"><b>Core plugins</b> = first-party toggles. <b>Community plugins</b> = third-party extensions from the in-app marketplace, written in JS/TS against Obsidian's public <b>API</b> (Application Programming Interface — the functions an app exposes for other code to call).</p>
+<div class="callout warn">
+  <b>Enable:</b> Settings → Community plugins → turn off <b>Restricted mode</b> → Browse → install → enable. Restricted mode defaults on because plugins run arbitrary code — same trust call as a VS Code extension. Stick to popular, maintained ones.
+</div>
+<div class="card">
+  <h3>Four widely-recommended starters</h3>
+  <table>
+    <tr><td class="cmd"><b>Dataview</b></td><td class="desc">query the vault like a database — list notes by tag/date, build tables from frontmatter fields</td></tr>
+    <tr><td class="cmd"><b>Templater</b></td><td class="desc">templates with logic: variables, prompts, conditionals, JS — superset of core Templates</td></tr>
+    <tr><td class="cmd"><b>Calendar</b></td><td class="desc">month-view sidebar; click a day → that daily note</td></tr>
+    <tr><td class="cmd"><b>Excalidraw</b></td><td class="desc">hand-drawn-style sketches/diagrams embedded as notes</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  Start with zero plugins; add one when you feel a specific pain. Plugin sprawl = the classic failure mode (fiddling with the system instead of writing notes).
+</div>
+
+<!-- ============ SYNC ============ -->
+<h2>7 · Sync options compared</h2>
+<p class="lead">A vault is just a folder, so anything that syncs folders can sync it — with trade-offs.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Obsidian Sync</b> (paid)</td><td class="desc">first-party; <b>E2EE</b> (end-to-end encrypted — only your devices hold the key), version history, all platforms incl. mobile. The "it just works" choice</td></tr>
+    <tr><td class="cmd"><b>iCloud Drive</b> (free)</td><td class="desc">vault inside the Obsidian iCloud folder — official free path for Mac ↔ iPhone/iPad. Apple-only; occasional lag / conflict files; no Android</td></tr>
+    <tr><td class="cmd"><b>Git</b> (free)</td><td class="desc">vault = repo; push to GitHub manually or via the <b>Obsidian Git</b> plugin. Full history + offsite backup, familiar tooling; clunky on mobile; don't push private notes to a public repo</td></tr>
+    <tr><td class="cmd"><b>Dropbox / Drive / Syncthing</b></td><td class="desc">generic folder sync — fine on desktop, poor-to-hacky on mobile</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  <b>One rule regardless of method:</b> never let <i>two</i> sync systems manage the same vault (e.g. iCloud + Git auto-commit) — that's the recipe for conflict files. Pick one transport; Git can sit underneath as a deliberate, manual backup layer.
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>8 · Teardown — closing, removing, walking away</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd">Close / switch vault</td><td class="desc">vault-switcher icon (bottom-left) → open another vault or "Manage vaults"; each vault is its own window</td></tr>
+    <tr><td class="cmd">Remove vault from launcher</td><td class="desc">Manage vaults → ✕ — only forgets the <i>bookmark</i>; folder and notes stay on disk</td></tr>
+    <tr><td class="cmd">Delete a vault for real</td><td class="desc">delete the folder in Finder/Explorer — a vault <b>is</b> just a folder, so this deletes the notes. Flip side of local-first: nothing survives in a cloud account. Back up first</td></tr>
+    <tr><td class="cmd">Remove a community plugin</td><td class="desc">Settings → Community plugins → ✕ Uninstall ("Disable" is the reversible half-step; uninstall deletes its code from <code>.obsidian/plugins/</code>)</td></tr>
+    <tr><td class="cmd">Disable sync safely</td><td class="desc">confirm all devices are fully synced <b>first</b>, then turn off the transport (Obsidian Sync / move vault out of iCloud / stop the Git plugin). Notes are local-first so nothing is deleted — but un-synced edits elsewhere become a fork</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Obsidian</b></td><td class="desc">local-first Markdown note app (2020); notes = plain files, links = graph</td></tr>
+    <tr><td class="cmd"><b>Markdown</b></td><td class="desc">Gruber's 2004 plain-text formatting syntax; pun on "markup"</td></tr>
+    <tr><td class="cmd"><b>Local-first</b></td><td class="desc">your disk is the source of truth; cloud optional</td></tr>
+    <tr><td class="cmd"><b>Vault</b></td><td class="desc">the folder Obsidian opens; all notes as <code>.md</code> files</td></tr>
+    <tr><td class="cmd"><b>Wikilink</b></td><td class="desc"><code>[[Note]]</code> link syntax, inherited from wiki software</td></tr>
+    <tr><td class="cmd"><b>Backlink</b></td><td class="desc">auto-computed list of notes linking <i>to</i> the current note</td></tr>
+    <tr><td class="cmd"><b>Graph view</b></td><td class="desc">the vault rendered as a node-and-edge network</td></tr>
+    <tr><td class="cmd"><b>Frontmatter</b></td><td class="desc"><code>---</code>-fenced YAML metadata block at the top of a note</td></tr>
+    <tr><td class="cmd"><b>YAML</b></td><td class="desc">"YAML Ain't Markup Language"; <code>key: value</code> data format</td></tr>
+    <tr><td class="cmd"><b>Daily note</b></td><td class="desc">auto-created one-note-per-day capture inbox</td></tr>
+    <tr><td class="cmd"><b>Core / community plugin</b></td><td class="desc">first-party toggle vs. third-party marketplace extension</td></tr>
+    <tr><td class="cmd"><b>E2EE</b></td><td class="desc">end-to-end encryption; only your devices can decrypt</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://help.obsidian.md/">Obsidian Help (official docs)</a> ·
+  <a href="https://help.obsidian.md/Customization/Custom+hotkeys">Hotkeys reference</a> ·
+  <a href="https://obsidian.md/sync">Obsidian Sync</a> ·
+  <a href="https://obsidian.md/plugins">Community plugins directory</a> ·
+  <a href="https://help.obsidian.md/sync-notes">Sync your notes across devices</a>
+</p>
+
+</div>
+</body>
+</html>

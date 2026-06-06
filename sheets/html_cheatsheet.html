@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTML Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>HTML Cheat Sheet</h1>
+<p class="sub">Reading &amp; writing web pages: structure · tags · forms · DevTools · started 2026-06-06 · twin of <code>Tools/html_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>HTML</b> = HyperText Markup Language: describes the <b>structure and content</b> of a page. "HyperText" = text containing links (Tim Berners-Lee, 1989). "Markup" = annotations wrapped around content — HTML descends from <b>SGML</b> (Standard Generalized Markup Language, 1986; from IBM's GML, 1969), which is <i>why tags look the way they do</i>: publishers "marked up" manuscripts with marginal instructions; HTML does it with <code>&lt;tags&gt;</code>.
+</div>
+<div class="callout">
+  <b>Three languages, one house</b>:
+  <pre><code>HTML            CSS              JavaScript
+structure       style            behavior
+(walls, rooms,  (paint,          (electricity,
+ doors)          furniture,       plumbing —
+                 layout)          things that DO stuff)</code></pre>
+  <b>HTML</b> = what's on the page and what it means. <b>CSS</b> (Cascading Style Sheets) = what it looks like — lives in <code>&lt;style&gt;</code> blocks or <code>.css</code> files. <b>JavaScript (JS)</b> = what it does — lives in <code>&lt;script&gt;</code> blocks or <code>.js</code> files. Hunting for content? Skip everything inside <code>&lt;style&gt;</code> and <code>&lt;script&gt;</code>.
+</div>
+<div class="callout good">
+  <b>Anatomy of an element:</b>
+  <pre><code> opening tag                          closing tag
+ ┌────┴─────────────────────┐         ┌──┴──┐
+ &lt;a href="https://mdn.io" &gt;  Read me  &lt;/a&gt;
+  │  └──────┬────────────┘   └──┬──┘    │
+ tag     attribute            content   note the slash
+ name    (name="value")</code></pre>
+  Attributes live <i>only in the opening tag</i>. A few elements are <b>void</b> (no content, no closing tag): <code>&lt;br&gt;</code> <code>&lt;hr&gt;</code> <code>&lt;img&gt;</code> <code>&lt;input&gt;</code> <code>&lt;meta&gt;</code>. Elements nest like Russian dolls — last opened, first closed. Convention: lowercase tag names.
+</div>
+
+<!-- ============ SKELETON ============ -->
+<h2>1 · Minimal valid document, annotated</h2>
+<pre><code>&lt;!DOCTYPE html&gt;                       &lt;!-- 1: "modern HTML5, standards mode" --&gt;
+&lt;html lang="en"&gt;                      &lt;!-- 2: root element; lang helps a11y/SEO --&gt;
+&lt;head&gt;                                &lt;!-- 3: metadata ABOUT the page, never rendered --&gt;
+  &lt;meta charset="utf-8"&gt;              &lt;!-- 4: encoding; first, or é/ü garble --&gt;
+  &lt;meta name="viewport"
+        content="width=device-width, initial-scale=1"&gt;  &lt;!-- 5: don't look tiny on phones --&gt;
+  &lt;title&gt;Page title&lt;/title&gt;           &lt;!-- 6: tab text + search-result headline --&gt;
+&lt;/head&gt;
+&lt;body&gt;                                &lt;!-- 7: everything the user actually sees --&gt;
+  &lt;h1&gt;Hello&lt;/h1&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+<p class="lead">Historic note: old doctypes were long SGML document-type references; HTML5 (2014) shrank the incantation to <code>&lt;!DOCTYPE html&gt;</code>.</p>
+
+<!-- ============ TEXT ============ -->
+<h2>2 · Text tags</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Headings &amp; paragraphs</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;h1&gt;…&lt;h6&gt;</code></td><td class="desc">headings, level 1–6. One <code>h1</code> per page; it's an outline, not a font-size picker</td></tr>
+      <tr><td class="cmd"><code>&lt;p&gt;</code></td><td class="desc">paragraph — the default unit of body text</td></tr>
+      <tr><td class="cmd"><code>&lt;br&gt;</code></td><td class="desc">line break (void) — for poems/addresses, not spacing</td></tr>
+      <tr><td class="cmd"><code>&lt;hr&gt;</code></td><td class="desc">horizontal rule (void) — thematic break</td></tr>
+      <tr><td class="cmd"><code>&lt;code&gt;</code> / <code>&lt;pre&gt;</code></td><td class="desc">inline code / preformatted block — the only place whitespace survives (elsewhere runs of spaces collapse to one)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Bold &amp; italic — semantic vs cosmetic</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;strong&gt;</code></td><td class="desc">strong importance (renders bold) — says "this matters"</td></tr>
+      <tr><td class="cmd"><code>&lt;em&gt;</code></td><td class="desc">emphasis (renders italic) — says "stress this word"</td></tr>
+      <tr><td class="cmd"><code>&lt;b&gt;</code> / <code>&lt;i&gt;</code></td><td class="desc">appearance only, no meaning (ship names, Latin terms). Prefer <code>strong</code>/<code>em</code> when you mean importance</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ LISTS LINKS IMAGES ============ -->
+<h2>3 · Lists, links, images</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Lists &amp; images</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;ul&gt;&lt;li&gt;…&lt;/li&gt;&lt;/ul&gt;</code></td><td class="desc"><b>u</b>nordered <b>l</b>ist (bullets) of <b>l</b>ist <b>i</b>tems</td></tr>
+      <tr><td class="cmd"><code>&lt;ol&gt;&lt;li&gt;…&lt;/li&gt;&lt;/ol&gt;</code></td><td class="desc"><b>o</b>rdered <b>l</b>ist (numbered)</td></tr>
+      <tr><td class="cmd"><code>&lt;img src="cat.png" alt="A sleeping cat"&gt;</code></td><td class="desc">image (void). <code>alt</code> shows on failure + read by screen readers — write a description, not a filename</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Links</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;a href="url"&gt;text&lt;/a&gt;</code></td><td class="desc"><code>a</code> = <b>anchor</b>, <code>href</code> = <b>h</b>ypertext <b>ref</b>erence (1990s coinages that stuck)</td></tr>
+      <tr><td class="cmd"><code>&lt;a href="#section-id"&gt;</code></td><td class="desc">jump to element with that <code>id</code> on the same page</td></tr>
+      <tr><td class="cmd"><code>target="_blank" rel="noopener"</code></td><td class="desc">open in new tab — <b>always pair them</b>; without <code>rel</code> the new page gets a handle back to yours</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ TABLES ============ -->
+<h2>4 · Tables</h2>
+<p class="lead">For <b>tabular data</b> only — table-based page layout is a dead 1990s hack; CSS does layout now.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Structure</h3>
+    <pre><code>&lt;table&gt;
+  &lt;tr&gt; &lt;th&gt;Cmd&lt;/th&gt;     &lt;th&gt;Meaning&lt;/th&gt; &lt;/tr&gt;  &lt;!-- header row --&gt;
+  &lt;tr&gt; &lt;td&gt;git add&lt;/td&gt; &lt;td&gt;stage&lt;/td&gt;   &lt;/tr&gt;  &lt;!-- data row --&gt;
+&lt;/table&gt;</code></pre>
+  </div>
+  <div class="card">
+    <h3>Tags</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;tr&gt;</code></td><td class="desc"><b>t</b>able <b>r</b>ow</td></tr>
+      <tr><td class="cmd"><code>&lt;th&gt;</code></td><td class="desc"><b>t</b>able <b>h</b>eader cell (bold, centered, announced as header)</td></tr>
+      <tr><td class="cmd"><code>&lt;td&gt;</code></td><td class="desc"><b>t</b>able <b>d</b>ata cell</td></tr>
+      <tr><td class="cmd"><code>colspan</code> / <code>rowspan</code></td><td class="desc">cell attribute: span across columns / rows</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ SEMANTIC LAYOUT ============ -->
+<h2>5 · Semantic layout tags (the page skeleton)</h2>
+<p class="lead">HTML5 named the regions every page already had, replacing soups of anonymous <code>&lt;div&gt;</code>s. They render identically — the value is <b>meaning</b> (for code readers, screen readers, search engines).</p>
+<div class="grid">
+  <div class="card">
+    <h3>Regions</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;header&gt;</code></td><td class="desc">top-of-page/section intro: logo, title</td></tr>
+      <tr><td class="cmd"><code>&lt;nav&gt;</code></td><td class="desc">navigation links block</td></tr>
+      <tr><td class="cmd"><code>&lt;main&gt;</code></td><td class="desc">the unique main content — <b>one per page</b></td></tr>
+      <tr><td class="cmd"><code>&lt;section&gt;</code></td><td class="desc">thematic grouping, usually with its own heading</td></tr>
+      <tr><td class="cmd"><code>&lt;article&gt;</code></td><td class="desc">self-contained piece (post, card, comment)</td></tr>
+      <tr><td class="cmd"><code>&lt;aside&gt;</code></td><td class="desc">tangential: sidebar, pull-quote</td></tr>
+      <tr><td class="cmd"><code>&lt;footer&gt;</code></td><td class="desc">copyright, links, sources</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Last resorts</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;div&gt;</code></td><td class="desc">generic block with <b>no meaning</b> — use only when nothing semantic fits</td></tr>
+      <tr><td class="cmd"><code>&lt;span&gt;</code></td><td class="desc">inline equivalent: meaningless wrapper for styling a few words</td></tr>
+    </table>
+    <p class="lead"><b>Reading tip:</b> in unfamiliar HTML, scan for <code>&lt;main&gt;</code>, <code>&lt;nav&gt;</code>, <code>&lt;article&gt;</code> first — they're the file's table of contents.</p>
+  </div>
+</div>
+
+<!-- ============ FORMS ============ -->
+<h2>6 · Forms basics</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Pattern</h3>
+    <pre><code>&lt;form action="/subscribe" method="post"&gt;
+  &lt;label for="email"&gt;Email&lt;/label&gt;
+  &lt;input type="email" id="email" name="email" required&gt;
+  &lt;button type="submit"&gt;Sign up&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+  </div>
+  <div class="card">
+    <h3>Pieces</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;form action method&gt;</code></td><td class="desc">where to send data; <code>get</code> (in URL) vs <code>post</code> (in body)</td></tr>
+      <tr><td class="cmd"><code>&lt;input type="…"&gt;</code></td><td class="desc">the workhorse (void). <code>type</code>: text, email, password, number, checkbox, radio, date, file, range…</td></tr>
+      <tr><td class="cmd"><code>&lt;label for="x"&gt;</code></td><td class="desc">caption tied to input with <code>id="x"</code> — clicking it focuses the input. Always pair</td></tr>
+      <tr><td class="cmd"><code>name="…"</code></td><td class="desc">the submission key — no <code>name</code>, no data sent</td></tr>
+      <tr><td class="cmd"><code>&lt;textarea&gt;</code>, <code>&lt;select&gt;&lt;option&gt;</code></td><td class="desc">multi-line box; dropdown</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ CLASS/ID + INLINE/BLOCK ============ -->
+<h2>7 · class vs id · inline vs block</h2>
+<div class="grid">
+  <div class="card">
+    <h3>The CSS/JS hooks</h3>
+    <table>
+      <tr><td class="cmd"><code>class="card warn"</code></td><td class="desc">reusable, multiple per element, shared by many elements. CSS: <code>.card</code></td></tr>
+      <tr><td class="cmd"><code>id="pricing"</code></td><td class="desc"><b>unique</b>, one per page. Anchors (<code>#pricing</code>), JS lookups. CSS: <code>#pricing</code></td></tr>
+    </table>
+    <p class="lead">Rule of thumb: <b>style with classes, navigate/script with ids.</b></p>
+  </div>
+  <div class="card">
+    <h3>Inline vs block</h3>
+    <table>
+      <tr><td class="cmd"><b>Block</b></td><td class="desc">new line, full width: <code>h1–h6 p div ul table</code> + section tags</td></tr>
+      <tr><td class="cmd"><b>Inline</b></td><td class="desc">flows within text, content-width: <code>a strong em span code img</code></td></tr>
+    </table>
+    <p class="lead"><code>width</code> on an inline element does nothing — CSS <code>display</code> overrides either default; that's where layout work begins.</p>
+  </div>
+</div>
+
+<!-- ============ ENTITIES / COMMENTS / DETAILS ============ -->
+<h2>8 · Entities, comments, collapsibles</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Entities (escapes)</h3>
+    <table>
+      <tr><td class="cmd"><code>&amp;lt;</code> <code>&amp;gt;</code></td><td class="desc">literal &lt; &gt; — bare angle brackets start tags (<b>l</b>ess/<b>g</b>reater <b>t</b>han)</td></tr>
+      <tr><td class="cmd"><code>&amp;amp;</code></td><td class="desc">literal &amp; — it starts entities itself</td></tr>
+      <tr><td class="cmd"><code>&amp;nbsp;</code></td><td class="desc"><b>n</b>on-<b>b</b>reaking <b>sp</b>ace — won't wrap or collapse (<code>10&amp;nbsp;km</code>)</td></tr>
+      <tr><td class="cmd"><code>&amp;copy;</code> <code>&amp;eacute;</code></td><td class="desc">© é — with UTF-8 just type the real char; entities remain for the three escape cases above</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Comments &amp; native collapsibles</h3>
+    <table>
+      <tr><td class="cmd"><code>&lt;!-- comment --&gt;</code></td><td class="desc">invisible in page, visible in source. No nesting</td></tr>
+      <tr><td class="cmd"><code>&lt;details&gt;&lt;summary&gt;Title&lt;/summary&gt;…&lt;/details&gt;</code></td><td class="desc">click-to-expand, zero JS; add <code>open</code> to start expanded. <b>Our own cheat sheets use this</b></td></tr>
+    </table>
+    <details>
+      <summary>Live demo — click me</summary>
+      <p class="lead">This fold is a plain <code>&lt;details&gt;</code> element. No JavaScript involved.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============ DEVTOOLS ============ -->
+<h2>9 · Reading the DevTools inspector</h2>
+<div class="callout">
+  Right-click any page → <b>Inspect</b> (or <kbd>Cmd</kbd>+<kbd>Opt</kbd>+<kbd>I</kbd>). The <b>Elements</b> panel shows the live <b>DOM</b> (Document Object Model) tree — what the browser <i>built</i>, not the raw source (<kbd>Cmd</kbd>+<kbd>Opt</kbd>+<kbd>U</kbd> shows that). Differences are normal: JS adds nodes, and the browser repairs malformed HTML.
+</div>
+<div class="callout good">
+  Click the <b>arrow-in-box</b> icon (top-left of DevTools), hover the page — it highlights elements and jumps the tree to them: the fastest answer to "what tag is this thing?" The <b>Styles</b> pane shows every CSS rule hitting the selected element (struck-through = lost the cascade). Double-click anything in the tree to edit it live — vanishes on reload, perfect for safe experiments.
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>10 · Teardown / removing things</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Comment out vs delete</b></td><td class="desc"><code>&lt;!-- … --&gt;</code> is reversible and great while experimenting — but commented markup still ships and is visible in View Source. Delete for real removals; Git remembers anyway</td></tr>
+    <tr><td class="cmd"><b>Remove an element in DevTools</b></td><td class="desc">select it in Elements ▸ press <kbd>Delete</kbd> (or right-click ▸ <i>Delete element</i>). <b>Temporary</b> — you edited the DOM, not the file; refresh restores everything</td></tr>
+    <tr><td class="cmd"><b>Unlink a stylesheet / script</b></td><td class="desc">delete (or comment out) the <code>&lt;link rel="stylesheet" href="…"&gt;</code> or <code>&lt;script src="…"&gt;</code> tag in <code>&lt;head&gt;</code> — the page loads without that layer</td></tr>
+    <tr><td class="cmd"><b>Graceful degradation</b></td><td class="desc">remove CSS → plain but perfectly readable document. Remove JS → links, forms, <code>&lt;details&gt;</code> still work <i>if</i> the HTML is semantic; a div-soup page built by JS shows nothing. That resilience is the payoff of semantic HTML</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>11 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>HTML</b></td><td class="desc">HyperText Markup Language — structure/content layer</td></tr>
+    <tr><td class="cmd"><b>CSS</b></td><td class="desc">Cascading Style Sheets — presentation layer</td></tr>
+    <tr><td class="cmd"><b>JavaScript (JS)</b></td><td class="desc">behavior layer</td></tr>
+    <tr><td class="cmd"><b>SGML</b></td><td class="desc">Standard Generalized Markup Language (1986) — HTML's ancestor, source of the tag syntax</td></tr>
+    <tr><td class="cmd"><b>DOM</b></td><td class="desc">Document Object Model — the live tree the browser builds from HTML</td></tr>
+    <tr><td class="cmd"><b>Element / tag / attribute</b></td><td class="desc">the thing / its delimiters / its <code>name="value"</code> settings</td></tr>
+    <tr><td class="cmd"><b>Void element</b></td><td class="desc">no content, no closing tag (<code>br img input meta</code>)</td></tr>
+    <tr><td class="cmd"><b>Semantic tag</b></td><td class="desc">name carries meaning (<code>nav article</code>) vs generic <code>div</code>/<code>span</code></td></tr>
+    <tr><td class="cmd"><b>Entity</b></td><td class="desc"><code>&amp;name;</code> escape for parse-sensitive characters</td></tr>
+    <tr><td class="cmd"><b>Block vs inline</b></td><td class="desc">full-width new-line elements vs in-text-flow elements</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Your_first_website/Creating_the_content">MDN: HTML basics</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element">MDN: elements reference</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Structuring_content/Structuring_documents">MDN: document structure</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Your_first_form">MDN: your first form</a> ·
+  <a href="https://developer.chrome.com/docs/devtools/dom">Chrome DevTools: Elements panel</a> ·
+  <a href="https://html.spec.whatwg.org/multipage/">HTML Living Standard</a>
+</p>
+
+</div>
+</body>
+</html>

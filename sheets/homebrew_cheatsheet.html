@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homebrew Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Homebrew Cheat Sheet</h1>
+<p class="sub">macOS package manager: install · upgrade · maintain · started 2026-06-06 · twin of <code>Tools/homebrew_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Homebrew</b> = the open-source <b>package manager</b> for macOS (Max Howell, 2009). A package manager installs, upgrades, and removes other software for you — resolving dependencies and tracking versions. Linux ships with one (<code>apt</code>, <code>dnf</code>…); macOS doesn't, so the community built Homebrew. The name = "home-brewed" software, and the whole vocabulary extends the beer-brewing pun.
+</div>
+<div class="callout">
+  <b>A brewery for software</b> — decode the metaphor once, the commands explain themselves:
+  <pre><code>tap          →   formula / cask   →   bottle or build   →   keg, in the Cellar
+(a repo of       (a recipe for         (prebuilt binary       (the versioned
+ recipes)         one package)          or built from src)      installed copy)</code></pre>
+  <table>
+    <tr><td class="cmd"><b>brew</b></td><td class="desc">the command itself — "brew up" some software</td></tr>
+    <tr><td class="cmd"><b>formula</b> (pl. formulae)</td><td class="desc">a brewer's recipe → script describing how to download + build one CLI package</td></tr>
+    <tr><td class="cmd"><b>cask</b></td><td class="desc">barrel of finished drink → recipe for a prebuilt <b>GUI app</b> (Chrome, VS Code…) — arrives finished, no building</td></tr>
+    <tr><td class="cmd"><b>Cellar</b></td><td class="desc">where barrels are stored → the install directory (<code>/opt/homebrew/Cellar</code> on Apple Silicon)</td></tr>
+    <tr><td class="cmd"><b>keg</b></td><td class="desc">one barrel → one installed <i>version</i> of one formula, e.g. <code>Cellar/python/3.13.1/</code></td></tr>
+    <tr><td class="cmd"><b>tap</b></td><td class="desc">tap a keg to pour from it → add a third-party repo of recipes</td></tr>
+    <tr><td class="cmd"><b>bottle</b></td><td class="desc">beer bottled for distribution → <b>prebuilt binary</b>; brew "pours" it instead of compiling — why installs take seconds</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Command grammar:</b> <code>brew &lt;verb&gt; [options] [package]</code> — same Unix flag convention as Git (short <code>-n</code>, long <code>--cask</code>). Manual: <code>brew help &lt;verb&gt;</code>.
+  <b>Why Cellar + symlinks?</b> Each keg lives in its own versioned folder; executables are <b>symlinked</b> (filesystem shortcuts) into <code>/opt/homebrew/bin</code>. Clean upgrades, easy rollbacks.
+</div>
+
+<!-- ============ INSTALL BREW ============ -->
+<h2>1 · Installing Homebrew itself</h2>
+<p class="lead">One command from <a href="https://brew.sh">brew.sh</a> — fetches and runs the installer via <code>curl</code> (the standard CLI URL-fetcher). It asks for your password once, then tells you how to add <code>brew</code> to PATH — <b>read that final output</b>.</p>
+<pre><code>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</code></pre>
+<div class="grid">
+  <div class="card">
+    <h3>Apple Silicon note (M1–M4)</h3>
+    <p class="lead">On Apple Silicon, Homebrew lives in <code>/opt/homebrew</code>. Older Intel Macs used <code>/usr/local</code> — translate when old tutorials hard-code it. Check yours: <code>brew --prefix</code>.</p>
+  </div>
+  <div class="card">
+    <h3>PATH — how the shell finds brew</h3>
+    <p class="lead"><b>PATH</b> = environment variable listing directories the shell searches for commands. The installer appends this to <code>~/.zprofile</code>:</p>
+    <pre><code>eval "$(/opt/homebrew/bin/brew shellenv)"</code></pre>
+    <p class="lead">"command not found"? That line is missing. Debug with <code>echo $PATH</code> and <code>which brew</code>.</p>
+  </div>
+</div>
+
+<!-- ============ EVERYDAY VERBS ============ -->
+<h2>2 · Everyday verbs</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Find &amp; inspect</h3>
+    <table>
+      <tr><td class="cmd"><code>brew search python</code></td><td class="desc">search formulae + casks by name</td></tr>
+      <tr><td class="cmd"><code>brew info python</code></td><td class="desc">description, version, deps, install state</td></tr>
+      <tr><td class="cmd"><code>brew list</code></td><td class="desc">everything installed (<code>--cask</code> for casks)</td></tr>
+      <tr><td class="cmd"><code>brew outdated</code></td><td class="desc">installed packages with newer versions available</td></tr>
+      <tr><td class="cmd"><code>brew deps --tree python</code></td><td class="desc">dependency tree of a formula</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Install &amp; remove</h3>
+    <table>
+      <tr><td class="cmd"><code>brew install python</code></td><td class="desc">pour a bottle into the Cellar + symlink</td></tr>
+      <tr><td class="cmd"><code>brew uninstall python</code></td><td class="desc">remove the keg and its symlinks</td></tr>
+      <tr><td class="cmd"><code>brew list --versions python</code></td><td class="desc">which version(s) of one formula you have</td></tr>
+      <tr><td class="cmd"><code>brew pin python</code></td><td class="desc">protect from blanket <code>brew upgrade</code> (<code>unpin</code> releases)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ UPDATE VS UPGRADE ============ -->
+<h2>3 · update vs upgrade — the classic confusion</h2>
+<div class="callout warn">
+  <b>Not synonyms.</b> <code>brew update</code> refreshes <b>Homebrew's own metadata</b> — git-pulls the taps so brew <i>knows</i> the latest versions. Installs nothing. ("update the <b>catalog</b>") · <code>brew upgrade</code> actually installs the newer versions of your packages. ("upgrade the <b>goods</b>")
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>The ritual</h3>
+    <table>
+      <tr><td class="cmd"><code>brew update</code></td><td class="desc">refresh recipe books — learn what's new</td></tr>
+      <tr><td class="cmd"><code>brew upgrade</code></td><td class="desc">install newer versions of everything outdated</td></tr>
+      <tr><td class="cmd"><code>brew upgrade python</code></td><td class="desc">upgrade just one package</td></tr>
+      <tr><td class="cmd"><code>brew update &amp;&amp; brew upgrade</code></td><td class="desc">typical maintenance one-liner</td></tr>
+    </table>
+    <p class="lead">Modern brew auto-runs <code>update</code> before installs — but the distinction saves you from "why didn't update update my packages?"</p>
+  </div>
+  <div class="card">
+    <h3>Casks — GUI apps via CLI</h3>
+    <p class="lead">A <b>cask</b> installs a regular macOS GUI app into <code>/Applications</code> — no website, no .dmg, no dragging.</p>
+    <table>
+      <tr><td class="cmd"><code>brew install --cask firefox</code></td><td class="desc">install a GUI app</td></tr>
+      <tr><td class="cmd"><code>brew uninstall --cask firefox</code></td><td class="desc">remove it</td></tr>
+      <tr><td class="cmd"><code>brew upgrade --cask</code></td><td class="desc">upgrade all version-reporting casks</td></tr>
+      <tr><td class="cmd"><code>brew list --cask</code></td><td class="desc">list installed casks</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ MAINTENANCE ============ -->
+<h2>4 · Maintenance — doctor, cleanup, autoremove</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Health &amp; disk space</h3>
+    <table>
+      <tr><td class="cmd"><code>brew doctor</code></td><td class="desc">diagnose problems (broken symlinks, PATH, stale taps) — "ready to brew" = all clear</td></tr>
+      <tr><td class="cmd"><code>brew cleanup</code></td><td class="desc">delete superseded kegs + stale download cache</td></tr>
+      <tr><td class="cmd"><code>brew cleanup -n</code></td><td class="desc">dry run (<code>-n</code>): show what would go, delete nothing</td></tr>
+      <tr><td class="cmd"><code>brew autoremove</code></td><td class="desc">remove orphaned dependencies no longer needed</td></tr>
+      <tr><td class="cmd"><code>brew --prefix</code></td><td class="desc">print install root (<code>/opt/homebrew</code> on Apple Silicon)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>brew services — background daemons</h3>
+    <p class="lead"><b>Daemon</b> = a long-running background program (e.g. a database server). macOS manages them via <b>launchd</b>; <code>brew services</code> is a friendly wrapper.</p>
+    <table>
+      <tr><td class="cmd"><code>brew services list</code></td><td class="desc">all brew services + status</td></tr>
+      <tr><td class="cmd"><code>brew services start postgresql</code></td><td class="desc">start now <b>and</b> auto-start at login</td></tr>
+      <tr><td class="cmd"><code>brew services run postgresql</code></td><td class="desc">start now only — no auto-start</td></tr>
+      <tr><td class="cmd"><code>brew services stop postgresql</code></td><td class="desc">stop + unregister from login</td></tr>
+      <tr><td class="cmd"><code>brew services restart postgresql</code></td><td class="desc">stop + start (after config change)</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Full teardown</b> — beyond <code>uninstall</code>/<code>cleanup</code>/<code>autoremove</code>: <code>brew uninstall --zap firefox</code> removes a cask <b>plus</b> its app data (prefs, caches, support files — the cask's <code>zap</code> stanza; regular uninstall leaves those behind) · <code>brew untap user/tap</code> removes a third-party tap (§5) · to remove <b>Homebrew itself</b>, run the official uninstall script — mirror of the install one-liner (§1): <code>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"</code> (it lists any leftover files for manual deletion).
+</div>
+
+<!-- ============ TAPS ============ -->
+<h2>5 · Taps — third-party recipe repositories</h2>
+<p class="lead">Default taps: <code>homebrew/core</code> (formulae) and <code>homebrew/cask</code> (casks). A <b>tap</b> adds a third-party GitHub repo of extra recipes.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Tap commands</h3>
+    <table>
+      <tr><td class="cmd"><code>brew tap</code></td><td class="desc">list taps currently added</td></tr>
+      <tr><td class="cmd"><code>brew tap hashicorp/tap</code></td><td class="desc">add a tap — shorthand for <code>github.com/hashicorp/homebrew-tap</code></td></tr>
+      <tr><td class="cmd"><code>brew install hashicorp/tap/terraform</code></td><td class="desc">install from a specific tap (<code>user/tap/formula</code>)</td></tr>
+      <tr><td class="cmd"><code>brew untap hashicorp/tap</code></td><td class="desc">remove a tap</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>⚠ Trust</h3>
+    <p class="lead">Taps are just git repos of formula scripts — and a formula <b>runs code on your machine</b>. Only tap sources you'd trust as much as any software vendor.</p>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>6 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Homebrew</b></td><td class="desc">package manager for macOS (Max Howell, 2009); command is <code>brew</code></td></tr>
+    <tr><td class="cmd"><b>Package manager</b></td><td class="desc">software that installs/upgrades/removes other software, handling deps + versions</td></tr>
+    <tr><td class="cmd"><b>Formula</b></td><td class="desc">recipe (script) for building/installing one CLI package</td></tr>
+    <tr><td class="cmd"><b>Cask</b></td><td class="desc">recipe for installing a prebuilt GUI app into <code>/Applications</code></td></tr>
+    <tr><td class="cmd"><b>Cellar</b></td><td class="desc">install directory holding all kegs (<code>/opt/homebrew/Cellar</code>)</td></tr>
+    <tr><td class="cmd"><b>Keg</b></td><td class="desc">one installed version of one formula, in its own Cellar folder</td></tr>
+    <tr><td class="cmd"><b>Tap</b></td><td class="desc">third-party git repository of formulae/casks</td></tr>
+    <tr><td class="cmd"><b>Bottle</b></td><td class="desc">prebuilt binary; "pouring" it skips compiling</td></tr>
+    <tr><td class="cmd"><b>PATH</b></td><td class="desc">env variable listing directories the shell searches for commands</td></tr>
+    <tr><td class="cmd"><b>Symlink</b></td><td class="desc">symbolic link — a filesystem pointer from one path to another</td></tr>
+    <tr><td class="cmd"><b>Daemon</b></td><td class="desc">long-running background program; managed on macOS by launchd</td></tr>
+    <tr><td class="cmd"><b>update vs upgrade</b></td><td class="desc">refresh the catalog vs. install the newer goods</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://brew.sh">brew.sh</a> ·
+  <a href="https://docs.brew.sh">Homebrew documentation</a> ·
+  <a href="https://docs.brew.sh/Manpage">brew manpage</a> ·
+  <a href="https://github.com/Homebrew/brew">Homebrew on GitHub</a> ·
+  <a href="https://formulae.brew.sh">Formulae index</a>
+</p>
+
+</div>
+</body>
+</html>

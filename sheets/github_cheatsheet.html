@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub / Remotes Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GitHub&nbsp;/&nbsp;Remotes Cheat Sheet</h1>
+<p class="sub">clone · remote · push · pull · fetch · PRs · started 2026-06-05 · twin of <code>Tools/github_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL ============ -->
+<h2>0 · Git vs. GitHub + the mental model</h2>
+<div class="callout good">
+  <b>Git</b> = the version-control tool on your computer (see git cheat sheet). <b>GitHub</b> = a website/hosting service (owned by Microsoft) that stores Git repos in the cloud for sharing. GitLab &amp; Bitbucket are competitors. Git works offline; GitHub is just a copy others can reach. <b>Remote</b> = a named bookmark to a hosted copy; the default is called <code>origin</code>.
+</div>
+<div class="callout">
+  <b>local ⇄ remote</b>
+  <pre><code>  GitHub (remote "origin")          Your machine (local)
+  ┌────────────────────┐           ┌─────────────────────────┐
+  │  remote repository │           │ local repo │ working tree│
+  └────────────────────┘           └─────────────────────────┘
+          ▲   │                          ▲          │
+   push   │   │  fetch / pull            │          │ add / commit
+          │   ▼                          │          ▼  edits</code></pre>
+  <span class="pill">push = upload your commits</span>
+  <span class="pill">fetch = download, don't merge</span>
+  <span class="pill">pull = fetch + merge</span>
+  <span class="pill">clone = fresh local copy</span>
+  <br><b>Memory hook:</b> push work <i>up</i> to share; pull others' work <i>down</i> to catch up. <code>fetch</code> is the cautious cousin of <code>pull</code>.
+</div>
+<div class="callout good">
+  <b>Grammar:</b> <code>git &lt;verb&gt; [remote] [branch] [--flags]</code> — e.g. <code>git push origin main</code> = "push to remote <code>origin</code>, branch <code>main</code>."
+</div>
+<div class="callout warn">
+  <b>SSH vs. HTTPS</b> — two ways to authenticate to GitHub. <b>HTTPS</b> (<code>https://github.com/user/repo.git</code>) uses a <b>PAT</b> (Personal Access Token — a random string replacing your password; plain passwords disabled 2021). <b>SSH</b> (<code>git@github.com:user/repo.git</code>) uses an SSH (Secure Shell) key pair you generate once — no prompts after setup, preferred long-term.
+</div>
+
+<!-- ============ CLONE ============ -->
+<h2>1 · git clone — copy a remote to your machine</h2>
+<p class="lead">Makes a full local copy (files + entire history) and auto-sets a remote <code>origin</code> pointing back.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Clone</h3>
+    <table>
+      <tr><td class="cmd"><code>git clone &lt;url&gt;</code></td><td class="desc">copy into a folder named after the repo</td></tr>
+      <tr><td class="cmd"><code>git clone &lt;url&gt; myfolder</code></td><td class="desc">clone into a folder you name</td></tr>
+      <tr><td class="cmd"><code>git clone --depth 1 &lt;url&gt;</code></td><td class="desc">shallow: latest snapshot only (faster)</td></tr>
+    </table>
+    <pre><code>git clone https://github.com/yourname/yourrepo.git</code></pre>
+  </div>
+  <div class="card">
+    <h3>git remote — manage bookmarks</h3>
+    <table>
+      <tr><td class="cmd"><code>git remote -v</code></td><td class="desc">list remotes + URLs (<code>-v</code> = verbose)</td></tr>
+      <tr><td class="cmd"><code>git remote add origin &lt;url&gt;</code></td><td class="desc">link a local repo to GitHub</td></tr>
+      <tr><td class="cmd"><code>git remote set-url origin &lt;url&gt;</code></td><td class="desc">change URL (e.g. HTTPS → SSH)</td></tr>
+      <tr><td class="cmd"><code>git remote remove origin</code></td><td class="desc">unlink a remote</td></tr>
+    </table>
+  </div>
+</div>
+<p class="lead">First push of a brand-new local repo:</p>
+<pre><code>git remote add origin git@github.com:yourname/yourrepo.git
+git push -u origin main</code></pre>
+
+<!-- ============ PUSH ============ -->
+<h2>2 · git push — upload your commits</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Push</h3>
+    <table>
+      <tr><td class="cmd"><code>git push</code></td><td class="desc">push current branch to its upstream</td></tr>
+      <tr><td class="cmd"><code>git push -u origin main</code></td><td class="desc">push + set upstream (<code>-u</code>); do once per new branch</td></tr>
+      <tr><td class="cmd"><code>git push origin &lt;branch&gt;</code></td><td class="desc">push a specific branch</td></tr>
+      <tr><td class="cmd"><code>git push --force-with-lease</code></td><td class="desc">safe force: refuses if remote moved (prefer over <code>--force</code>)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>What's "upstream"?</h3>
+    <p class="lead"><b>Upstream</b> = the specific remote branch your local branch tracks. <code>-u</code> wires it up so bare <code>push</code>/<code>pull</code> know where to go, and <code>git status</code> can say "ahead 2 / behind 1".</p>
+  </div>
+</div>
+
+<!-- ============ FETCH VS PULL ============ -->
+<h2>3 · git fetch vs. git pull — getting others' work</h2>
+<div class="callout">The pair most worth understanding precisely. <b>fetch</b> downloads but never touches your files; <b>pull</b> downloads <i>and</i> integrates.</div>
+<div class="grid">
+  <div class="card">
+    <h3>Commands</h3>
+    <table>
+      <tr><td class="cmd"><code>git fetch</code></td><td class="desc">download into <code>origin/*</code> — files unchanged, nothing merged. Safe anytime.</td></tr>
+      <tr><td class="cmd"><code>git fetch --prune</code></td><td class="desc">also drop refs to branches deleted on GitHub</td></tr>
+      <tr><td class="cmd"><code>git pull</code></td><td class="desc">fetch <b>then</b> merge into current branch</td></tr>
+      <tr><td class="cmd"><code>git pull --rebase</code></td><td class="desc">fetch, then replay your commits on top → linear history</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Good habit + rebase note</h3>
+    <p class="lead"><b>Habit:</b> <code>git fetch</code> first, inspect with <code>git log origin/main</code>, then merge — avoids surprise merges from a blind <code>pull</code>.</p>
+    <p class="lead"><b>Rebase</b> = move your commits to start from a different base, replaying them one by one → tidy straight-line history vs. <code>merge</code>'s graph. Rule: rebase local/unshared work; merge anything already public.</p>
+  </div>
+</div>
+
+<!-- ============ BRANCH + PR ============ -->
+<h2>4 · Branch + Pull Request flow</h2>
+<div class="callout good">
+  <b>Branch</b> = a movable pointer to a line of development — work on a feature without disturbing <code>main</code>. <b>Pull Request (PR)</b> = GitHub's web feature to propose merging one branch into another (diff + review + checks bundled). GitLab calls it a <i>Merge Request</i>. You're <i>requesting</i> the maintainer <i>pull</i> your branch in. <b>CI</b> (Continuous Integration) = automated tests/builds run on each push/PR (e.g. GitHub Actions).
+</div>
+<pre><code>git switch -c feature-login      # 1. create + switch to a new branch (-c = create)
+#   ... edit files, git add, git commit ...
+git push -u origin feature-login # 2. publish the branch to GitHub
+#   3. on github.com: "Compare &amp; pull request", describe, open the PR
+#   4. teammates review; CI runs; you push fixes (they auto-update the PR)
+#   5. click "Merge pull request" once approved
+git switch main                  # 6. back to main locally
+git pull                         # 7. bring the merged work down
+git branch -d feature-login      # 8. delete the merged local branch (-d = delete)</code></pre>
+<div class="card">
+  <h3>Branch commands</h3>
+  <table>
+    <tr><td class="cmd"><code>git branch</code></td><td class="desc">list local branches (<code>*</code> = current)</td></tr>
+    <tr><td class="cmd"><code>git switch &lt;branch&gt;</code></td><td class="desc">move to existing branch (older: <code>git checkout</code>)</td></tr>
+    <tr><td class="cmd"><code>git switch -c &lt;branch&gt;</code></td><td class="desc">create + switch</td></tr>
+    <tr><td class="cmd"><code>git merge &lt;branch&gt;</code></td><td class="desc">merge another branch into current</td></tr>
+    <tr><td class="cmd"><code>git branch -d &lt;branch&gt;</code></td><td class="desc">delete a fully-merged branch</td></tr>
+  </table>
+</div>
+
+<!-- ============ FORK + GH CLI ============ -->
+<h2>5 · Fork vs. clone · the gh CLI</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Fork vs. clone (open source)</h3>
+    <p class="lead"><b>Clone</b> = local copy of a repo you can usually write to. <b>Fork</b> = a GitHub-side copy of <i>someone else's</i> repo under <i>your</i> account, so you can push freely then PR back.</p>
+    <p class="lead">Flow: Fork on GitHub → clone your fork → branch → push → PR to upstream. Keep current with a second remote:</p>
+    <pre><code>git remote add upstream &lt;original-url&gt;
+git fetch upstream
+git merge upstream/main</code></pre>
+  </div>
+  <div class="card">
+    <h3>gh — GitHub's CLI (optional)</h3>
+    <p class="lead">Official command-line tool for GitHub-web actions (separate from <code>git</code>).</p>
+    <table>
+      <tr><td class="cmd"><code>gh auth login</code></td><td class="desc">authenticate the CLI (one-time)</td></tr>
+      <tr><td class="cmd"><code>gh repo clone user/repo</code></td><td class="desc">clone by shorthand</td></tr>
+      <tr><td class="cmd"><code>gh repo create</code></td><td class="desc">make a new GitHub repo</td></tr>
+      <tr><td class="cmd"><code>gh pr create</code></td><td class="desc">open a PR from the shell</td></tr>
+      <tr><td class="cmd"><code>gh pr status</code></td><td class="desc">PRs relevant to you</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>6 · Teardown — disconnecting &amp; cleaning up</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Repo-side</h3>
+    <table>
+      <tr><td class="cmd"><code>git remote remove origin</code></td><td class="desc">unlink local repo from GitHub — nothing deleted on either side</td></tr>
+      <tr><td class="cmd"><code>git push origin --delete mybranch</code></td><td class="desc">delete a branch on GitHub (local copy survives; <code>git branch -d</code> for that)</td></tr>
+      <tr><td class="cmd"><code>git fetch --prune</code></td><td class="desc">drop stale local <code>origin/*</code> refs to deleted branches</td></tr>
+      <tr><td class="cmd"><code>gh repo delete user/repo</code></td><td class="desc">delete a whole repo from the CLI (confirms; needs <code>delete_repo</code> scope). Web: Settings → Danger Zone</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Site &amp; credentials</h3>
+    <table>
+      <tr><td class="cmd">Settings → Pages → <b>Unpublish site</b></td><td class="desc">take a Pages site offline without deleting the repo (deleting the repo also kills the site)</td></tr>
+      <tr><td class="cmd">Settings → Developer settings → Tokens / SSH keys</td><td class="desc">revoke a PAT or remove an SSH key — that credential's access dies instantly</td></tr>
+      <tr><td class="cmd"><code>gh auth logout</code></td><td class="desc">sign the <code>gh</code> CLI out (removes its stored token; <code>git</code> unaffected)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>7 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>GitHub</b></td><td class="desc">cloud host for Git repos (≠ Git)</td></tr>
+    <tr><td class="cmd"><b>Remote / origin</b></td><td class="desc">named pointer to a hosted copy</td></tr>
+    <tr><td class="cmd"><b>clone</b></td><td class="desc">full local copy, <code>origin</code> preset</td></tr>
+    <tr><td class="cmd"><b>push / fetch / pull</b></td><td class="desc">upload / download-only / download+merge</td></tr>
+    <tr><td class="cmd"><b>upstream</b></td><td class="desc">the remote branch a local branch tracks</td></tr>
+    <tr><td class="cmd"><b>branch</b></td><td class="desc">an independent line of development</td></tr>
+    <tr><td class="cmd"><b>Pull Request (PR)</b></td><td class="desc">GitHub proposal to merge branches</td></tr>
+    <tr><td class="cmd"><b>fork</b></td><td class="desc">your GitHub copy of another's repo</td></tr>
+    <tr><td class="cmd"><b>rebase</b></td><td class="desc">replay commits onto a new base</td></tr>
+    <tr><td class="cmd"><b>SSH / HTTPS / PAT</b></td><td class="desc">auth protocols &amp; token for GitHub</td></tr>
+    <tr><td class="cmd"><b>CI</b></td><td class="desc">Continuous Integration (auto checks)</td></tr>
+    <tr><td class="cmd"><b>gh</b></td><td class="desc">GitHub's official CLI</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://docs.github.com/en/get-started">GitHub Docs</a> ·
+  <a href="https://docs.github.com/en/get-started/using-github/github-flow">GitHub flow</a> ·
+  <a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests">About pull requests</a> ·
+  <a href="https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes">Pro Git — Remotes</a> ·
+  <a href="https://cli.github.com/manual/">gh CLI manual</a>
+</p>
+
+</div>
+</body>
+</html>

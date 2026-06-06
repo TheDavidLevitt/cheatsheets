@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 16px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:0;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  h3.inner{font-size:14px;color:var(--ink);margin:18px 0 8px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td,th{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;text-align:left;}
+  th{color:var(--accent2);font-size:12.5px;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:44%;}
+  td.desc{width:56%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-2px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+
+  /* ---- click-through navigation ---- */
+  nav.toc{position:sticky;top:0;z-index:10;background:rgba(15,17,23,.96);backdrop-filter:blur(4px);
+    border-bottom:1px solid var(--border);margin:0 -18px 18px;padding:8px 18px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  nav.toc a{font-size:12.5px;color:var(--muted);text-decoration:none;border:1px solid var(--border);
+    border-radius:6px;padding:3px 9px;background:var(--card);}
+  nav.toc a:hover{color:var(--ink);border-color:var(--accent);}
+  nav.toc button{font-size:12px;color:var(--accent);background:none;border:1px solid var(--border);
+    border-radius:6px;padding:3px 9px;cursor:pointer;margin-left:auto;}
+  nav.toc button:hover{border-color:var(--accent);}
+  nav.toc button + button{margin-left:0;}
+
+  /* ---- collapsible sections ---- */
+  details.sec{margin:14px 0;border:1px solid var(--border);border-radius:10px;background:transparent;}
+  details.sec > summary{list-style:none;cursor:pointer;padding:10px 14px;}
+  details.sec > summary::-webkit-details-marker{display:none;}
+  details.sec > summary h2{display:inline-block;border-bottom:none;padding-bottom:0;}
+  details.sec > summary::before{content:"▸";color:var(--accent);margin-right:8px;font-size:14px;}
+  details.sec[open] > summary::before{content:"▾";}
+  details.sec > .body{padding:0 14px 14px;}
+  details.sec > summary .hint{color:var(--muted);font-size:12px;margin-left:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Python Cheat Sheet</h1>
+<p class="sub">Syntax · types · functions · libraries · gotchas · started 2026-06-06 · twin of <code>Tools/python_cheatsheet.md</code> · narrative deep-dives in <code>Tools/python_wiki.md</code></p>
+
+<nav class="toc">
+  <a href="#syntax">1 Syntax</a>
+  <a href="#types">2 Types</a>
+  <a href="#functions">3 Functions</a>
+  <a href="#classes">4 Classes</a>
+  <a href="#errors">5 Errors</a>
+  <a href="#files">6 Files</a>
+  <a href="#libs">7 Libraries</a>
+  <a href="#gotchas">8 Gotchas</a>
+  <a href="#teardown">9 Teardown</a>
+  <a href="#glossary">Glossary</a>
+  <button id="expandAll" type="button">expand all</button>
+  <button id="collapseAll" type="button">collapse all</button>
+</nav>
+
+<div class="callout good">
+  <b>Python</b> = high-level, interpreted, dynamically-typed language (Guido van Rossum, 1991; named after <i>Monty Python</i>, not the snake). <b>Interpreted</b> = executed line-by-line, no compile step you manage. <b>Dynamically typed</b> = types checked at runtime; a name can be re-bound to any type. <b>Mental model:</b> everything is an <b>object</b>; every variable is a <b>name bound to an object</b> — a label on a box, not the box. Most gotchas (§8) fall out of that.
+</div>
+
+<!-- ============ 1 SYNTAX ============ -->
+<details class="sec" id="syntax" open>
+<summary><h2>1 · Syntax essentials</h2><span class="hint">indentation · f-strings · if · loops · comprehensions · slicing</span></summary>
+<div class="body">
+
+<div class="callout">
+  <b>Indentation IS the syntax.</b> Blocks are marked by leading whitespace, not braces; a colon <code>:</code> announces "indented block follows." Standard = 4 spaces (<a href="https://peps.python.org/pep-0008/">PEP 8</a>). Other grammar: <b>indexing starts at 0</b> · underscores in numbers ignored (<code>1_000_000</code>) · case-sensitive names · no semicolons · <code>round()</code> uses <b>banker's rounding</b> (ties → even digit: <code>round(2.5)</code> → 2).
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Comments &amp; docstrings</h3>
+    <pre><code># comment — stripped at parse time
+
+def f():
+    """Docstring: 1st statement of a
+    function/class/module. Lives at
+    runtime as f.__doc__ (help, IDEs)."""</code></pre>
+  </div>
+  <div class="card">
+    <h3>f-strings (3.6+) — <code>f"..."</code> makes <code>{}</code> an expression slot</h3>
+    <table>
+      <tr><td class="cmd"><code>f"Hello {name}"</code></td><td class="desc">any expression inside <code>{}</code></td></tr>
+      <tr><td class="cmd"><code>f"{x=}"</code></td><td class="desc">debug form → <code>x=42</code> (3.8+)</td></tr>
+      <tr><td class="cmd"><code>f"{3.14159:.2f}"</code></td><td class="desc">format spec after colon → <code>3.14</code></td></tr>
+      <tr><td class="cmd"><code>f"{1234567:,}"</code> / <code>f"{0.85:.1%}"</code></td><td class="desc">thousands sep · percent</td></tr>
+      <tr><td class="cmd"><code>f"{{literal}}"</code></td><td class="desc">double braces = literal braces</td></tr>
+      <tr><td class="cmd"><code>r"raw\path"</code> · <code>b"bytes"</code></td><td class="desc">raw string (regex, paths) · bytes</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Conditionals</h3>
+    <pre><code>if score >= 90:   grade = "A"
+elif score >= 80: grade = "B"   # else-if
+else:             grade = "C"
+
+# ternary — inline if that RETURNS a value:
+status = "adult" if age >= 18 else "minor"</code></pre>
+    <p class="lead">Operators: <code>== != &lt; &lt;= &gt; &gt;=</code> + the words <code>and or not</code>. Chaining works: <code>0 &lt;= x &lt; 10</code>. <b>Truthiness:</b> falsy = <code>False None 0 0.0 "" [] {} set()</code>; so <code>if my_list:</code> = "if non-empty".</p>
+  </div>
+  <div class="card">
+    <h3>Loops</h3>
+    <pre><code>for item in items: ...          # any iterable
+for i in range(5): ...          # 0..4 (stop excluded)
+for i, x in enumerate(items): . # index + value
+for a, b in zip(xs, ys): ...    # lockstep pairs
+while balance > 0: ...          # repeat while true</code></pre>
+    <p class="lead"><code>break</code> = exit loop · <code>continue</code> = next iteration · <code>pass</code> = placeholder no-op. <code>zip</code> stops at the shortest input — <code>strict=True</code> (3.10+) to raise instead.</p>
+  </div>
+  <div class="card">
+    <h3>Comprehensions — build a collection in one line</h3>
+    <table>
+      <tr><td class="cmd"><code>[x**2 for x in range(10)]</code></td><td class="desc">list</td></tr>
+      <tr><td class="cmd"><code>[x for x in nums if x % 2 == 0]</code></td><td class="desc">list + filter (the <code>if</code> is optional)</td></tr>
+      <tr><td class="cmd"><code>{k: len(k) for k in words}</code></td><td class="desc">dict</td></tr>
+      <tr><td class="cmd"><code>{x % 3 for x in nums}</code></td><td class="desc">set (uniques)</td></tr>
+      <tr><td class="cmd"><code>(x**2 for x in nums)</code></td><td class="desc">generator — lazy, computed on demand</td></tr>
+    </table>
+    <p class="lead">Read: "a list of <i>expr</i> for each <i>item</i> in <i>iterable</i> where <i>cond</i> holds."</p>
+  </div>
+  <div class="card">
+    <h3>Slicing — <code>seq[start:stop:step]</code></h3>
+    <p class="lead"><b>start included, stop excluded</b> — the #1 surprise. Negative = from the end. On <code>s = "Python"</code>:</p>
+    <table>
+      <tr><td class="cmd"><code>s[0]</code> / <code>s[-1]</code></td><td class="desc"><code>'P'</code> / <code>'n'</code> (first / last)</td></tr>
+      <tr><td class="cmd"><code>s[0:2]</code></td><td class="desc"><code>'Py'</code> — indices 0,1</td></tr>
+      <tr><td class="cmd"><code>s[:3]</code> / <code>s[3:]</code></td><td class="desc"><code>'Pyt'</code> / <code>'hon'</code></td></tr>
+      <tr><td class="cmd"><code>s[::2]</code> / <code>s[::-1]</code></td><td class="desc">every 2nd · reversed</td></tr>
+      <tr><td class="cmd"><code>lst[:]</code></td><td class="desc">shallow copy idiom</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+</details>
+
+<!-- ============ 2 TYPES ============ -->
+<details class="sec" id="types">
+<summary><h2>2 · Variable types</h2><span class="hint">mutability master table · method tables · type() / isinstance · hints</span></summary>
+<div class="body">
+
+<div class="callout">
+  <b>Mutable</b> = changeable in place after creation. <b>Immutable</b> = not — "changing" it creates a new object. This single distinction drives the aliasing gotchas in §8.
+</div>
+
+<table>
+  <tr><th>Category</th><th>Type / class</th><th>Mutability</th><th>What it is</th><th>Example</th></tr>
+  <tr><td>Numeric</td><td>Integer <code>int</code></td><td>Immutable</td><td class="desc">whole numbers, any size</td><td><code>42</code>, <code>1_000_000</code></td></tr>
+  <tr><td>Numeric</td><td>Float <code>float</code></td><td>Immutable</td><td class="desc">decimal point (64-bit IEEE 754)</td><td><code>3.14</code></td></tr>
+  <tr><td>Numeric</td><td>Complex <code>complex</code></td><td>Immutable</td><td class="desc">real + imaginary part</td><td><code>1 + 2j</code></td></tr>
+  <tr><td>Sequence</td><td>String <code>str</code></td><td>Immutable</td><td class="desc">sequence of Unicode characters</td><td><code>"hello"</code></td></tr>
+  <tr><td>Sequence</td><td>List <code>list</code></td><td><b>Mutable</b></td><td class="desc">ordered, changeable, mixed types OK</td><td><code>[1, 'a', 3.14]</code></td></tr>
+  <tr><td>Sequence</td><td>Tuple <code>tuple</code></td><td>Immutable</td><td class="desc">ordered, unchangeable — a "locked" list</td><td><code>(1, 'a', 3.14)</code></td></tr>
+  <tr><td>Sequence</td><td>Range <code>range</code></td><td>Immutable</td><td class="desc">lazy number sequence, mostly for loops</td><td><code>range(5)</code></td></tr>
+  <tr><td>Mapping</td><td>Dictionary <code>dict</code></td><td><b>Mutable</b></td><td class="desc">unique key → value pairs; insertion-ordered (3.7+)</td><td><code>{'name': 'Alice'}</code></td></tr>
+  <tr><td>Set</td><td>Set <code>set</code></td><td><b>Mutable</b></td><td class="desc">unordered unique items; O(1) membership</td><td><code>{'a', 'b'}</code></td></tr>
+  <tr><td>Set</td><td>Frozen set <code>frozenset</code></td><td>Immutable</td><td class="desc">immutable set (usable as dict key)</td><td><code>frozenset({'a'})</code></td></tr>
+  <tr><td>Boolean</td><td>Boolean <code>bool</code></td><td>Immutable</td><td class="desc"><code>True</code>/<code>False</code> — a subclass of int!</td><td><code>True</code></td></tr>
+  <tr><td>None</td><td><code>NoneType</code></td><td>Immutable</td><td class="desc">the "no value" singleton — test with <code>x is None</code></td><td><code>None</code></td></tr>
+</table>
+
+<div class="callout good">
+  <b>Choosing a container:</b> grows/changes &amp; ordered → <code>list</code> · fixed record like <code>(lat, lon)</code> → <code>tuple</code> (hashable, safe to share) · lookup by key → <code>dict</code> (O(1) — <i>the</i> Python structure) · dedupe / membership tests → <code>set</code>.
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>str methods — all return NEW strings (immutable)</h3>
+    <table>
+      <tr><td class="cmd"><code>s.upper() / s.lower()</code></td><td class="desc">case</td></tr>
+      <tr><td class="cmd"><code>s.strip()</code></td><td class="desc">trim whitespace (<code>lstrip</code>/<code>rstrip</code>)</td></tr>
+      <tr><td class="cmd"><code>s.split(",")</code></td><td class="desc">string → list</td></tr>
+      <tr><td class="cmd"><code>", ".join(items)</code></td><td class="desc">list → string (called on the <i>separator</i>)</td></tr>
+      <tr><td class="cmd"><code>s.replace(old, new)</code></td><td class="desc">substitute all</td></tr>
+      <tr><td class="cmd"><code>s.startswith(p) / s.endswith(p)</code></td><td class="desc">boolean tests</td></tr>
+      <tr><td class="cmd"><code>s.find(sub)</code></td><td class="desc">index or −1 (<code>s.index</code> raises)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>list methods — mutate in place, mostly return <code>None</code></h3>
+    <table>
+      <tr><td class="cmd"><code>lst.append(x)</code></td><td class="desc">add one to the end</td></tr>
+      <tr><td class="cmd"><code>lst.extend(other)</code></td><td class="desc">append each item of an iterable</td></tr>
+      <tr><td class="cmd"><code>lst.insert(i, x)</code></td><td class="desc">insert at position i</td></tr>
+      <tr><td class="cmd"><code>lst.pop() / lst.pop(i)</code></td><td class="desc">remove &amp; return last / i-th</td></tr>
+      <tr><td class="cmd"><code>lst.remove(x)</code></td><td class="desc">remove first occurrence by value</td></tr>
+      <tr><td class="cmd"><code>lst.sort()</code> vs <code>sorted(lst)</code></td><td class="desc">in place (returns None!) vs new list</td></tr>
+      <tr><td class="cmd"><code>lst.count(x) / lst.index(x)</code></td><td class="desc">occurrences / first position</td></tr>
+      <tr><td class="cmd"><code>lst.copy()</code></td><td class="desc">shallow copy — see §8</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>dict methods</h3>
+    <table>
+      <tr><td class="cmd"><code>d[key]</code></td><td class="desc">get — raises <code>KeyError</code> if missing</td></tr>
+      <tr><td class="cmd"><code>d.get(key, default)</code></td><td class="desc">get — default (or None) if missing</td></tr>
+      <tr><td class="cmd"><code>d[key] = v</code></td><td class="desc">set / overwrite</td></tr>
+      <tr><td class="cmd"><code>for k, v in d.items():</code></td><td class="desc">iterate pairs (<code>.keys()</code> / <code>.values()</code>)</td></tr>
+      <tr><td class="cmd"><code>d.pop(key)</code></td><td class="desc">remove key, return value</td></tr>
+      <tr><td class="cmd"><code>d.update(other)</code> / <code>d1 | d2</code></td><td class="desc">merge in / merged copy (3.9+, right wins)</td></tr>
+      <tr><td class="cmd"><code>key in d</code></td><td class="desc">membership (on keys)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>set ops &amp; type checks</h3>
+    <table>
+      <tr><td class="cmd"><code>s.add(x) / s.discard(x)</code></td><td class="desc">insert / remove-if-present</td></tr>
+      <tr><td class="cmd"><code>a | b · a &amp; b · a - b · a ^ b</code></td><td class="desc">union · intersection · difference · symmetric diff</td></tr>
+      <tr><td class="cmd"><code>type(x)</code></td><td class="desc">exact class — inspection/debugging</td></tr>
+      <tr><td class="cmd"><code>isinstance(x, str)</code></td><td class="desc">"is x a str (or subclass)?" — preferred for branching</td></tr>
+      <tr><td class="cmd"><code>isinstance(x, (int, float))</code></td><td class="desc">any of several types</td></tr>
+      <tr><td class="cmd"><code>int("42") · str(99) · list("abc")</code></td><td class="desc">constructors convert</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="callout">
+  <b>Type hints</b> = optional annotations (<code>def greet(name: str, times: int = 1) -&gt; str</code>, <code>maybe: str | None</code>). Python <b>does not enforce them</b> — they feed editors, checkers (mypy/pyright), and Pydantic (which <i>does</i> validate at runtime — <code>python_wiki.md § Pydantic</code>).
+</div>
+</div>
+</details>
+
+<!-- ============ 3 FUNCTIONS ============ -->
+<details class="sec" id="functions">
+<summary><h2>3 · Functions</h2><span class="hint">def · defaults · *args/**kwargs · lambda · LEGB · decorators</span></summary>
+<div class="body">
+
+<div class="callout good">
+  <b>Function vs method:</b> a <b>function</b> (<code>len(obj)</code>) takes the object <i>into</i> it; a <b>method</b> (<code>obj.append(x)</code>) is called <i>on</i> the object and belongs to its class.
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>def · return · defaults</h3>
+    <pre><code>def power(base, exp=2):        # default arg
+    """Return base ** exp."""
+    return base ** exp          # no return → None
+
+power(3)              # 9
+power(exp=3, base=2)  # 8 — keyword args, any order</code></pre>
+  </div>
+  <div class="card">
+    <h3><code>*args</code> / <code>**kwargs</code> — collect &amp; unpack</h3>
+    <table>
+      <tr><td class="cmd"><code>def f(*args, **kwargs)</code></td><td class="desc">collect: extras → tuple / dict</td></tr>
+      <tr><td class="cmd"><code>f(*lst)</code> / <code>f(**d)</code></td><td class="desc">unpack: spread into positional / keyword args</td></tr>
+      <tr><td class="cmd"><code>power(**{"base":2,"exp":5})</code></td><td class="desc">→ 32 — dict keys become kwargs (tool-calling bridge)</td></tr>
+    </table>
+    <p class="lead">Mnemonic: dict = <i>two</i> infos per entry (key+value) → <i>double</i> asterisk. Full story: <code>python_wiki.md § Argument unpacking</code>.</p>
+  </div>
+  <div class="card">
+    <h3>lambda — anonymous one-expression function</h3>
+    <pre><code>add_one = lambda x: x + 1
+sorted(words, key=lambda w: len(w))   # the real use</code></pre>
+    <p class="lead">Etymology: Alonzo Church's <b>lambda calculus</b> (1930s formal logic of anonymous functions). Needs a name or a 2nd line? Use <code>def</code>.</p>
+  </div>
+  <div class="card">
+    <h3>Scope — LEGB &amp; decorators</h3>
+    <p class="lead"><b>LEGB</b> = name lookup order, innermost first: <b>L</b>ocal → <b>E</b>nclosing → <b>G</b>lobal → <b>B</b>uilt-in. Assignment in a function makes a <i>local</i> name unless <code>global</code>/<code>nonlocal</code> (usually a smell — pass in / return out).</p>
+    <p class="lead"><b>Decorator</b> = function that wraps a function; <code>@timer</code> above <code>def slow():</code> is sugar for <code>slow = timer(slow)</code>. Read <code>@app.route(...)</code>, <code>@server.tool()</code> as "register the function below."</p>
+  </div>
+  <div class="card">
+    <h3>Workhorse built-ins</h3>
+    <table>
+      <tr><td class="cmd"><code>len · sorted(it, key=, reverse=)</code></td><td class="desc">count · new sorted list</td></tr>
+      <tr><td class="cmd"><code>min · max · sum</code></td><td class="desc">aggregates</td></tr>
+      <tr><td class="cmd"><code>any(it) / all(it)</code></td><td class="desc">True if any / every element truthy</td></tr>
+      <tr><td class="cmd"><code>map(f, it) / filter(f, it)</code></td><td class="desc">lazy transform/filter (comprehensions usually read better)</td></tr>
+      <tr><td class="cmd"><code>next(iterator, default)</code></td><td class="desc">pull one — "first match" idiom</td></tr>
+      <tr><td class="cmd"><code>help(obj) / dir(obj)</code></td><td class="desc">docs / list attributes</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+</details>
+
+<!-- ============ 4 CLASSES ============ -->
+<details class="sec" id="classes">
+<summary><h2>4 · Classes (brief)</h2><span class="hint">blueprint · self · __init__ · dunders · inheritance</span></summary>
+<div class="body">
+
+<div class="callout">
+  <b>Class</b> = blueprint for creating objects; <b>instance</b> = one object built from it. Attributes = data on the object; methods = functions in the class — their first parameter <code>self</code> is the instance itself.
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Anatomy</h3>
+    <pre><code>class Dog:
+    species = "Canis familiaris"   # class attr (shared)
+
+    def __init__(self, name, age): # constructor
+        self.name = name           # instance attrs
+        self.age = age
+
+    def bark(self):
+        return f"{self.name} says woof"
+
+rex = Dog("Rex", 3)    # instantiation → __init__
+rex.bark()
+
+class Puppy(Dog):      # inheritance
+    def bark(self): return "yip!"   # override</code></pre>
+  </div>
+  <div class="card">
+    <h3>Dunder methods — hooks Python calls FOR you</h3>
+    <p class="lead">"Dunder" = double underscore. Implementing them makes a class behave like a native type ("Pythonic").</p>
+    <table>
+      <tr><td class="cmd"><code>__init__</code></td><td class="desc">constructor — runs at <code>ClassName(...)</code></td></tr>
+      <tr><td class="cmd"><code>__str__</code></td><td class="desc">readable string — <code>print(x)</code>, <code>str(x)</code></td></tr>
+      <tr><td class="cmd"><code>__repr__</code></td><td class="desc">unambiguous dev string — REPL echo</td></tr>
+      <tr><td class="cmd"><code>__len__ · __eq__ · __getitem__</code></td><td class="desc"><code>len(x)</code> · <code>x == y</code> · <code>x[key]</code></td></tr>
+      <tr><td class="cmd"><code>__enter__ / __exit__</code></td><td class="desc">context-manager protocol (§6 <code>with</code>)</td></tr>
+    </table>
+    <p class="lead">Data-carrying classes: <code>@dataclass</code> (stdlib, auto <code>__init__</code>/<code>__repr__</code>/<code>__eq__</code>) or Pydantic (adds runtime validation).</p>
+  </div>
+</div>
+</div>
+</details>
+
+<!-- ============ 5 ERRORS ============ -->
+<details class="sec" id="errors">
+<summary><h2>5 · Errors &amp; exceptions</h2><span class="hint">try/except/else/finally · raise · who's-who table</span></summary>
+<div class="body">
+
+<div class="callout">
+  <b>Exception</b> = object raised when something goes wrong; unhandled → crash with a <b>traceback</b>. Read tracebacks <b>bottom-up</b>: last line = the error, lines above = how it got there.
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>The full shape</h3>
+    <pre><code>try:
+    value = int(user_input)
+except ValueError:               # specific type
+    print("not a number")
+except (KeyError, IndexError) as e:
+    print(f"lookup failed: {e}")
+else:
+    ...        # only if NO exception
+finally:
+    cleanup()  # ALWAYS runs
+
+raise ValueError("bad input")    # raise your own</code></pre>
+    <p class="lead">Catch the <i>narrowest</i> type you can handle; bare <code>except:</code> hides bugs. Don't use exceptions where an <code>if</code> will do.</p>
+  </div>
+  <div class="card">
+    <h3>Who raises what</h3>
+    <table>
+      <tr><td class="cmd"><code>ValueError</code></td><td class="desc">right type, bad value — <code>int("abc")</code></td></tr>
+      <tr><td class="cmd"><code>TypeError</code></td><td class="desc">wrong type — <code>len(42)</code>, unexpected kwarg</td></tr>
+      <tr><td class="cmd"><code>KeyError</code> / <code>IndexError</code></td><td class="desc">missing dict key (use <code>.get</code>) / index out of range</td></tr>
+      <tr><td class="cmd"><code>AttributeError</code></td><td class="desc">no such attribute — <code>some_list.tool_use</code></td></tr>
+      <tr><td class="cmd"><code>NameError</code></td><td class="desc">name never defined (often a typo)</td></tr>
+      <tr><td class="cmd"><code>FileNotFoundError</code></td><td class="desc"><code>open()</code> on a missing path</td></tr>
+      <tr><td class="cmd"><code>ZeroDivisionError</code></td><td class="desc"><code>x / 0</code></td></tr>
+      <tr><td class="cmd"><code>ModuleNotFoundError</code></td><td class="desc">package not installed in <i>this</i> environment</td></tr>
+      <tr><td class="cmd"><code>KeyboardInterrupt</code></td><td class="desc">you pressed Ctrl-C</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+</details>
+
+<!-- ============ 6 FILES ============ -->
+<details class="sec" id="files">
+<summary><h2>6 · Files &amp; the with-statement</h2><span class="hint">open modes · context managers · JSON in two lines</span></summary>
+<div class="body">
+
+<div class="grid">
+  <div class="card">
+    <h3>The pattern</h3>
+    <pre><code>with open("notes.txt") as f:   # bind + GUARANTEE close
+    text = f.read()             # whole file
+# closed here, even on exception
+
+with open("notes.txt") as f:
+    for line in f:              # files iterate by line
+        process(line.rstrip())
+
+with open("out.txt", "w") as f:
+    f.write("hello\n")</code></pre>
+    <p class="lead"><code>with</code> works on any <b>context manager</b> (<code>__enter__</code>/<code>__exit__</code>) — files, locks, DB connections, SDK clients. Why closing matters (file descriptors, buffers): <code>python_wiki.md § File I/O</code>.</p>
+  </div>
+  <div class="card">
+    <h3>open() modes &amp; JSON</h3>
+    <table>
+      <tr><td class="cmd"><code>"r"</code></td><td class="desc">read text (default)</td></tr>
+      <tr><td class="cmd"><code>"w"</code></td><td class="desc">write text, truncates existing</td></tr>
+      <tr><td class="cmd"><code>"a"</code></td><td class="desc">append text</td></tr>
+      <tr><td class="cmd"><code>"rb" / "wb"</code></td><td class="desc">binary (images, pickle, parquet)</td></tr>
+    </table>
+    <pre><code>with open("data.json") as f:
+    data = json.load(f)
+with open("out.json", "w") as f:
+    json.dump(data, f, indent=2)</code></pre>
+    <p class="lead">Trailing-<code>s</code> mnemonic: <code>loads/dumps</code> = <b>string</b>, not plural. JSON↔Python mapping table: <code>python_wiki.md</code>.</p>
+  </div>
+</div>
+</div>
+</details>
+
+<!-- ============ 7 LIBRARIES ============ -->
+<details class="sec" id="libs">
+<summary><h2>7 · Common libraries — which tool for which job</h2><span class="hint">stdlib · numpy/pandas/matplotlib · requests · anthropic · openpyxl</span></summary>
+<div class="body">
+
+<div class="callout good">
+  <b>Installing:</b> <code>pip install X</code> (from <a href="https://pypi.org">PyPI</a>, the Python Package Index) · <code>conda install X</code> · <code>uv add X</code> (modern/fast — <code>python_wiki.md § uv, conda, pip</code>). List installed: <code>pip list</code> / <code>conda list</code>. <b>stdlib</b> = standard library, ships with Python — import, never install.
+</div>
+
+<h3 class="inner">Standard library</h3>
+<table>
+  <tr><th style="width:14%">Module</th><th style="width:34%">Job</th><th>Canonical snippet</th></tr>
+  <tr><td><code>os</code></td><td class="desc">talk to the OS: cwd, env vars, listings (<code>getcwd</code> = <b>g</b>et <b>c</b>urrent <b>w</b>orking <b>d</b>ir, like shell <code>pwd</code>)</td><td><code>os.getcwd()</code> · <code>os.environ["API_KEY"]</code> · <code>os.listdir(p)</code></td></tr>
+  <tr><td><code>pathlib</code></td><td class="desc">object-oriented paths — modern replacement for <code>os.path</code> string-bashing</td><td><code>p = Path("data") / "f.txt"; p.read_text()</code></td></tr>
+  <tr><td><code>json</code></td><td class="desc">Python ↔ JSON text (APIs, configs)</td><td><code>json.load(f)</code> · <code>json.dumps(obj, indent=2)</code></td></tr>
+  <tr><td><code>datetime</code></td><td class="desc">dates, times, date arithmetic</td><td><code>datetime.now() + timedelta(days=7)</code></td></tr>
+  <tr><td><code>re</code></td><td class="desc"><b>r</b>egular <b>e</b>xpressions — pattern matching in text</td><td><code>re.findall(r"\d+", text)</code> · <code>re.sub(r"\s+", " ", s)</code></td></tr>
+  <tr><td><code>collections</code></td><td class="desc">upgraded containers</td><td><code>Counter(words).most_common(3)</code> · <code>defaultdict(list)</code></td></tr>
+  <tr><td><code>itertools</code></td><td class="desc">iterator building blocks for loops</td><td><code>itertools.pairwise(xs)</code> · <code>itertools.product(xs, ys)</code></td></tr>
+  <tr><td><code>math</code> / <code>random</code></td><td class="desc">the math you'd expect / pseudo-random</td><td><code>math.sqrt(2)</code> · <code>random.choice(items)</code></td></tr>
+  <tr><td><code>csv</code> / <code>subprocess</code></td><td class="desc">CSV without pandas / run shell commands</td><td><code>csv.DictReader(f)</code> · <code>subprocess.run(["ls","-la"])</code></td></tr>
+  <tr><td><code>venv</code> / <code>tomllib</code></td><td class="desc">virtual envs / read TOML (3.11+)</td><td><code>python3 -m venv .venv</code> · <code>tomllib.load(f)</code></td></tr>
+</table>
+
+<h3 class="inner">Third-party (install first)</h3>
+<table>
+  <tr><th style="width:14%">Library</th><th style="width:40%">Job</th><th>Canonical snippet</th></tr>
+  <tr><td><b>numpy</b></td><td class="desc">fast N-dimensional arrays + vectorized math; foundation of scientific Python (<b>Num</b>erical <b>Py</b>thon)</td><td><code>a = np.array([1,2,3]); a * 2</code> → <code>[2 4 6]</code> — no loop</td></tr>
+  <tr><td><b>pandas</b></td><td class="desc">tabular data: load/clean/filter/group <b>DataFrame</b>s (2-D labeled tables) &amp; <b>Series</b> (1-D); built on NumPy. Name from "<b>pan</b>el <b>da</b>ta" (econometrics)</td><td><code>df = pd.read_csv("f.csv"); df[df["amount"]>0].groupby("cat")["amount"].sum()</code></td></tr>
+  <tr><td><b>matplotlib</b></td><td class="desc">plots: line, bar, scatter, histogram — the granddaddy</td><td><code>plt.plot(xs, ys); plt.savefig("fig.png")</code></td></tr>
+  <tr><td><b>seaborn</b></td><td class="desc">statistical graphics on matplotlib — prettier defaults, less code</td><td><code>sns.barplot(data=df, x="cat", y="amount")</code></td></tr>
+  <tr><td><b>requests</b></td><td class="desc">HTTP for humans — web APIs, downloads</td><td><code>r = requests.get(url, timeout=10); r.json()</code></td></tr>
+  <tr><td><b>anthropic</b></td><td class="desc">official Claude SDK (built on Pydantic — typed <code>Message</code>/<code>TextBlock</code> objects)</td><td><code>client.messages.create(model=..., max_tokens=1024, messages=[...])</code></td></tr>
+  <tr><td><b>openpyxl</b></td><td class="desc">read/write Excel <code>.xlsx</code> directly (pandas' <code>read_excel</code> uses it underneath)</td><td><code>wb = load_workbook("f.xlsx"); wb.active["A1"].value</code></td></tr>
+  <tr><td><b>scikit-learn</b></td><td class="desc">classical ML: classification, regression, clustering</td><td><code>model.fit(X_train, y_train); model.predict(X_test)</code></td></tr>
+  <tr><td><b>pydantic</b></td><td class="desc">runtime validation from type hints (powers FastAPI + Anthropic SDK)</td><td><code>class User(BaseModel): name: str</code></td></tr>
+  <tr><td><b>streamlit</b></td><td class="desc">Python script → interactive web dashboard</td><td><code>st.dataframe(df); st.line_chart(df)</code></td></tr>
+</table>
+
+<div class="callout">
+  Rule of thumb (from the Excel-migration plan): Excel logic → <b>pandas</b> · visuals → <b>matplotlib/seaborn</b> (interactive → streamlit) · web APIs → <b>requests</b> · deep learning → PyTorch/TensorFlow (tensors = N-dim arrays, <code>autograd</code> = automatic gradients, <code>nn</code> = network layers).
+</div>
+</div>
+</details>
+
+<!-- ============ 8 GOTCHAS ============ -->
+<details class="sec" id="gotchas">
+<summary><h2>8 · Gotchas — the classic traps</h2><span class="hint">aliasing · mutable defaults · is vs == · // and floats</span></summary>
+<div class="body">
+
+<div class="grid">
+  <div class="card">
+    <h3>Copy vs reference (aliasing)</h3>
+    <pre><code>a = [1, 2, 3]
+b = a              # ALIAS — same object
+b.append(4)
+a                  # [1, 2, 3, 4]  ← a changed too!
+
+b = a.copy()       # shallow copy (a[:], list(a))
+b = copy.deepcopy(a)  # also copies nested objects</code></pre>
+    <p class="lead">Assignment <b>never copies</b> — it binds another name to the same object. <b>Shallow</b> = new outer container, nested objects still shared; <b>deep</b> = recurses. (Objects are freed when their reference count hits zero — garbage collection is bookkeeping of exactly these aliases.)</p>
+  </div>
+  <div class="card">
+    <h3>Mutable default arguments</h3>
+    <pre><code>def add_item(item, bucket=[]):   # BUG
+    bucket.append(item); return bucket
+add_item(1)   # [1]
+add_item(2)   # [1, 2]  ← shared list!
+
+def add_item(item, bucket=None): # FIX: None sentinel
+    if bucket is None:
+        bucket = []</code></pre>
+    <p class="lead">Defaults are evaluated <b>once, at def time</b> — a mutable default is shared across every call.</p>
+  </div>
+  <div class="card">
+    <h3><code>is</code> vs <code>==</code></h3>
+    <pre><code>[1,2] == [1,2]   # True  — equal VALUES (__eq__)
+[1,2] is [1,2]   # False — different objects
+x is None        # the ONE place to use `is`</code></pre>
+    <p class="lead">Small ints/short strings are cached so <code>a=5; b=5; a is b</code> happens to be True — never rely on it.</p>
+  </div>
+  <div class="card">
+    <h3>Division &amp; float surprises</h3>
+    <pre><code>7 / 2    # 3.5  — / ALWAYS float (Py3)
+7 // 2   # 3    — floor division (−7//2 == −4)
+7 % 2    # 1    — modulo
+0.1 + 0.2 == 0.3            # False!
+math.isclose(0.1+0.2, 0.3)  # True — use tolerance
+round(2.5)                  # 2 — banker's rounding</code></pre>
+  </div>
+</div>
+
+<div class="callout warn">
+  <b>Quick-fire:</b> modifying a list while looping over it → loop a copy <code>for x in lst[:]:</code> · <code>x = lst.sort()</code> loses data (returns None) — use <code>sorted(lst)</code> · one-item tuple needs the comma <code>(1,)</code> · string methods return NEW strings: <code>s = s.upper()</code> · <code>zip</code> silently stops at the shortest — <code>strict=True</code> · never shadow built-ins (<code>list</code>, <code>dict</code>, <code>str</code>, <code>type</code>, <code>id</code> as variable names).
+</div>
+</div>
+</details>
+
+<!-- ============ TEARDOWN ============ -->
+<details class="sec" id="teardown">
+<summary><h2>9 · Teardown — getting out</h2><span class="hint">leave REPL · ctrl-c · pip uninstall · del · close files</span></summary>
+<div class="body">
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>exit()</code> / <code>quit()</code> / <kbd>ctrl</kbd> <kbd>d</kbd></td><td class="desc">leave the REPL — Windows: <kbd>ctrl</kbd> <kbd>z</kbd> then <kbd>Enter</kbd>. Python 3.13+ accepts bare <code>exit</code> too</td></tr>
+    <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>c</kbd></td><td class="desc">stop a running script — raises <b>KeyboardInterrupt</b>, a real exception you <i>can</i> catch (<code>except KeyboardInterrupt:</code>) for graceful shutdown</td></tr>
+    <tr><td class="cmd"><code>pip uninstall requests</code></td><td class="desc">remove a package from the env's site-packages; its dependencies stay</td></tr>
+    <tr><td class="cmd"><code>del x</code></td><td class="desc">removes the <i>name binding</i>; the object is freed by the <b>garbage collector</b> once nothing references it — <code>del</code> ≠ destroy</td></tr>
+    <tr><td class="cmd"><code>f.close()</code></td><td class="desc">…or skip it: <code>with open(...) as f:</code> calls <code>close()</code> on exit <i>even if an exception fires</i> — the whole point of context managers (§6)</td></tr>
+  </table>
+</div>
+</div>
+</details>
+
+<!-- ============ GLOSSARY ============ -->
+<details class="sec" id="glossary">
+<summary><h2>10 · Glossary recap</h2><span class="hint">the terms this sheet defined</span></summary>
+<div class="body">
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Object</b></td><td class="desc">typed chunk of memory; everything in Python is one</td></tr>
+    <tr><td class="cmd"><b>Mutable / immutable</b></td><td class="desc">changeable in place / not ("change" = new object)</td></tr>
+    <tr><td class="cmd"><b>Reference / alias</b></td><td class="desc">name bound to an object; assignment copies the binding, not the object</td></tr>
+    <tr><td class="cmd"><b>Iterable</b></td><td class="desc">anything a for-loop can walk (list, str, dict, file, generator…)</td></tr>
+    <tr><td class="cmd"><b>Comprehension</b></td><td class="desc">one-line <code>[expr for x in it if cond]</code> collection builder</td></tr>
+    <tr><td class="cmd"><b>Slice</b></td><td class="desc"><code>seq[start:stop:step]</code> — start in, stop out</td></tr>
+    <tr><td class="cmd"><b>*args / **kwargs</b></td><td class="desc">collect extra positional (tuple) / keyword (dict) args</td></tr>
+    <tr><td class="cmd"><b>lambda</b></td><td class="desc">anonymous single-expression function (Church's lambda calculus)</td></tr>
+    <tr><td class="cmd"><b>LEGB</b></td><td class="desc">name lookup: Local → Enclosing → Global → Built-in</td></tr>
+    <tr><td class="cmd"><b>Decorator</b></td><td class="desc">function wrapping a function, applied with <code>@name</code></td></tr>
+    <tr><td class="cmd"><b>Dunder method</b></td><td class="desc"><code>__hook__</code> Python calls for you (<code>__init__</code>, <code>__str__</code>…)</td></tr>
+    <tr><td class="cmd"><b>Exception / traceback</b></td><td class="desc">runtime error object / call-chain report (read bottom-up)</td></tr>
+    <tr><td class="cmd"><b>Context manager</b></td><td class="desc">object usable in <code>with</code> (<code>__enter__</code>/<code>__exit__</code>)</td></tr>
+    <tr><td class="cmd"><b>stdlib / PyPI</b></td><td class="desc">ships with Python / the index <code>pip</code> installs from</td></tr>
+    <tr><td class="cmd"><b>DataFrame / Series</b></td><td class="desc">pandas 2-D labeled table / 1-D labeled array</td></tr>
+    <tr><td class="cmd"><b>Type hint</b></td><td class="desc">optional annotation (<code>x: int</code>) for tools; not enforced by Python</td></tr>
+  </table>
+</div>
+</div>
+</details>
+
+<p class="foot">
+  Sources:
+  <a href="https://docs.python.org/3/tutorial/index.html">Official Python tutorial</a> ·
+  <a href="https://docs.python.org/3/library/stdtypes.html">Built-in types</a> ·
+  <a href="https://docs.python.org/3/library/functions.html">Built-in functions</a> ·
+  <a href="https://docs.python.org/3/library/index.html">Standard library</a> ·
+  <a href="https://peps.python.org/pep-0008/">PEP 8</a> ·
+  <a href="https://numpy.org/doc/stable/">NumPy</a> ·
+  <a href="https://pandas.pydata.org/docs/">pandas</a> ·
+  <a href="https://matplotlib.org/stable/">matplotlib</a> ·
+  <a href="https://requests.readthedocs.io/">Requests</a> ·
+  <a href="https://docs.anthropic.com/en/api/client-sdks">Anthropic SDK</a> ·
+  <a href="https://openpyxl.readthedocs.io/">openpyxl</a>
+  — narrative companion: <code>Tools/python_wiki.md</code>
+</p>
+
+</div>
+<script>
+  // expand/collapse all + open the right section when a nav anchor is clicked
+  const secs = document.querySelectorAll('details.sec');
+  document.getElementById('expandAll').onclick  = () => secs.forEach(d => d.open = true);
+  document.getElementById('collapseAll').onclick = () => secs.forEach(d => d.open = false);
+  document.querySelectorAll('nav.toc a').forEach(a => {
+    a.addEventListener('click', () => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target && target.tagName === 'DETAILS') target.open = true;
+    });
+  });
+  // also open a section when arriving via #hash (e.g. a saved link)
+  if (location.hash) {
+    const t = document.querySelector(location.hash);
+    if (t && t.tagName === 'DETAILS') t.open = true;
+  }
+</script>
+</body>
+</html>

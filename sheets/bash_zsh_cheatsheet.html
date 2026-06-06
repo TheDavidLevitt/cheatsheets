@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bash &amp; Zsh Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Bash &amp; Zsh Cheat Sheet</h1>
+<p class="sub">The shell: pipes · variables · config · scripts · jobs · started 2026-06-06 · twin of <code>Tools/bash_zsh_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Shell</b> = the program that reads your typed commands, interprets them, and asks the <b>kernel</b> (the OS core that talks to hardware) to run them. The name is the metaphor: it's the outermost layer "wrapping" the kernel.<br><br>
+  <b>Terminal</b> = the <i>window</i> program (Terminal.app, iTerm2, the VS Code panel) that draws text on screen and sends your keystrokes to a shell. Terminal = the phone; shell = the person answering. Historically a terminal was a physical device (keyboard + screen) wired to a mainframe — today's "terminal emulators" imitate one in software.
+</div>
+<div class="callout">
+  <b>bash</b> = <b>B</b>ourne <b>A</b>gain <b>SH</b>ell (1989) — a pun: it's the successor to Stephen Bourne's 1979 <code>sh</code>, "born again" as free GNU software. The lingua franca of scripting; nearly every Linux box and script assumes it.<br><br>
+  <b>zsh</b> = <b>Z SH</b>ell (Paul Falstad, 1990; named after a Yale professor's login ID <code>zsh</code>). A bash-compatible interactive shell with better completion, globbing, and theming (Oh My Zsh). <b>Default on macOS since Catalina (2019).</b><br><br>
+  <b>CLI</b> = Command-Line Interface — text in, text out; the opposite of a GUI.
+</div>
+<div class="callout">
+  <b>You → terminal → shell → kernel:</b>
+  <pre><code>  you type        terminal          shell             kernel
+  "ls -l"   →   (the window)  →  (bash/zsh:      →  (executes,
+                 passes keys      parses, finds      talks to
+                 to the shell     /bin/ls, runs      hardware)
+                                  it, pipes I/O)</code></pre>
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Two kinds of commands the shell can run</h3>
+    <table>
+      <tr><td class="cmd"><b>Built-ins</b></td><td class="desc">run <i>inside</i> the shell process itself (<code>cd</code>, <code>export</code>, <code>alias</code>, <code>history</code>, <code>exit</code>). They must be built-in because they change the shell's own state — an external program couldn't change <i>your</i> directory.</td></tr>
+      <tr><td class="cmd"><b>External programs</b></td><td class="desc">separate binaries on disk, found via <code>$PATH</code> (<code>ls</code>, <code>grep</code>, <code>cat</code>, <code>python3</code>). Stored in <code>/bin</code>, <code>/usr/bin</code>, etc. Same on any shell; only the built-ins differ.</td></tr>
+      <tr><td class="cmd"><code>type &lt;cmd&gt;</code></td><td class="desc">tells you which one you're dealing with (<code>type cd</code> → "shell builtin"; <code>type ls</code> → "/bin/ls")</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>bash vs zsh — what actually matters day-to-day</h3>
+    <table>
+      <tr><td class="cmd"></td><td class="desc"><b>bash</b> · <b>zsh</b></td></tr>
+      <tr><td class="cmd">Default prompt ends in</td><td class="desc"><code>$</code> · <code>%</code></td></tr>
+      <tr><td class="cmd">Default on</td><td class="desc">Linux, scripts, servers · macOS (since 2019)</td></tr>
+      <tr><td class="cmd">Config file</td><td class="desc"><code>~/.bashrc</code> / <code>~/.bash_profile</code> · <code>~/.zshrc</code> / <code>~/.zprofile</code></td></tr>
+      <tr><td class="cmd">Tab completion</td><td class="desc">basic · smarter (menus, typo-correction)</td></tr>
+      <tr><td class="cmd">Extended globbing <code>**</code></td><td class="desc">opt-in (<code>shopt -s globstar</code>) · on by default</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout good">
+  <b>The headline: zsh runs ~all bash commands.</b> Everything in this sheet works in both unless flagged. Write <i>scripts</i> in bash (<code>#!/bin/bash</code>) for portability; <i>type</i> into zsh on the Mac. (Root prompt is <code>#</code> in both — one reason comments also start with <code>#</code>: anything pasted from a root prompt becomes harmless.)
+</div>
+
+<!-- ============ GRAMMAR ============ -->
+<h2>1 · Command grammar (read once)</h2>
+<div class="callout">
+  Every command line follows: <code>command [options/flags] [arguments]</code><br>
+  • <b>command</b> — a built-in, or a program found on <code>$PATH</code>.<br>
+  • <b>flags</b> — short <code>-l</code> or long <code>--all</code>; short flags bundle: <code>ls -la</code> = <code>ls -l -a</code>.<br>
+  • <b>arguments</b> — what to act on (files, paths, strings).<br>
+  • <code>man &lt;cmd&gt;</code> opens the <b>man</b>ual (quit with <kbd>q</kbd>); <code>cmd --help</code> is the short version.
+</div>
+<div class="card">
+  <h3>Recurring flag vocabulary (worth memorizing once)</h3>
+  <table>
+    <tr><td class="cmd"><code>-r</code> / <code>-R</code></td><td class="desc"><b>recursive</b> — dir + everything inside (<code>cp -r</code>, <code>rm -r</code>, <code>grep -r</code>)</td></tr>
+    <tr><td class="cmd"><code>-f</code></td><td class="desc"><b>force</b> — skip prompts, ignore missing (<code>rm -f</code>, <code>mv -f</code>)</td></tr>
+    <tr><td class="cmd"><code>-v</code></td><td class="desc"><b>verbose</b> — narrate every action (<code>cp -v</code>, <code>rm -v</code>)</td></tr>
+    <tr><td class="cmd"><code>-i</code></td><td class="desc"><b>interactive</b> — ask "are you sure?" (<code>rm -i</code>, <code>mv -i</code>)</td></tr>
+    <tr><td class="cmd"><code>-n</code></td><td class="desc"><b>dry run</b> — show what <i>would</i> happen (<code>rsync -n</code>)</td></tr>
+    <tr><td class="cmd"><code>-q</code></td><td class="desc"><b>quiet</b> — suppress output (<code>grep -q</code>, <code>curl -q</code>)</td></tr>
+  </table>
+</div>
+
+<!-- ============ NAVIGATION ============ -->
+<h2>2 · Navigation &amp; file ops (recap, concise)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Move &amp; make</h3>
+    <table>
+      <tr><td class="cmd"><code>pwd</code></td><td class="desc"><b>p</b>rint <b>w</b>orking <b>d</b>irectory — "where am I?"</td></tr>
+      <tr><td class="cmd"><code>ls -la</code></td><td class="desc">list all (<code>-a</code> incl. dotfiles), long format (<code>-l</code>)</td></tr>
+      <tr><td class="cmd"><code>cd dir</code> / <code>cd ..</code> / <code>cd -</code> / <code>cd</code></td><td class="desc">enter / up one / back to previous / home</td></tr>
+      <tr><td class="cmd"><code>mkdir -p a/b/c</code></td><td class="desc">make directory, <code>-p</code> creates parents as needed</td></tr>
+      <tr><td class="cmd"><code>touch file</code></td><td class="desc">create empty file (or update its timestamp)</td></tr>
+      <tr><td class="cmd"><code>cp -r src dst</code> · <code>mv old new</code> · <code>rm -r dir</code></td><td class="desc">copy / move-rename / remove (⚠ <code>rm</code> has no trash)</td></tr>
+      <tr><td class="cmd"><code>open .</code></td><td class="desc">macOS: open current folder in Finder</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Read &amp; find</h3>
+    <table>
+      <tr><td class="cmd"><code>cat file</code></td><td class="desc">con<b>cat</b>enate — dump file(s) to screen</td></tr>
+      <tr><td class="cmd"><code>less file</code></td><td class="desc">page through a file (<kbd>q</kbd> quits) — "less is more" (it replaced <code>more</code>)</td></tr>
+      <tr><td class="cmd"><code>head -n 20</code> / <code>tail -n 20</code></td><td class="desc">first / last 20 lines; <code>tail -f</code> follows live logs</td></tr>
+      <tr><td class="cmd"><code>grep "pat" file</code></td><td class="desc">search by regex — name = <code>g/re/p</code>, the <code>ed</code> editor command "<b>g</b>lobally find <b>re</b>gex, <b>p</b>rint"</td></tr>
+      <tr><td class="cmd"><code>find . -name "*.py"</code></td><td class="desc">find files by name/attribute under <code>.</code></td></tr>
+      <tr><td class="cmd"><code>which python3</code></td><td class="desc">which binary on <code>$PATH</code> would run</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout">
+  <b>Path shorthand:</b> <code>~</code> = home (<code>/Users/&lt;you&gt;</code>), <code>.</code> = here, <code>..</code> = parent, <code>-</code> = previous dir (for <code>cd</code>), <code>/</code> = filesystem root.
+</div>
+
+<!-- ============ PIPES ============ -->
+<h2>3 · Pipes <code>|</code> and redirection <code>&gt; &gt;&gt; &lt; 2&gt; &amp;&gt;</code></h2>
+<div class="callout">
+  The shell wires three standard streams to every command — each has a number (<b>file descriptor</b>): <b>stdin</b> (0, input), <b>stdout</b> (1, normal output), <b>stderr</b> (2, error output). Redirection re-plugs those wires.
+</div>
+<div class="card">
+  <h3>Redirection grammar</h3>
+  <table>
+    <tr><td class="cmd"><code>cmd1 | cmd2</code></td><td class="desc"><b>pipe</b>: stdout of cmd1 → stdin of cmd2 — <code>history | grep ssh</code></td></tr>
+    <tr><td class="cmd"><code>cmd &gt; file</code></td><td class="desc">send stdout to file, <b>overwrite</b> — <code>ls &gt; listing.txt</code></td></tr>
+    <tr><td class="cmd"><code>cmd &gt;&gt; file</code></td><td class="desc">send stdout to file, <b>append</b> — <code>echo "note" &gt;&gt; log.txt</code></td></tr>
+    <tr><td class="cmd"><code>cmd &lt; file</code></td><td class="desc">feed file in as stdin — <code>sort &lt; names.txt</code></td></tr>
+    <tr><td class="cmd"><code>cmd 2&gt; file</code></td><td class="desc">send <b>stderr</b> (stream 2) to file — <code>make 2&gt; errors.txt</code></td></tr>
+    <tr><td class="cmd"><code>cmd 2&gt;&amp;1</code></td><td class="desc">merge stderr <b>into</b> stdout (<code>&amp;1</code> = "where 1 points") — <code>cmd &gt; all.txt 2&gt;&amp;1</code></td></tr>
+    <tr><td class="cmd"><code>cmd &amp;&gt; file</code></td><td class="desc">both streams to file (bash/zsh shortcut for the above) — <code>cmd &amp;&gt; all.txt</code></td></tr>
+    <tr><td class="cmd"><code>cmd 2&gt; /dev/null</code></td><td class="desc">discard errors — <code>/dev/null</code> is the system's black hole — <code>find / -name x 2&gt;/dev/null</code></td></tr>
+    <tr><td class="cmd"><code>cmd | tee file</code></td><td class="desc">stdout to screen <b>and</b> file (a T-junction in the pipe) — <code>make | tee build.log</code></td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  Reading <code>2&gt;&amp;1</code>: "<i>redirect stream 2 to wherever stream 1 currently goes</i>". <b>Order matters</b> — <code>&gt; f 2&gt;&amp;1</code> works; <code>2&gt;&amp;1 &gt; f</code> doesn't do what you want.
+</div>
+<div class="callout good">
+  Pipes are <i>the</i> Unix idea (Doug McIlroy, 1973): small programs, each doing one thing, composed like plumbing:
+  <pre><code>cat access.log | grep 404 | sort | uniq -c | sort -rn | head</code></pre>
+</div>
+
+<!-- ============ CHAINING / GLOBBING ============ -->
+<h2>4 · Chaining <code>&amp;&amp; || ;</code> and globbing <code>* ? ** [a-z]</code></h2>
+<div class="grid">
+  <div class="card">
+    <h3>Chaining — control flow on one line</h3>
+    <table>
+      <tr><td class="cmd"><code>a &amp;&amp; b</code></td><td class="desc">run <code>b</code> only if <code>a</code> <b>succeeded</b> (exit code 0) — "and then"</td></tr>
+      <tr><td class="cmd"><code>a || b</code></td><td class="desc">run <code>b</code> only if <code>a</code> <b>failed</b> — "or else"</td></tr>
+      <tr><td class="cmd"><code>a ; b</code></td><td class="desc">run <code>b</code> regardless — just a separator</td></tr>
+      <tr><td class="cmd"><code>a &amp;&amp; b || c</code></td><td class="desc">rough if/else: <code>b</code> on success, <code>c</code> on failure</td></tr>
+    </table>
+    <p class="lead">Every command exits with a status code: <b>0 = success</b>, anything else = failure (Unix optimism: one way to succeed, many ways to fail). <code>$?</code> holds the last command's code — <code>echo $?</code> to inspect.</p>
+  </div>
+  <div class="card">
+    <h3>Globbing — wildcard filename expansion</h3>
+    <table>
+      <tr><td class="cmd"><code>*</code></td><td class="desc">any string, any length (not hidden dotfiles) — <code>*.py</code></td></tr>
+      <tr><td class="cmd"><code>?</code></td><td class="desc">exactly one character — <code>file?.txt</code></td></tr>
+      <tr><td class="cmd"><code>[a-z]</code>, <code>[0-9]</code>, <code>[abc]</code></td><td class="desc">one character from the set/range</td></tr>
+      <tr><td class="cmd"><code>**</code></td><td class="desc">recursive: this dir and all subdirs — <code>ls **/*.md</code> (zsh default; bash needs <code>shopt -s globstar</code>)</td></tr>
+      <tr><td class="cmd"><code>{a,b}</code></td><td class="desc">brace expansion, literal alternatives — <code>cp file.{txt,bak}</code></td></tr>
+    </table>
+    <p class="lead">The <b>shell</b> (not the command) expands these <i>before</i> the command runs — <code>rm *.txt</code> becomes <code>rm a.txt b.txt …</code>. "Glob" comes from the original Unix helper <code>/etc/glob</code> ("global").</p>
+  </div>
+</div>
+
+<!-- ============ VARIABLES ============ -->
+<h2>5 · Variables, <code>$PATH</code>, and <code>export</code></h2>
+<pre><code>NAME="value"        # set (NO spaces around = — the #1 beginner error)
+echo $NAME          # read: $ means "the value of"
+export NAME         # mark it for inheritance by child processes
+export NAME="v"     # set + export in one line
+unset NAME          # delete</code></pre>
+<div class="callout">
+  <b>Why <code>export</code>?</b> A plain variable lives only in <i>this</i> shell. Programs you launch are <b>child processes</b> and inherit only <i>exported</i> (environment) variables. <code>env</code> lists them; <code>echo $$</code> shows the current shell's process ID (PID).
+</div>
+<div class="callout">
+  <b><code>$PATH</code></b> = a colon-separated list of directories the shell searches, in order, left to right, to find a command:
+  <pre><code>echo $PATH                              # see it
+export PATH="$HOME/bin:$PATH"           # prepend your dir (this session only)</code></pre>
+  Grammar of that line: set PATH to <i>your new dir</i> + <code>:</code> + <i>everything PATH already was</i>.
+</div>
+<div class="callout warn">
+  Forgetting <code>:$PATH</code> wipes the old value — suddenly <code>ls</code> itself "command not found". Prepending means your dir wins ties; appending (<code>$PATH:$HOME/bin</code>) makes it the fallback.
+</div>
+<div class="callout good">
+  To make it permanent, put the <code>export</code> line in a startup file (§9). macOS also seeds the system-wide PATH from <code>/etc/paths</code> and <code>/etc/paths.d/</code> (one dir per line, assembled by <code>path_helper</code> — see <code>man path_helper</code>).<br><br>
+  Useful built-in variables: <span class="pill">$HOME</span> <span class="pill">$USER</span> <span class="pill">$SHELL</span> (login shell) <span class="pill">$PWD</span> <span class="pill">$?</span> (last exit code) <span class="pill">$$</span> (this shell's PID)
+</div>
+
+<!-- ============ QUOTING ============ -->
+<h2>6 · Quoting rules — <code>'single'</code> vs <code>"double"</code> vs <code>$(command)</code></h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>'single quotes'</code></td><td class="desc"><b>literal</b> — nothing expands — <code>echo '$HOME'</code> → <code>$HOME</code></td></tr>
+    <tr><td class="cmd"><code>"double quotes"</code></td><td class="desc"><b>variables expand</b>, spaces preserved — <code>echo "$HOME"</code> → <code>/Users/you</code></td></tr>
+    <tr><td class="cmd"><code>$(command)</code></td><td class="desc"><b>command substitution</b> — run it, paste its output — <code>echo "today: $(date)"</code></td></tr>
+    <tr><td class="cmd"><code>`command`</code></td><td class="desc">old backtick syntax for the same — avoid (can't nest) — <code>echo `date`</code></td></tr>
+    <tr><td class="cmd"><code>\x</code></td><td class="desc">escape one character — <code>echo \$HOME</code> → <code>$HOME</code></td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Rules of thumb:</b><br>
+  • <b>Default to double quotes</b> around any variable: <code>rm "$file"</code> — protects against spaces in values (<code>my file.txt</code> would otherwise become two arguments).<br>
+  • Single quotes when you want the text <i>exactly as typed</i> (regexes for <code>grep</code>, literal <code>$</code>).<br>
+  • <code>$(...)</code> over backticks, always — it nests: <code>$(dirname $(which python3))</code>.
+</div>
+
+<!-- ============ HISTORY ============ -->
+<h2>7 · History tricks — <code>!!</code>, <code>!$</code>, ctrl-r</h2>
+<p class="lead">The shell records commands (zsh: <code>~/.zsh_history</code>; bash: <code>~/.bash_history</code>). <code>!</code> is the <b>history expansion</b> character ("bang").</p>
+<div class="grid">
+  <div class="card">
+    <h3>Bang expansions</h3>
+    <table>
+      <tr><td class="cmd"><code>history</code></td><td class="desc">list recent commands (numbered)</td></tr>
+      <tr><td class="cmd"><code>!!</code></td><td class="desc">rerun the whole last command — classic: <code>sudo !!</code> after a permission error</td></tr>
+      <tr><td class="cmd"><code>!$</code></td><td class="desc">the <b>last argument</b> of the previous command — <code>mkdir deep/path</code> then <code>cd !$</code></td></tr>
+      <tr><td class="cmd"><code>!*</code></td><td class="desc"><i>all</i> arguments of the previous command</td></tr>
+      <tr><td class="cmd"><code>!42</code> / <code>!grep</code></td><td class="desc">rerun command #42 / the last command starting with "grep"</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Line-editing keys</h3>
+    <table>
+      <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>r</kbd></td><td class="desc"><b>reverse-incremental search</b> — type a fragment, keep pressing ctrl-r to cycle back; Enter runs, Esc edits</td></tr>
+      <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>c</kbd></td><td class="desc">kill the current foreground process (SIGINT)</td></tr>
+      <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>a</kbd> / <kbd>ctrl</kbd> <kbd>e</kbd></td><td class="desc">jump to start / end of line (Emacs keybindings)</td></tr>
+      <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>u</kbd> / <kbd>ctrl</kbd> <kbd>k</kbd></td><td class="desc">delete to start / end of line</td></tr>
+      <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>l</kbd></td><td class="desc">clear screen (same as <code>clear</code>)</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout good">
+  <kbd>ctrl</kbd> <kbd>r</kbd> alone replaces 90% of arrow-key archaeology. (<code>sudo</code> = <b>s</b>uper<b>u</b>ser <b>do</b> — run one command as root.)
+</div>
+
+<!-- ============ ALIASES ============ -->
+<h2>8 · Aliases &amp; functions</h2>
+<pre><code>alias gs='git status'           # alias = simple text substitution
+alias ll='ls -lah'
+alias ..='cd ..'
+unalias gs                      # remove
+alias                           # list all
+
+mkcd() { mkdir -p "$1" &amp;&amp; cd "$1"; }    # function: takes arguments ($1)</code></pre>
+<div class="callout">
+  <b>Alias</b> = dumb prefix replacement — fine for shortening a fixed command. <b>Function</b> = a real mini-script — use one the moment you need arguments or logic (aliases can't take <code>$1</code>). Both live only in the current session until you put them in your config file (next section).
+</div>
+
+<!-- ============ CONFIG ============ -->
+<h2>9 · Config files decoded — which runs when</h2>
+<div class="callout">
+  The suffix <b>rc</b> = "<b>r</b>un <b>c</b>ommands" (from the 1960s CTSS <code>runcom</code> facility) — a script the shell runs at startup. The split that confuses everyone:<br><br>
+  • <b>Login shell</b> — the first shell of a session (SSH login, and <i>every new macOS Terminal tab</i>, which macOS treats as a login).<br>
+  • <b>Interactive non-login shell</b> — a shell started from a shell (typing <code>bash</code>/<code>zsh</code>, most Linux terminal tabs).
+</div>
+<div class="card">
+  <h3>Which file, read by what, for what</h3>
+  <table>
+    <tr><td class="cmd"><code>~/.zshrc</code></td><td class="desc"><b>every interactive zsh</b> — ← <b>your stuff: aliases, functions, PATH, prompt</b> (macOS: this is the one)</td></tr>
+    <tr><td class="cmd"><code>~/.zprofile</code></td><td class="desc">zsh login shells only — one-time-per-login env setup (Homebrew puts its PATH line here)</td></tr>
+    <tr><td class="cmd"><code>~/.bashrc</code></td><td class="desc">interactive non-login bash — aliases/PATH on Linux</td></tr>
+    <tr><td class="cmd"><code>~/.bash_profile</code></td><td class="desc">bash login shells only — macOS-bash legacy; convention: have it <code>source ~/.bashrc</code> so both paths load one file</td></tr>
+    <tr><td class="cmd"><code>/etc/zshrc</code>, <code>/etc/profile</code></td><td class="desc">system-wide versions, all users (root-owned; rarely touched)</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  Practical rules: <b>on the Mac, edit <code>~/.zshrc</code></b>; in bash-land, edit <code>~/.bashrc</code> and let <code>~/.bash_profile</code> source it. Changes apply to <i>new</i> shells — load them into the current one with <code>source ~/.zshrc</code> (<code>.</code> is a synonym: <code>. ~/.zshrc</code>). <code>cat /etc/shells</code> lists installed shells; <code>chsh -s /bin/bash</code> changes your login shell.
+</div>
+
+<!-- ============ SCRIPTING ============ -->
+<h2>10 · Minimal scripting — shebang, <code>$1</code>, one-liners, <code>chmod +x</code></h2>
+<p class="lead">A script = commands in a text file. Three steps:</p>
+<pre><code>#!/bin/bash                      # 1. shebang: which interpreter runs this file
+echo "Hello, $1!"                # 2. the script ($1 = first argument)</code></pre>
+<pre><code>chmod +x greet.sh                # 3. make it executable (+x = add execute permission)
+./greet.sh Ada                 # run it → Hello, Ada!</code></pre>
+<div class="callout">
+  <b>Shebang</b> = <code>#!</code> — "sharp" (#) + "bang" (!). Must be <b>line 1</b>: the kernel reads it to pick the interpreter (<code>#!/bin/bash</code>, <code>#!/usr/bin/env python3</code> — the <code>env</code> form finds the interpreter via PATH, more portable). The <code>./</code> is needed because the current dir is deliberately <i>not</i> on <code>$PATH</code> (a security choice). <b>chmod</b> = <b>ch</b>ange <b>mode</b> (the file's permission bits).
+</div>
+<div class="callout">
+  Positional parameters: <code>$1 $2 …</code> = arguments; <code>$0</code> = script name; <code>$#</code> = how many; <code>"$@"</code> = all of them, properly quoted.
+</div>
+<pre><code># if — note the spaces inside [ ] are mandatory ([ is itself a command)
+if [ -f config.txt ]; then echo "found"; else echo "missing"; fi
+
+# for — loop over a glob
+for f in *.txt; do echo "processing $f"; done
+
+# common tests: -f file exists, -d dir exists, -z string empty,
+#               = string equal, -eq numbers equal</code></pre>
+<div class="callout good">
+  Top of every serious bash script: <code>set -euo pipefail</code> — die on any error (<code>-e</code>), on unset variables (<code>-u</code>), and on failures inside pipes.
+</div>
+
+<!-- ============ JOBS ============ -->
+<h2>11 · Job control — ctrl-z, <code>bg</code>, <code>fg</code>, <code>&amp;</code>, <code>jobs</code>, <code>kill</code></h2>
+<p class="lead">The shell can juggle several processes ("jobs") in one terminal:</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>cmd &amp;</code></td><td class="desc">start in the <b>background</b> — prompt returns immediately</td></tr>
+    <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>z</kbd></td><td class="desc"><b>suspend</b> (pause) the foreground job (SIGTSTP) — it's frozen, not dead</td></tr>
+    <tr><td class="cmd"><code>jobs</code></td><td class="desc">list this shell's jobs with numbers <code>[1]</code>, <code>[2]</code>…</td></tr>
+    <tr><td class="cmd"><code>bg</code> / <code>bg %2</code></td><td class="desc">resume a suspended job, in the <b>b</b>ack<b>g</b>round</td></tr>
+    <tr><td class="cmd"><code>fg</code> / <code>fg %2</code></td><td class="desc">bring a job back to the <b>f</b>ore<b>g</b>round</td></tr>
+    <tr><td class="cmd"><code>kill %1</code></td><td class="desc">terminate job 1 (politely: SIGTERM)</td></tr>
+    <tr><td class="cmd"><code>kill -9 &lt;PID&gt;</code></td><td class="desc">force-kill by process ID (SIGKILL — can't be ignored; last resort)</td></tr>
+    <tr><td class="cmd"><code>ps aux | grep name</code></td><td class="desc">find a process's PID system-wide</td></tr>
+    <tr><td class="cmd"><code>cmd &amp; disown</code> / <code>nohup cmd &amp;</code></td><td class="desc">detach a job so it survives closing the terminal</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  The classic move: started a long command without <code>&amp;</code>? → <kbd>ctrl</kbd> <kbd>z</kbd> then <code>bg</code> — same result, after the fact.
+</div>
+<div class="callout warn">
+  Note <kbd>ctrl</kbd> <kbd>z</kbd> ≠ <kbd>ctrl</kbd> <kbd>c</kbd>: suspend vs kill. Background jobs die with their terminal unless disowned/nohup'd (<b>nohup</b> = "<b>no h</b>ang<b>up</b>" — ignore the terminal-closed signal, named for the days when hanging up a modem killed your processes).
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>12 · Teardown — getting out</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>exit</code> / <kbd>ctrl</kbd> <kbd>d</kbd></td><td class="desc">leave the shell — <kbd>ctrl</kbd> <kbd>d</kbd> = EOF on stdin ("no more input, we're done")</td></tr>
+    <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>c</kbd></td><td class="desc">kill the foreground process (SIGINT) — not <kbd>ctrl</kbd> <kbd>z</kbd>, which only <i>suspends</i> (§11)</td></tr>
+    <tr><td class="cmd"><kbd>ctrl</kbd> <kbd>z</kbd> then <code>kill %1</code></td><td class="desc">a suspended job still holds resources — finish it off (<code>jobs</code> lists the numbers)</td></tr>
+    <tr><td class="cmd"><code>kill &lt;PID&gt;</code></td><td class="desc"><b>SIGTERM</b> — polite "please shut down"; the process can clean up first</td></tr>
+    <tr><td class="cmd"><code>kill -9 &lt;PID&gt;</code></td><td class="desc"><b>SIGKILL</b> — the kernel removes the process; can't be caught or ignored, no cleanup. Last resort</td></tr>
+    <tr><td class="cmd"><code>history -c</code></td><td class="desc">wipe this session's in-memory history (bash; zsh: <code>history -p</code>) — the history <i>file</i> is untouched</td></tr>
+    <tr><td class="cmd"><code>␣cmd</code> (leading space)</td><td class="desc">keep a command out of history — needs <code>HISTCONTROL=ignorespace</code> (bash) / <code>setopt HIST_IGNORE_SPACE</code> (zsh). Handy for secrets</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  Stuck terminal tab? Escalate in order: <kbd>ctrl</kbd> <kbd>c</kbd> → <kbd>ctrl</kbd> <kbd>d</kbd> → close the tab. Closing sends SIGHUP to its jobs — anything not <code>disown</code>ed/<code>nohup</code>'d dies with it (§11).
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>13 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Shell</b></td><td class="desc">command interpreter wrapping the kernel (bash, zsh, sh)</td></tr>
+    <tr><td class="cmd"><b>Terminal</b></td><td class="desc">the window program hosting a shell; emulates old hardware terminals</td></tr>
+    <tr><td class="cmd"><b>Kernel</b></td><td class="desc">OS core that talks to hardware; the shell is its user-facing layer</td></tr>
+    <tr><td class="cmd"><b>bash / zsh</b></td><td class="desc">Bourne Again SHell (1989) / Z shell (1990, macOS default)</td></tr>
+    <tr><td class="cmd"><b>Built-in vs external</b></td><td class="desc">runs inside the shell (<code>cd</code>) vs binary found via <code>$PATH</code> (<code>ls</code>); check with <code>type</code></td></tr>
+    <tr><td class="cmd"><b>stdin / stdout / stderr</b></td><td class="desc">standard streams 0, 1, 2; redirection re-plugs them</td></tr>
+    <tr><td class="cmd"><b>Pipe <code>|</code></b></td><td class="desc">stdout of one command → stdin of the next</td></tr>
+    <tr><td class="cmd"><b>Exit code</b></td><td class="desc">0 = success, non-zero = failure; in <code>$?</code>; drives <code>&amp;&amp;</code> / <code>||</code></td></tr>
+    <tr><td class="cmd"><b>Globbing</b></td><td class="desc">shell-side wildcard expansion (<code>*</code>, <code>?</code>, <code>**</code>, <code>[a-z]</code>)</td></tr>
+    <tr><td class="cmd"><b><code>$PATH</code></b></td><td class="desc">colon-separated dirs searched left-to-right for commands</td></tr>
+    <tr><td class="cmd"><b>Environment variable</b></td><td class="desc">an exported variable, inherited by child processes</td></tr>
+    <tr><td class="cmd"><b>rc file</b></td><td class="desc">"run commands" startup script (<code>.zshrc</code>, <code>.bashrc</code>)</td></tr>
+    <tr><td class="cmd"><b>Shebang <code>#!</code></b></td><td class="desc">line-1 marker naming a script's interpreter</td></tr>
+    <tr><td class="cmd"><b>PID</b></td><td class="desc">process ID; <code>$$</code> = the shell's own</td></tr>
+    <tr><td class="cmd"><b>Signal</b></td><td class="desc">async note to a process: SIGINT (ctrl-c), SIGTSTP (ctrl-z), SIGTERM/SIGKILL (<code>kill</code>)</td></tr>
+  </table>
+</div>
+
+<div class="callout good"><b>Working on remote machines?</b> See the companion <a href="ssh_cheatsheet.html">SSH cheat sheet</a> — keys, config aliases, scp, tunnels.</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://www.gnu.org/software/bash/manual/">GNU Bash manual</a> ·
+  <a href="https://zsh.sourceforge.io/Doc/">Zsh documentation</a> ·
+  <a href="https://linuxcommand.org/tlcl.php">The Linux Command Line (W. Shotts, free PDF)</a> ·
+  <a href="https://mywiki.wooledge.org/BashGuide">Bash Guide (Greg's Wiki)</a> ·
+  <a href="https://www.shellcheck.net/">ShellCheck</a> ·
+  <a href="https://explainshell.com/">explainshell.com</a> ·
+  <a href="https://support.apple.com/en-us/102360">Apple: zsh as default shell</a>
+</p>
+
+</div>
+</body>
+</html>

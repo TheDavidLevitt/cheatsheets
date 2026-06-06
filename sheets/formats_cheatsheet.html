@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Formats &amp; API Concepts Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{vertical-align:top;text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);
+     color:var(--accent);font-size:12.5px;letter-spacing:.03em;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  ul{margin:8px 0;padding-left:22px;font-size:13.5px;}
+  li{margin:4px 0;}
+  li b{color:var(--ink);}
+  .muted{color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Data Formats &amp; API Concepts Cheat Sheet</h1>
+<p class="sub">JSON · YAML · HTTP · REST · auth · webhooks · started 2026-06-06 · twin of <code>Tools/formats_cheatsheet.md</code></p>
+
+<!-- ============ ETYMOLOGY / DEFINITIONS ============ -->
+<div class="callout good">
+  <b>JSON</b> (JavaScript Object Notation) = the lingua franca of data exchange. Douglas Crockford "discovered" it (his word) in 2001 by lifting the object-literal syntax straight out of JavaScript — which is why it looks like a Python dict but isn't quite one. <b>API</b> (Application Programming Interface) = a contract for how one program talks to another; on the web that contract is usually HTTP requests carrying JSON. <b>HTTP</b> (HyperText Transfer Protocol) = the request/response protocol the web runs on (Tim Berners-Lee, 1991). <b>REST</b> (REpresentational State Transfer) = an architectural style for APIs, named in Roy Fielding's 2000 PhD thesis (he co-authored the HTTP spec — REST is HTTP used the way it was designed).
+</div>
+
+<!-- ============ MENTAL MODEL ============ -->
+<h2>0 · The mental model: one round trip</h2>
+<p class="lead">Almost everything in this sheet is a piece of this single picture:</p>
+<pre><code>  your code                                      someone's server
+  ─────────                                      ───────────────
+  HTTP request  ──────────────────────────────►  matches URL to a resource
+   method (GET/POST/…)                           does the work
+   URL  https://api.example.com/users/42         │
+   headers  (auth, content-type)                 │
+   body  (JSON, if sending data)                 ▼
+                ◄──────────────────────────────  HTTP response
+                                                  status code (200 / 404 / …)
+                                                  headers
+                                                  body (usually JSON)</code></pre>
+<div class="callout">
+  <ul style="margin:0;">
+    <li><b>Formats</b> (JSON, YAML, TOML, CSV) answer: <i>how is the data written down?</i></li>
+    <li><b>HTTP</b> answers: <i>how does the request/response travel?</i></li>
+    <li><b>REST</b> answers: <i>how should I name and organize the URLs and verbs?</i></li>
+    <li><b>Auth</b> answers: <i>how does the server know it's me?</i></li>
+  </ul>
+</div>
+
+<!-- ============ JSON ============ -->
+<h2>1 · JSON — the whole syntax in one example</h2>
+<p class="lead">JSON has exactly <b>six types</b>: object, array, string, number, boolean (<code>true</code>/<code>false</code>), and <code>null</code>. That's the entire language.</p>
+<pre><code>{
+  "name": "Ada",
+  "age": 36,
+  "height_m": 1.78,
+  "is_active": true,
+  "nickname": null,
+  "languages": ["en", "fr"],
+  "address": {
+    "city": "Lisbon",
+    "country": "QA"
+  }
+}</code></pre>
+<div class="card">
+  <h3>Annotations</h3>
+  <ul>
+    <li><code>{ }</code> = <b>object</b> — unordered key/value pairs. Keys MUST be <b>double-quoted strings</b> (single quotes are invalid — this trips up Python users constantly).</li>
+    <li><code>[ ]</code> = <b>array</b> — ordered list, any mix of types.</li>
+    <li>Numbers: no distinction between int and float; no <code>NaN</code>/<code>Infinity</code>; no leading zeros (<code>042</code> invalid).</li>
+    <li><b>No trailing commas</b> — <code>["a", "b",]</code> is a syntax error (unlike Python).</li>
+    <li><b>No comments</b> — by design; Crockford removed them to stop people abusing them for parser directives. (Workaround people use: a <code>"_comment"</code> key.)</li>
+    <li>Encoding is UTF-8; strings use <code>\"</code>, <code>\n</code>, <code>\uXXXX</code> escapes.</li>
+  </ul>
+</div>
+
+<h2>1a · JSON ↔ Python type mapping</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:24%">JSON</th><th style="width:26%">Python (<code>json</code> module)</th><th>Gotcha</th></tr>
+    <tr><td>object <code>{}</code></td><td><code>dict</code></td><td class="muted">JSON keys are <i>always</i> strings; <code>{1: "a"}</code> dumps as <code>{"1": "a"}</code></td></tr>
+    <tr><td>array <code>[]</code></td><td><code>list</code></td><td class="muted">tuples dump to arrays, but load back as lists</td></tr>
+    <tr><td>string</td><td><code>str</code></td><td class="muted">must be double-quoted in JSON</td></tr>
+    <tr><td>number (int-looking)</td><td><code>int</code></td><td class="muted"></td></tr>
+    <tr><td>number (with <code>.</code> or <code>e</code>)</td><td><code>float</code></td><td class="muted"><code>NaN</code>/<code>Infinity</code> are not legal JSON (Python dumps them anyway unless <code>allow_nan=False</code>)</td></tr>
+    <tr><td><code>true</code> / <code>false</code></td><td><code>True</code> / <code>False</code></td><td class="muted">capitalization differs!</td></tr>
+    <tr><td><code>null</code></td><td><code>None</code></td><td class="muted"></td></tr>
+    <tr><td>—</td><td><code>set</code>, <code>datetime</code>, custom classes</td><td class="muted">not serializable — convert first or pass <code>default=str</code></td></tr>
+  </table>
+</div>
+
+<div class="grid" style="margin-top:16px;">
+  <div class="card">
+    <h3>Python one-liners</h3>
+    <table>
+      <tr><td class="cmd"><code>json.loads(s)</code></td><td class="desc">parse a JSON <b>s</b>tring → Python objects (loads = "load string")</td></tr>
+      <tr><td class="cmd"><code>json.dumps(obj)</code></td><td class="desc">Python → JSON string (dumps = "dump to string")</td></tr>
+      <tr><td class="cmd"><code>json.load(f)</code> / <code>json.dump(obj, f)</code></td><td class="desc">same, but with an open file handle (no <code>s</code>)</td></tr>
+      <tr><td class="cmd"><code>json.dumps(obj, indent=2)</code></td><td class="desc">pretty-print</td></tr>
+      <tr><td class="cmd"><code>json.dumps(obj, indent=2, sort_keys=True, ensure_ascii=False)</code></td><td class="desc">pretty, stable order, keep accents readable</td></tr>
+      <tr><td class="cmd"><code>resp.json()</code></td><td class="desc"><code>requests</code> shortcut: parse a response body as JSON</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3><code>jq</code> one-liners (command-line JSON Swiss-army knife)</h3>
+    <table>
+      <tr><td class="cmd"><code>jq . file.json</code></td><td class="desc">pretty-print (the "hello world" of jq)</td></tr>
+      <tr><td class="cmd"><code>jq '.name' file.json</code></td><td class="desc">extract one field</td></tr>
+      <tr><td class="cmd"><code>jq '.languages[0]'</code></td><td class="desc">index into an array</td></tr>
+      <tr><td class="cmd"><code>jq '.[] | .name'</code></td><td class="desc">for each array element, take <code>.name</code></td></tr>
+      <tr><td class="cmd"><code>jq -r '.name'</code></td><td class="desc"><b>r</b>aw output — strip the quotes (for shell scripting)</td></tr>
+      <tr><td class="cmd"><code>jq 'keys'</code></td><td class="desc">list an object's keys</td></tr>
+      <tr><td class="cmd"><code>curl -s https://api.example.com/users | jq '.[0]'</code></td><td class="desc">classic combo: fetch + inspect first element</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ YAML ============ -->
+<h2>2 · YAML — JSON's indentation-based cousin</h2>
+<div class="callout good">
+  <b>YAML</b> = "YAML Ain't Markup Language" — a recursive acronym (the name contains itself), a Unix in-joke in the style of GNU ("GNU's Not Unix"). Originally it stood for "Yet Another Markup Language" (2001); renamed to stress it's for <i>data</i>, not document markup.
+</div>
+<div class="callout">
+  Key fact: <b>YAML is a superset of JSON</b> — every valid JSON file is valid YAML. YAML adds indentation-based structure, comments, and quote-less strings on top.
+</div>
+<pre><code># Comments work! (unlike JSON)
+name: Ada
+languages:        # a list — each item gets "- "
+  - en
+  - fr
+address:          # nesting via indentation (2 spaces is the convention)
+  city: Lisbon
+inline_also_works: {city: Lisbon}   # JSON syntax is legal YAML</code></pre>
+<div class="grid">
+  <div class="card">
+    <h3>Where you meet it</h3>
+    <table>
+      <tr><td class="cmd"><b>GitHub Actions</b></td><td class="desc"><code>.github/workflows/*.yml</code> — CI pipelines</td></tr>
+      <tr><td class="cmd"><b>conda</b></td><td class="desc"><code>environment.yml</code> — env name + dependency list</td></tr>
+      <tr><td class="cmd"><b>Docker Compose</b></td><td class="desc"><code>docker-compose.yml</code></td></tr>
+      <tr><td class="cmd"><b>Kubernetes</b></td><td class="desc">basically everything</td></tr>
+      <tr><td class="cmd"><b>MkDocs / many tools</b></td><td class="desc"><code>mkdocs.yml</code>, config files generally</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>YAML gotchas (it's <i>too</i> clever)</h3>
+    <table>
+      <tr><td class="cmd"><b>Tabs are forbidden</b></td><td class="desc">indentation must be spaces; a tab is a hard syntax error</td></tr>
+      <tr><td class="cmd"><b>The Norway problem</b></td><td class="desc">unquoted <code>no</code> parses as boolean <code>false</code> (so a country list <code>[GB, FR, NO]</code> corrupts Norway). Same for <code>yes/on/off</code>; YAML 1.2 fixed it but many parsers are 1.1. Quote it: <code>"NO"</code></td></tr>
+      <tr><td class="cmd">Unquoted <code>3.10</code></td><td class="desc">parses as the <i>float</i> 3.1 — Python version numbers in CI must be quoted: <code>"3.10"</code></td></tr>
+      <tr><td class="cmd"><code>09:30</code></td><td class="desc">sexagesimal/time parsing surprises in YAML 1.1</td></tr>
+      <tr><td class="cmd">Rule of thumb</td><td class="desc"><b>when in doubt, quote your strings</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ TOML / CSV / XML ============ -->
+<h2>3 · TOML, CSV — and XML in two lines</h2>
+<div class="callout good">
+  <b>TOML</b> (Tom's Obvious Minimal Language — Tom Preston-Werner, GitHub co-founder, 2013) = INI files with a real spec. Deliberately flat and unambiguous where YAML is clever. You meet it as <b><code>pyproject.toml</code></b>, Python's standard project config:
+</div>
+<pre><code>[project]
+name = "myapp"
+requires-python = "&gt;=3.11"
+dependencies = ["requests", "pandas"]
+
+[tool.ruff]          # [section] headers = "tables"
+line-length = 100    # strings always quoted, so no Norway problem</code></pre>
+<div class="callout">
+  <b>CSV</b> (Comma-Separated Values) = the oldest trick in the book: one record per line, fields split on commas. No real standard (RFC 4180 is a sketch) — quoting, encodings, and delimiters (Excel in French locales uses <code>;</code>!) vary. Read it with <code>pandas.read_csv()</code> or stdlib <code>csv.DictReader</code>, never with <code>.split(",")</code> — quoted fields can contain commas.
+</div>
+<div class="callout">
+  <b>XML</b> (eXtensible Markup Language, 1998) = the verbose tagged format (<code>&lt;user&gt;&lt;name&gt;Ada&lt;/name&gt;&lt;/user&gt;</code>) that dominated the SOAP-era of web services (SOAP = Simple Object Access Protocol, XML-based RPC). You'll meet it in legacy enterprise APIs, RSS feeds, and SVG — but new APIs are JSON.
+</div>
+
+<!-- ============ HTTP ============ -->
+<h2>4 · HTTP fundamentals</h2>
+<p class="lead"><b>Anatomy of a request</b> — the response mirrors it: status line (<code>HTTP/1.1 201 Created</code>), headers, blank line, body.</p>
+<pre><code>POST /v1/users HTTP/1.1            ← method + path + protocol version
+Host: api.example.com              ← headers: key: value lines
+Authorization: Bearer eyJhbGc...
+Content-Type: application/json
+                                   ← blank line separates headers from body
+{"name": "Ada"}                  ← body (only for POST/PUT/PATCH)</code></pre>
+
+<div class="card">
+  <h3>The verb table</h3>
+  <table>
+    <tr><th style="width:14%">Verb</th><th style="width:30%">Meaning</th><th style="width:12%">Body?</th><th style="width:22%">Idempotent?</th><th>Analogy</th></tr>
+    <tr><td><b>GET</b></td><td>read a resource</td><td>no</td><td>yes</td><td class="muted">SELECT</td></tr>
+    <tr><td><b>POST</b></td><td>create / trigger an action</td><td>yes</td><td><b>no</b> (repeat = duplicate!)</td><td class="muted">INSERT</td></tr>
+    <tr><td><b>PUT</b></td><td>replace a resource entirely</td><td>yes</td><td>yes</td><td class="muted">overwrite the file</td></tr>
+    <tr><td><b>PATCH</b></td><td>modify part of a resource</td><td>yes</td><td>usually</td><td class="muted">edit one field</td></tr>
+    <tr><td><b>DELETE</b></td><td>remove a resource</td><td>no</td><td>yes</td><td class="muted">rm</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Idempotent</b> = repeating the request has the same effect as doing it once — safe to retry. That's why retry logic retries GET freely but must be careful with POST.
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3>Status code families — first digit tells the story</h3>
+  <table>
+    <tr><th style="width:12%">Family</th><th style="width:26%">Meaning</th><th>Famous members</th></tr>
+    <tr><td><b>2xx</b></td><td>success</td><td class="muted"><b>200</b> OK · <b>201</b> Created (after a POST) · 204 No Content</td></tr>
+    <tr><td><b>3xx</b></td><td>redirection</td><td class="muted"><b>301</b> Moved Permanently (the URL changed — update your bookmark) · 302 Found (temporary)</td></tr>
+    <tr><td><b>4xx</b></td><td><i>your</i> fault (client error)</td><td class="muted"><b>400</b> Bad Request · <b>401</b> Unauthorized (really means <i>unauthenticated</i> — who are you?) · <b>403</b> Forbidden (I know who you are, and no) · <b>404</b> Not Found · <b>429</b> Too Many Requests (rate-limited — back off)</td></tr>
+    <tr><td><b>5xx</b></td><td><i>their</i> fault (server error)</td><td class="muted"><b>500</b> Internal Server Error · 502 Bad Gateway · <b>503</b> Service Unavailable (overloaded/down — retry later)</td></tr>
+  </table>
+</div>
+<div class="callout">
+  Memory hook for 401 vs 403: <b>401 = "log in first"</b> (missing/bad credentials), <b>403 = "logged in, still no"</b> (insufficient permissions).
+</div>
+
+<!-- ============ REST ============ -->
+<h2>5 · REST — what "RESTful" actually means</h2>
+<p class="lead">REST is not a protocol or library — it's a set of conventions (from Fielding's thesis) for designing HTTP APIs:</p>
+<div class="callout">
+  <ol style="margin:0;padding-left:22px;font-size:13.5px;">
+    <li><b>Resources are nouns in URLs</b> — <code>/users/42/orders</code>, never <code>/getUserOrders?id=42</code>. The thing, not the action.</li>
+    <li><b>Verbs come from HTTP</b> — the method says what you're doing to the noun (GET reads it, DELETE removes it).</li>
+    <li><b>Stateless</b> — every request carries everything the server needs (auth included); the server keeps no session memory between requests. That's what makes REST APIs scale — any server replica can answer any request.</li>
+    <li>Responses are representations (usually JSON) of resource state — hence the name: you transfer a <i>representation</i> of the resource's <i>state</i>.</li>
+  </ol>
+</div>
+
+<h3 style="font-size:14px;margin:18px 0 8px;">URL anatomy</h3>
+<pre><code>https://api.example.com:443/v1/users/42?fields=name,email&amp;limit=10#section
+└─┬─┘   └───────┬───────┘└┬┘└────┬─────┘└──────────┬───────────┘ └──┬──┘
+scheme       host        port   path          query params       fragment
+(protocol)  (which server)     (which        (?key=value pairs   (client-only,
+                                resource)     joined by &amp;)        never sent)</code></pre>
+
+<h3 style="font-size:14px;margin:18px 0 8px;">Worked example — same call, curl and Python</h3>
+<pre><code># GET with a query param and auth header
+curl -s "https://api.example.com/v1/users?limit=2" \
+     -H "Authorization: Bearer $TOKEN" | jq .
+
+# POST: create a resource (note 201 Created on success)
+curl -s -X POST "https://api.example.com/v1/users" \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Ada", "city": "Lisbon"}'</code></pre>
+<pre><code>import requests
+
+headers = {"Authorization": f"Bearer {token}"}
+
+r = requests.get("https://api.example.com/v1/users",
+                 params={"limit": 2}, headers=headers)   # params → ?limit=2
+r.raise_for_status()          # raises on 4xx/5xx — always do this
+users = r.json()              # parsed JSON → list/dict
+
+r = requests.post("https://api.example.com/v1/users",
+                  json={"name": "Ada", "city": "Lisbon"},  # json= sets body
+                  headers=headers)                         # AND Content-Type
+print(r.status_code)          # 201</code></pre>
+<div class="callout good">
+  <code>json=</code> (auto-serializes + sets the header) vs <code>data=</code> (raw form/bytes) is the classic <code>requests</code> distinction.
+</div>
+
+<!-- ============ AUTH ============ -->
+<h2>6 · Auth patterns in one table</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:20%">Pattern</th><th style="width:32%">Looks like</th><th>Notes</th></tr>
+    <tr><td><b>API key in header</b></td><td><code>x-api-key: sk-abc123…</code></td><td class="muted">simplest; a static secret identifying <i>the app</i>. (Anthropic's API uses exactly this.)</td></tr>
+    <tr><td><b>Bearer token</b></td><td><code>Authorization: Bearer eyJhbGc…</code></td><td class="muted">"whoever <i>bears</i> this token is authorized." Often a JWT (JSON Web Token — signed JSON payload); usually short-lived</td></tr>
+    <tr><td><b>Basic auth</b></td><td><code>Authorization: Basic dXNlcjpwYXNz</code></td><td class="muted">base64 of <code>user:password</code> — old, only over HTTPS, rare in modern APIs</td></tr>
+    <tr><td><b>OAuth 2.0</b></td><td>a <i>flow</i>, not a header</td><td class="muted">in one sentence: a choreography where you grant App A limited access to your data in Service B without giving A your B password — it ends with A holding a Bearer token</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  Universal rule: secrets live in environment variables (<code>os.environ["API_KEY"]</code>), never in code or Git.
+</div>
+
+<!-- ============ WEBHOOKS ============ -->
+<h2>7 · Webhooks vs polling</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:18%"></th><th style="width:38%">Polling</th><th>Webhook</th></tr>
+    <tr><td><b>Direction</b></td><td><b>you ask</b> repeatedly: "anything new?"</td><td><b>they call you</b> when something happens</td></tr>
+    <tr><td><b>Mechanics</b></td><td>loop of GET requests on a schedule</td><td>you register a URL; the service POSTs JSON to it on each event</td></tr>
+    <tr><td><b>Latency vs cost</b></td><td>latency = poll interval; wasteful (most polls return nothing)</td><td>near-instant, no wasted calls</td></tr>
+    <tr><td><b>Catch</b></td><td>rate limits (hello, 429)</td><td>you must run a publicly reachable server, and verify the payload signature (anyone can POST to a URL)</td></tr>
+  </table>
+</div>
+<div class="callout">
+  Memory hook: polling = checking the mailbox every five minutes; webhook = the doorbell.
+</div>
+
+<!-- ============ OTHER FORMATS ============ -->
+<h2>8 · Other formats you'll meet</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>JSONL</b> (JSON Lines)</td><td class="desc">one complete JSON object <b>per line</b> — streamable, appendable, the standard for LLM training data and batch APIs. The whole file is <i>not</i> valid JSON; each line is.</td></tr>
+    <tr><td class="cmd"><b>Parquet</b></td><td class="desc">binary <b>columnar</b> format (stores column-by-column, not row-by-row) → great compression + fast "give me just these 2 columns" reads. The data-engineering default; <code>pandas.read_parquet()</code>.</td></tr>
+    <tr><td class="cmd"><b>Markdown</b></td><td class="desc">what the source file is written in — plain-text formatting conventions (<code>#</code> heading, <code>**bold**</code>, <code>[link](url)</code>) by John Gruber, 2004; "markdown" is a pun on "markup".</td></tr>
+    <tr><td class="cmd"><b>Pickle</b></td><td class="desc">Python-only binary serialization — never load one from an untrusted source (arbitrary code execution).</td></tr>
+  </table>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>9 · Teardown / hygiene</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Done with an API key</b></td><td class="desc"><b>revoke it in the provider's console</b> — deleting it from your code is not revocation; a leaked key works until the server side kills it</td></tr>
+    <tr><td class="cmd"><b>Done with a Bearer token / session</b></td><td class="desc">"log out" properly = the server <b>invalidates the session/token</b>; merely deleting the cookie only makes <i>your</i> browser forget it — the credential may still be valid if stolen</td></tr>
+    <tr><td class="cmd"><b>Done with a webhook endpoint</b></td><td class="desc">unsubscribe/disable it in the sending service — otherwise it keeps POSTing events to a URL you no longer control (a re-registered domain could receive your data)</td></tr>
+    <tr><td class="cmd"><b>Done with a streaming connection</b></td><td class="desc">close it explicitly — <code>with requests.get(url, stream=True) as r:</code> (or <code>r.close()</code>) — abandoned streams hold sockets and server resources open</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>10 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>JSON</b></td><td class="desc">JavaScript Object Notation; 6-type text data format (Crockford, 2001)</td></tr>
+    <tr><td class="cmd"><b>YAML</b></td><td class="desc">"YAML Ain't Markup Language" (recursive acronym); JSON superset with indentation + comments</td></tr>
+    <tr><td class="cmd"><b>TOML</b></td><td class="desc">Tom's Obvious Minimal Language; config format of <code>pyproject.toml</code></td></tr>
+    <tr><td class="cmd"><b>CSV</b></td><td class="desc">Comma-Separated Values; line-per-record tabular text</td></tr>
+    <tr><td class="cmd"><b>XML / SOAP</b></td><td class="desc">eXtensible Markup Language / Simple Object Access Protocol; the legacy tagged-format era</td></tr>
+    <tr><td class="cmd"><b>HTTP</b></td><td class="desc">HyperText Transfer Protocol; the web's request/response protocol</td></tr>
+    <tr><td class="cmd"><b>API</b></td><td class="desc">Application Programming Interface; a contract between programs</td></tr>
+    <tr><td class="cmd"><b>REST</b></td><td class="desc">REpresentational State Transfer (Fielding, 2000); nouns-in-URLs + HTTP verbs + stateless</td></tr>
+    <tr><td class="cmd"><b>Idempotent</b></td><td class="desc">repeating the request changes nothing further; safe to retry</td></tr>
+    <tr><td class="cmd"><b>Bearer token / JWT</b></td><td class="desc">auth credential carried in the <code>Authorization</code> header; JWT = JSON Web Token</td></tr>
+    <tr><td class="cmd"><b>OAuth</b></td><td class="desc">delegated-authorization flow ending in a Bearer token</td></tr>
+    <tr><td class="cmd"><b>Webhook</b></td><td class="desc">reverse API call: the service POSTs to <i>your</i> URL on events</td></tr>
+    <tr><td class="cmd"><b>JSONL</b></td><td class="desc">JSON Lines; one JSON object per line</td></tr>
+    <tr><td class="cmd"><b>Parquet</b></td><td class="desc">columnar binary format for analytics</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://www.json.org/json-en.html">json.org</a> (the entire JSON grammar on one page, with railroad diagrams) ·
+  <a href="https://docs.python.org/3/library/json.html">Python <code>json</code> module docs</a> ·
+  <a href="https://jqlang.github.io/jq/manual/">jq manual</a> ·
+  <a href="https://yaml.org/spec/1.2.2/">YAML spec</a> · <a href="https://yaml.org/">yaml.org</a> ·
+  <a href="https://toml.io/en/">TOML spec</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview">MDN HTTP overview</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">MDN status codes</a> ·
+  <a href="https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm">Fielding's REST thesis, ch. 5</a> ·
+  <a href="https://requests.readthedocs.io/">requests library docs</a> ·
+  <a href="https://www.oauth.com/">OAuth 2.0 simplified</a>
+</p>
+
+</div>
+</body>
+</html>

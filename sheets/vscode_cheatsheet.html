@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VS Code &amp; Jupyter Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040; --star:#e0af68;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  h2.star{color:var(--star);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card.flag{border-color:var(--star);}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+     padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.act{width:46%;}
+  td.key{width:27%;}
+  td.ctx{width:54%;color:var(--muted);}
+  .two td.key{width:27%;}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12.5px;color:#cdd6f4;display:inline-block;margin:1px 0;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout.star{border-left-color:var(--star);}
+  .callout b{color:var(--ink);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>VS Code&nbsp;&amp;&nbsp;Jupyter Cheat Sheet</h1>
+<p class="sub">Mac + Windows · twin of <code>Tools/vscode_shortcuts.md</code> · last content sync 2026-05-15</p>
+
+<div class="callout good">
+  <b>Key legend (Mac):</b>
+  <span class="pill">⌘ Cmd</span><span class="pill">⌥ Option</span><span class="pill">⇧ Shift</span><span class="pill">⌃ Control</span><span class="pill">↵ Return</span>
+  Windows equivalents: ⌘→Ctrl, ⌥→Alt, ⌃→Ctrl. <b>Command Palette</b> (<kbd>⌘⇧P</kbd> / <kbd>Ctrl+Shift+P</kbd>) is the master search — when in doubt, open it and type the action.
+</div>
+
+<!-- ============ FLAGGED ============ -->
+<h2 class="star">★ Flagged shortcuts</h2>
+<p class="lead">Promoted from chat sessions for fast lookup.</p>
+<div class="card flag">
+  <table>
+    <tr><th>Action</th><th>Shortcut</th><th>Context</th></tr>
+    <tr><td class="act"><b>Toggle line numbers in current Jupyter cell</b></td><td class="key"><kbd>L</kbd></td><td class="ctx">Cell selected, command mode (<kbd>Esc</kbd> first)</td></tr>
+    <tr><td class="act"><b>Open VS Code Settings (GUI)</b></td><td class="key"><kbd>⌘,</kbd></td><td class="ctx">Anywhere; browsable settings with search + checkboxes</td></tr>
+    <tr><td class="act"><b>Collapse / expand one cell's input</b></td><td class="key">right-click → Collapse Cell Input</td><td class="ctx">Jupyter — most reliable single-cell method</td></tr>
+    <tr><td class="act"><b>Collapse all cell inputs / outputs</b></td><td class="key">Palette → <code>Notebook: Collapse All Cell Inputs</code> / <code>...Outputs</code></td><td class="ctx">Jupyter notebook</td></tr>
+    <tr><td class="act"><b>Suggested single-cell collapse keybind</b></td><td class="key"><kbd>⌘K ⌘C</kbd> collapse · <kbd>⌘K ⌘E</kbd> expand</td><td class="ctx">Bind via <kbd>⌘K ⌘S</kbd> to <code>notebook.cell.collapseCellInput</code>/<code>expandCellInput</code>; add <code>when: notebookEditorFocused &amp;&amp; !inputFocus</code>. Chevron in the gutter is hard to find.</td></tr>
+    <tr><td class="act"><b>Deactivate a cell without deleting</b></td><td class="key">wrap body in <code>if False:</code></td><td class="ctx">VS Code doesn't expose <code>changeToRaw</code>, so <code>Esc r</code> fails. Toggle <code>False</code>→<code>True</code> to re-enable.</td></tr>
+    <tr><td class="act"><b>Convert cell type (only Code ↔ Markdown work)</b></td><td class="key"><kbd>Esc y</kbd> Code · <kbd>Esc m</kbd> Markdown</td><td class="ctx">Raw unavailable in VS Code; use <code>if False:</code> for deactivation</td></tr>
+    <tr><td class="act"><b>Indent without triggering autocomplete</b></td><td class="key"><kbd>⌘]</kbd> indent · <kbd>⌘[</kbd> outdent</td><td class="ctx">Use instead of <kbd>Tab</kbd> when a suggestion popup is showing — always indents</td></tr>
+    <tr><td class="act"><b>Indent multiple lines at once</b></td><td class="key">select lines → <kbd>Tab</kbd></td><td class="ctx">Tab on a multi-line selection always indents (autocomplete skipped)</td></tr>
+    <tr><td class="act"><b>Toggle terminal panel</b></td><td class="key"><kbd>⌃ + `</kbd> (Ctrl + backtick)</td><td class="ctx">Backtick is left of <kbd>1</kbd></td></tr>
+    <tr><td class="act"><b>New additional terminal</b></td><td class="key"><kbd>⌃ ⇧ + `</kbd></td><td class="ctx">Spawn a second terminal alongside the first</td></tr>
+    <tr><td class="act"><b>Wrap text in notebook output cells (global)</b></td><td class="key">Settings → <code>notebook.output.wordWrap: true</code></td><td class="ctx">Jupyter notebook</td></tr>
+    <tr><td class="act"><b>Toggle output wrap for current notebook</b></td><td class="key">Palette → <code>Notebook: Toggle Word Wrap in Cell Outputs</code></td><td class="ctx">Jupyter notebook</td></tr>
+    <tr><td class="act"><b>Reload window (frozen-UI rescue)</b></td><td class="key">Palette → <code>Developer: Reload Window</code></td><td class="ctx">Kernel↔UI bridge or renderer issues</td></tr>
+    <tr><td class="act"><b>Interrupt running cell</b></td><td class="key"><kbd>I I</kbd> (command mode)</td><td class="ctx">Infinite loop / hanging API call</td></tr>
+    <tr><td class="act"><b>Restart kernel</b></td><td class="key"><kbd>0 0</kbd> (command mode)</td><td class="ctx">Poisoned namespace state</td></tr>
+    <tr><td class="act"><b>Open user settings (JSON)</b></td><td class="key">Palette → <code>Preferences: Open User Settings (JSON)</code></td><td class="ctx">Edit settings the GUI doesn't expose, or read/share your config</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>settings.json location (Mac):</b> <code>~/Library/Application Support/Code/User/settings.json</code>. Workspace overrides live in <code>.vscode/settings.json</code> inside the project — these take precedence for that folder.<br>
+  Line numbers in <i>every</i> cell by default → <code>"notebook.lineNumbers": "on"</code>. Jupyter tracebacks count from line 1 of the <b>cell</b>, so per-cell line numbers map cleanly to errors.
+</div>
+
+<!-- ============ SELECTION / NAV ============ -->
+<h2>1 · Selection &amp; navigation</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Move &amp; select</h3>
+    <table class="two">
+      <tr><th>Action</th><th>Mac</th><th>Windows</th></tr>
+      <tr><td class="act"><b>Expand selection</b> (smart: word→expr→line→block→func)</td><td class="key"><kbd>⌃⇧⌘→</kbd></td><td class="key"><kbd>Shift+Alt+→</kbd></td></tr>
+      <tr><td class="act">Shrink selection</td><td class="key"><kbd>⌃⇧⌘←</kbd></td><td class="key"><kbd>Shift+Alt+←</kbd></td></tr>
+      <tr><td class="act">Select whole line (repeat to grow)</td><td class="key"><kbd>⌘L</kbd></td><td class="key"><kbd>Ctrl+L</kbd></td></tr>
+      <tr><td class="act">Extend selection by a line</td><td class="key"><kbd>⇧↓</kbd>/<kbd>⇧↑</kbd></td><td class="key"><kbd>Shift+↓/↑</kbd></td></tr>
+      <tr><td class="act">Select word / next occurrence (multi-cursor)</td><td class="key"><kbd>⌘D</kbd></td><td class="key"><kbd>Ctrl+D</kbd></td></tr>
+      <tr><td class="act">Select all occurrences of word</td><td class="key"><kbd>⌘⇧L</kbd></td><td class="key"><kbd>Ctrl+Shift+L</kbd></td></tr>
+      <tr><td class="act">Column / box selection</td><td class="key"><kbd>⇧⌥</kbd>+drag</td><td class="key"><kbd>Shift+Alt</kbd>+drag</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Jump to</h3>
+    <table class="two">
+      <tr><th>Action</th><th>Mac</th><th>Windows</th></tr>
+      <tr><td class="act">Go to line number</td><td class="key"><kbd>⌃G</kbd></td><td class="key"><kbd>Ctrl+G</kbd></td></tr>
+      <tr><td class="act">Go to symbol in file</td><td class="key"><kbd>⌘⇧O</kbd></td><td class="key"><kbd>Ctrl+Shift+O</kbd></td></tr>
+      <tr><td class="act">Go to file (quick open)</td><td class="key"><kbd>⌘P</kbd></td><td class="key"><kbd>Ctrl+P</kbd></td></tr>
+      <tr><td class="act"><b>Command Palette</b> (master search)</td><td class="key"><kbd>⌘⇧P</kbd></td><td class="key"><kbd>Ctrl+Shift+P</kbd></td></tr>
+    </table>
+    <p class="lead"><b>Why expand-selection is the one to memorize:</b> it respects the language's grammar — semantic, not line-based. One press grows you to the next meaningful scope; works in any language VS Code can parse.</p>
+  </div>
+</div>
+
+<!-- ============ EDITING ============ -->
+<h2>2 · Editing &amp; commenting</h2>
+<div class="card">
+  <table class="two">
+    <tr><th>Action</th><th>Mac</th><th>Windows</th></tr>
+    <tr><td class="act"><b>Toggle line comment</b></td><td class="key"><kbd>⌘/</kbd></td><td class="key"><kbd>Ctrl+/</kbd></td></tr>
+    <tr><td class="act"><b>Toggle block comment</b> (language-dependent)</td><td class="key"><kbd>⇧⌥A</kbd></td><td class="key"><kbd>Shift+Alt+A</kbd></td></tr>
+    <tr><td class="act">Duplicate line up / down</td><td class="key"><kbd>⇧⌥↑/↓</kbd></td><td class="key"><kbd>Shift+Alt+↑/↓</kbd></td></tr>
+    <tr><td class="act">Move line up / down</td><td class="key"><kbd>⌥↑/↓</kbd></td><td class="key"><kbd>Alt+↑/↓</kbd></td></tr>
+    <tr><td class="act">Delete line</td><td class="key"><kbd>⌘⇧K</kbd></td><td class="key"><kbd>Ctrl+Shift+K</kbd></td></tr>
+    <tr><td class="act">Indent / outdent</td><td class="key"><kbd>⌘]</kbd>/<kbd>⌘[</kbd></td><td class="key"><kbd>Ctrl+]</kbd>/<kbd>Ctrl+[</kbd></td></tr>
+    <tr><td class="act">Format document</td><td class="key"><kbd>⇧⌥F</kbd></td><td class="key"><kbd>Shift+Alt+F</kbd></td></tr>
+    <tr><td class="act">Rename symbol (refactor across file)</td><td class="key"><kbd>F2</kbd></td><td class="key"><kbd>F2</kbd></td></tr>
+  </table>
+</div>
+
+<!-- ============ JUPYTER MODES ============ -->
+<h2>3 · Jupyter — modes &amp; running cells</h2>
+<div class="callout">
+  Two modes, like classic Jupyter: <b>Command mode</b> (cell selected, blue bar — keyboard controls the cell) and <b>Edit mode</b> (cursor inside, green bar — keyboard edits text). <kbd>Esc</kbd> goes edit→command; <kbd>↵</kbd> goes command→edit.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Run</h3>
+    <table>
+      <tr><td class="act">Run cell, stay</td><td class="key"><kbd>⌃↵</kbd></td></tr>
+      <tr><td class="act"><b>Run cell, move to next</b> (makes one if at bottom)</td><td class="key"><kbd>⇧↵</kbd></td></tr>
+      <tr><td class="act">Run cell, insert new below</td><td class="key"><kbd>⌥↵</kbd></td></tr>
+      <tr><td class="act">Run all cells</td><td class="key">Palette → Jupyter: Run All Cells</td></tr>
+      <tr><td class="act"><b>Restart Kernel + Run All</b> (bulletproof reset)</td><td class="key">Palette → Jupyter: Restart Kernel and Run All Cells</td></tr>
+      <tr><td class="act">Run all above / below</td><td class="key">Palette → Jupyter: Run All Above / Below</td></tr>
+      <tr><td class="act">Interrupt / restart kernel</td><td class="key"><kbd>I I</kbd> / <kbd>0 0</kbd> (command mode)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Create / delete (command mode — <kbd>Esc</kbd> first)</h3>
+    <table>
+      <tr><td class="act">Insert cell above / below</td><td class="key"><kbd>a</kbd> / <kbd>b</kbd></td></tr>
+      <tr><td class="act">Delete cell</td><td class="key"><kbd>d d</kbd></td></tr>
+      <tr><td class="act">Undo cell delete</td><td class="key"><kbd>z</kbd></td></tr>
+      <tr><td class="act">To Markdown / to Code</td><td class="key"><kbd>m</kbd> / <kbd>y</kbd></td></tr>
+      <tr><td class="act">To Raw (unavailable in VS Code)</td><td class="key"><kbd>r</kbd> — use <code>if False:</code> instead</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ JUPYTER STATE ============ -->
+<h2>4 · Jupyter — reading cell execution state</h2>
+<p class="lead">The <code>[N]</code> at the left of each cell is the execution counter for the current kernel session.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Indicators</h3>
+    <table>
+      <tr><td class="key"><code>[ ]</code></td><td class="ctx">never run in this kernel session</td></tr>
+      <tr><td class="key"><code>[*]</code></td><td class="ctx">currently running or queued</td></tr>
+      <tr><td class="key"><code>[N]</code></td><td class="ctx">last ran as execution #N this session</td></tr>
+      <tr><td class="key">dim <code>[N]</code> + gutter dot</td><td class="ctx">edited since it last ran — output is stale</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Does a cell need rerunning?</h3>
+    <p class="lead">1. Read execution numbers as replay order — if cell 3 is <code>[7]</code> and cell 5 is <code>[3]</code>, you ran them out of order. 2. Watch for dim-number + gutter-dot (modified after running). 3. When in doubt: <b>Restart Kernel and Run All</b> — the notebook's clean <code>make</code>.</p>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Concept — notebook reproducibility:</b> a kernel is a long-running process; each cell mutates its namespace, and saved outputs reflect whatever state the kernel was in <i>when</i> each cell ran — not necessarily top-to-bottom. "Works on my machine" in notebooks almost always traces to this. Restart-and-run-all is the cure; run it before committing so counts go <code>[1],[2],[3]…</code>.
+</div>
+
+<!-- ============ PANELS ============ -->
+<h2>5 · Panels, terminal &amp; layout</h2>
+<div class="card">
+  <table class="two">
+    <tr><th>Action</th><th>Mac</th><th>Windows</th></tr>
+    <tr><td class="act">Toggle terminal</td><td class="key"><kbd>⌃ `</kbd></td><td class="key"><kbd>Ctrl+`</kbd></td></tr>
+    <tr><td class="act">Toggle sidebar</td><td class="key"><kbd>⌘B</kbd></td><td class="key"><kbd>Ctrl+B</kbd></td></tr>
+    <tr><td class="act">Toggle explorer / files panel</td><td class="key"><kbd>⌘⇧E</kbd></td><td class="key"><kbd>Ctrl+Shift+E</kbd></td></tr>
+    <tr><td class="act">Split editor</td><td class="key"><kbd>⌘\</kbd></td><td class="key"><kbd>Ctrl+\</kbd></td></tr>
+    <tr><td class="act">Close editor tab</td><td class="key"><kbd>⌘W</kbd></td><td class="key"><kbd>Ctrl+W</kbd></td></tr>
+    <tr><td class="act">Zen mode</td><td class="key"><kbd>⌘K Z</kbd></td><td class="key"><kbd>Ctrl+K Z</kbd></td></tr>
+  </table>
+</div>
+
+<!-- ============ COPILOT/CLAUDE + CUSTOMIZE ============ -->
+<h2>6 · AI extensions &amp; customizing shortcuts</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Copilot / Claude extension (if installed)</h3>
+    <table class="two">
+      <tr><th>Action</th><th>Mac</th><th>Windows</th></tr>
+      <tr><td class="act">Accept inline suggestion</td><td class="key"><kbd>Tab</kbd></td><td class="key"><kbd>Tab</kbd></td></tr>
+      <tr><td class="act">Dismiss inline suggestion</td><td class="key"><kbd>Esc</kbd></td><td class="key"><kbd>Esc</kbd></td></tr>
+      <tr><td class="act">Open chat</td><td class="key"><kbd>⌃⌘I</kbd></td><td class="key"><kbd>Ctrl+Alt+I</kbd></td></tr>
+      <tr><td class="act">Inline chat on selection</td><td class="key"><kbd>⌘I</kbd></td><td class="key"><kbd>Ctrl+I</kbd></td></tr>
+    </table>
+    <p class="lead">Defaults vary by extension/version — check the extension's own keybindings.</p>
+  </div>
+  <div class="card">
+    <h3>Customizing shortcuts</h3>
+    <p class="lead">Open the Keyboard Shortcuts editor: <kbd>⌘K ⌘S</kbd> / <kbd>Ctrl+K Ctrl+S</kbd>, or Palette → "Preferences: Open Keyboard Shortcuts." Searchable by command name + binding; re-bind, add an alternate, or remove.</p>
+    <p class="lead">Advanced: bindings live in <code>keybindings.json</code> (Palette → "Open Keyboard Shortcuts (JSON)") — same config pattern as <code>settings.json</code>.</p>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>7 · Teardown — closing, stopping, quitting</h2>
+<div class="card">
+  <table class="two">
+    <tr><th>Action</th><th>Mac</th><th>Windows / notes</th></tr>
+    <tr><td class="act">Close current editor tab</td><td class="key"><kbd>⌘W</kbd></td><td class="key"><kbd>Ctrl+W</kbd></td></tr>
+    <tr><td class="act">Close <b>all</b> editors</td><td class="key"><kbd>⌘K ⌘W</kbd></td><td class="key"><kbd>Ctrl+K Ctrl+W</kbd> · or Palette → "View: Close All Editors"</td></tr>
+    <tr><td class="act"><b>Kill</b> integrated terminal</td><td class="key">trash-can icon in terminal panel</td><td class="ctx">⚠ kill ends the shell <i>process</i>; <kbd>⌃ `</kbd> only <b>hides</b> the panel — shell keeps running</td></tr>
+    <tr><td class="act">Stop / restart Jupyter kernel</td><td class="key"><kbd>I I</kbd> / <kbd>0 0</kbd> (command mode)</td><td class="ctx">interrupt keeps variables; restart wipes the namespace</td></tr>
+    <tr><td class="act">Reload the whole window</td><td class="key">Palette → <code>Developer: Reload Window</code></td><td class="ctx">"off and on again" for a frozen UI, without quitting</td></tr>
+    <tr><td class="act">Quit VS Code fully</td><td class="key"><kbd>⌘Q</kbd></td><td class="key"><kbd>Alt+F4</kbd> · Mac apps keep running until ⌘Q; Windows quits with the last window</td></tr>
+    <tr><td class="act">Uninstall an extension</td><td class="key"><kbd>⌘⇧X</kbd> → gear → Uninstall</td><td class="ctx">"Disable" is the reversible half-step; uninstall removes it</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Source of truth: <code>Tools/vscode_shortcuts.md</code> · Refs:
+  <a href="https://code.visualstudio.com/shortcuts/keyboard-shortcuts-macos.pdf">VS Code Mac shortcut PDF</a> ·
+  <a href="https://code.visualstudio.com/shortcuts/keyboard-shortcuts-windows.pdf">Windows shortcut PDF</a> ·
+  <a href="https://code.visualstudio.com/docs/datascience/jupyter-notebooks">VS Code Jupyter docs</a>
+</p>
+
+</div>
+</body>
+</html>

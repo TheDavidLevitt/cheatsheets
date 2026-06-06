@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Basics Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Git Basics Cheat Sheet</h1>
+<p class="sub">Local workflow: init · add · stage · commit · started 2026-06-05 · twin of <code>Tools/git_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Git</b> = distributed version-control system (VCS) by Linus Torvalds, 2005. "Distributed" = every clone holds the full history; you can commit/branch/log with no server. <b>VCS</b> = software that records file changes over time so you can recall, compare, and merge versions.
+</div>
+<div class="callout">
+  <b>Three places a change lives</b> — the single most important idea:
+  <pre><code>working tree   →   staging area   →   repository
+(your files)       (the "index")      (.git, permanent)
+     │                  │                    │
+  git add ─────────────►│                    │
+     │              git commit ─────────────►│</code></pre>
+  <b>Working tree</b> = files you edit on disk. <b>Staging area / index</b> = holding pen for the exact snapshot you'll commit next (editing does NOT auto-queue a file — you must <code>add</code> it). <b>Repository</b> = the <code>.git/</code> folder; once you <code>commit</code>, it's permanent history with a unique ID.
+</div>
+<div class="callout good">
+  <b>Command grammar:</b> <code>git &lt;verb&gt; [options] [arguments]</code>. Flags are short (<code>-m</code>) or long (<code>--message</code>) — Unix convention of one dash + letter vs. two dashes + word. Manual for any command: <code>git help &lt;verb&gt;</code>.
+</div>
+
+<!-- ============ INIT ============ -->
+<h2>1 · git init — start a repository</h2>
+<p class="lead"><code>init</code> = <b>initialize</b>. Creates the hidden <code>.git/</code> folder. Run once, in the project's top folder.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Create the repo</h3>
+    <table>
+      <tr><td class="cmd"><code>git init</code></td><td class="desc">turn current folder into a repo</td></tr>
+      <tr><td class="cmd"><code>git init myproject</code></td><td class="desc">create folder + init in one step</td></tr>
+      <tr><td class="cmd"><code>git init -b main</code></td><td class="desc">init with initial branch named <code>main</code> (<code>-b</code> = branch)</td></tr>
+      <tr><td class="cmd"><code>git status</code></td><td class="desc">your compass — run it constantly</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>One-time identity setup</h3>
+    <p class="lead">Stamps every commit with author info. <code>--global</code> → <code>~/.gitconfig</code> (all repos); drop it for just this repo.</p>
+    <pre><code>git config --global user.name  "Your Name"
+git config --global user.email "you@example.com"</code></pre>
+  </div>
+</div>
+
+<!-- ============ ADD ============ -->
+<h2>2 · git add — stage changes</h2>
+<p class="lead"><code>add</code> copies a file's current content into the staging area. It stages <b>new</b> files AND <b>modifications</b> — think "add this version to the next snapshot."</p>
+<div class="grid">
+  <div class="card">
+    <h3>Stage</h3>
+    <table>
+      <tr><td class="cmd"><code>git add file.txt</code></td><td class="desc">stage one file</td></tr>
+      <tr><td class="cmd"><code>git add .</code></td><td class="desc">stage everything in this folder &amp; below</td></tr>
+      <tr><td class="cmd"><code>git add -A</code></td><td class="desc">stage all changes in whole repo, incl. deletions (<code>-A</code> = all)</td></tr>
+      <tr><td class="cmd"><code>git add -u</code></td><td class="desc">stage mods/deletes of tracked files only (<code>-u</code> = update)</td></tr>
+      <tr><td class="cmd"><code>git add -p</code></td><td class="desc">patch mode: choose chunks interactively</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Unstage / remember</h3>
+    <table>
+      <tr><td class="cmd"><code>git restore --staged file.txt</code></td><td class="desc">unstage but keep edits (modern)</td></tr>
+      <tr><td class="cmd"><code>git reset HEAD file.txt</code></td><td class="desc">same, older syntax</td></tr>
+    </table>
+    <p class="lead"><b>Distinction:</b> <code>.</code> stages by location, <code>-A</code> by repo, <code>-u</code> by tracking status.</p>
+  </div>
+</div>
+
+<!-- ============ STAGING VS COMMIT ============ -->
+<h2>3 · Staging vs. committing</h2>
+<div class="callout">
+  "Staging" isn't a command — it's the <b>state</b> after <code>git add</code>. Workflow: <b>edit → add (stage) → commit</b>. <code>git status</code> color-codes it:
+  <span class="pill" style="color:var(--accent2)">green = staged</span>
+  <span class="pill" style="color:var(--warn)">red = modified, not staged</span>
+</div>
+<pre><code>$ git status
+Changes to be committed:        ← green: will be in next commit
+        modified:   app.py
+Changes not staged for commit:  ← red: edited but NOT staged yet
+        modified:   notes.md</code></pre>
+<p class="lead"><code>git diff</code> shows red (unstaged); <code>git diff --staged</code> shows green (about to commit). Check both before committing.</p>
+
+<!-- ============ COMMIT ============ -->
+<h2>4 · git commit — save a snapshot</h2>
+<p class="lead"><code>commit</code> writes the staged snapshot permanently, with a message and a unique <b>SHA-1 hash</b> (40-char fingerprint; you use the first 7). Borrowed from banking/databases: to <i>commit</i> = make final &amp; durable.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Commit commands</h3>
+    <table>
+      <tr><td class="cmd"><code>git commit -m "message"</code></td><td class="desc">commit staged changes, inline message</td></tr>
+      <tr><td class="cmd"><code>git commit</code></td><td class="desc">opens editor for a longer message</td></tr>
+      <tr><td class="cmd"><code>git commit -am "msg"</code></td><td class="desc">stage all <i>tracked</i> mods + commit (skips new files)</td></tr>
+      <tr><td class="cmd"><code>git commit --amend</code></td><td class="desc">replace last commit — don't amend pushed ones</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Good message convention</h3>
+    <p class="lead">Line 1 ≤ 50 chars, <b>imperative mood</b>: "Add login validation", not "Added". Test: <i>"If applied, this commit will ___"</i>. Blank line, then a body explaining <i>why</i>.</p>
+    <pre><code>$ git commit -m "Add input validation to login form"
+[main a3f5e9c] Add input validation to login form
+ 1 file changed, 12 insertions(+), 2 deletions(-)</code></pre>
+  </div>
+</div>
+
+<!-- ============ FULL LOOP ============ -->
+<h2>5 · The whole loop in one example</h2>
+<pre><code>git init -b main                      # 1. start the repo
+git config user.name "Your Name"   # 1b. (first time) identify yourself
+echo "hello" &gt; readme.txt             # 2. create/edit a file
+git status                            # 3. see it in red (untracked)
+git add readme.txt                    # 4. stage it (now green)
+git status                            # 5. confirm it's staged
+git commit -m "Add project readme"    # 6. save snapshot to history
+git log --oneline                     # 7. see your commit</code></pre>
+
+<!-- ============ INSPECT / UNDO ============ -->
+<h2>6 · Inspect &amp; undo (handy neighbours)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Look</h3>
+    <table>
+      <tr><td class="cmd"><code>git status</code></td><td class="desc">working tree + index state</td></tr>
+      <tr><td class="cmd"><code>git log --oneline</code></td><td class="desc">compact history</td></tr>
+      <tr><td class="cmd"><code>git log --oneline --graph</code></td><td class="desc">with ASCII branch graph</td></tr>
+      <tr><td class="cmd"><code>git diff</code></td><td class="desc">unstaged changes (red)</td></tr>
+      <tr><td class="cmd"><code>git diff --staged</code></td><td class="desc">staged preview (green)</td></tr>
+      <tr><td class="cmd"><code>git show HEAD</code></td><td class="desc">show the latest commit</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Undo (⚠ careful)</h3>
+    <table>
+      <tr><td class="cmd"><code>git restore file.txt</code></td><td class="desc">discard unstaged edits (irreversible)</td></tr>
+      <tr><td class="cmd"><code>git restore --staged file.txt</code></td><td class="desc">unstage, keep edits</td></tr>
+    </table>
+    <p class="lead"><b>HEAD</b> = pointer to "where you are now" (tip of current branch). <code>HEAD~1</code> = one commit back.</p>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>7 · Teardown / undo — getting <i>out</i> of Git</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Undo &amp; untrack</h3>
+    <table>
+      <tr><td class="cmd"><code>rm -rf .git</code></td><td class="desc">un-git a folder: deletes all history/branches/config; working files survive. ⚠ no undo</td></tr>
+      <tr><td class="cmd"><code>git reset --soft HEAD~1</code></td><td class="desc">undo last commit, keep changes staged</td></tr>
+      <tr><td class="cmd"><code>git reset --hard</code></td><td class="desc">⚠ discard ALL uncommitted work (tree + index)</td></tr>
+      <tr><td class="cmd"><code>git rm --cached file.txt</code></td><td class="desc">untrack a file but keep it on disk (then add to <code>.gitignore</code>)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Throwaway experiment pattern</h3>
+    <pre><code>git switch -c scratch    # disposable branch
+#  ... risky edits, commits ...
+git switch main
+git branch -D scratch    # -D = force-delete, even unmerged</code></pre>
+    <p class="lead"><b>--soft vs --hard:</b> both move HEAD back; <code>--soft</code> keeps your changes, <code>--hard</code> erases them. When unsure, start soft.</p>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Git</b></td><td class="desc">distributed VCS (Torvalds, 2005)</td></tr>
+    <tr><td class="cmd"><b>VCS</b></td><td class="desc">Version Control System</td></tr>
+    <tr><td class="cmd"><b>Repository (repo)</b></td><td class="desc">the <code>.git/</code> store of all history</td></tr>
+    <tr><td class="cmd"><b>Working tree</b></td><td class="desc">files you edit on disk</td></tr>
+    <tr><td class="cmd"><b>Staging area / index</b></td><td class="desc">holding pen for the next commit</td></tr>
+    <tr><td class="cmd"><b>Commit</b></td><td class="desc">permanent, ID'd snapshot</td></tr>
+    <tr><td class="cmd"><b>HEAD</b></td><td class="desc">pointer to current commit/branch tip</td></tr>
+    <tr><td class="cmd"><b>SHA-1 hash</b></td><td class="desc">40-char fingerprint naming a commit</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://git-scm.com/book/en/v2">Pro Git book</a> ·
+  <a href="https://git-scm.com/docs">git-scm reference</a> ·
+  <a href="https://education.github.com/git-cheat-sheet-education.pdf">GitHub Git Cheat Sheet PDF</a> ·
+  <a href="https://www.atlassian.com/git/tutorials">Atlassian Git tutorials</a>
+</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Environments Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);
+     font-size:12.5px;letter-spacing:.03em;}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Python Environments Cheat Sheet</h1>
+<p class="sub">venv · conda · uv · pixi — isolation, activation, and tool choice · started 2026-06-06 · twin of <code>Tools/python_environments_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Environment</b> (virtual environment) = an isolated Python setup: a pointer to (or copy of) the <b>interpreter</b> (the <code>python</code> executable that runs your code) plus its own private <b>site-packages/</b> (the folder where installed libraries land). One toolbox per project — what you install in one is invisible to the others.
+</div>
+<div class="callout">
+  <b>Why bother?</b> ① <b>Dependency conflicts</b>: Project A needs <code>pandas 1.5</code>, Project B needs <code>pandas 2.2</code> — one global Python can't hold both; two envs can. ② <b>"Works on my machine" disease</b>: your code only runs because of a forgotten install; an env + spec/lock file makes dependencies explicit &amp; reproducible. ③ <b>Protect system Python</b>: the OS depends on it (see §1).
+  <pre><code>Project A              Project B             System Python
+.venv/                 .venv/                /usr/bin/python3
+ ├─ bin/python          ├─ bin/python        (hands off — the
+ └─ site-packages       └─ site-packages      OS depends on it)
+    pandas 1.5             pandas 2.2
+      ▲                      ▲
+      └──── no conflict ─────┘</code></pre>
+</div>
+<div class="callout good">
+  <b>Activation demystified</b> — it's just a tiny shell script, not magic: ① <b>prepends the env's <code>bin/</code></b> (Windows: <code>Scripts\</code>) <b>to <code>PATH</code></b> — the shell variable listing dirs searched left→right for commands, so <code>python</code> and <code>pip</code> now resolve to the env's copies; ② sets <code>VIRTUAL_ENV</code>/<code>CONDA_PREFIX</code>; ③ adds the <b>prompt prefix</b> <code>(.venv)</code> as a visual cue. <code>deactivate</code> restores the old PATH. Corollary: activation is optional — <code>.venv/bin/python script.py</code> by full path works identically.
+</div>
+
+<!-- ============ SYSTEM PYTHON ============ -->
+<h2>1 · System Python — never install into it</h2>
+<p class="lead">On macOS/Linux, <code>/usr/bin/python3</code> belongs to the operating system. Since 2023, pip refuses to write into it:</p>
+<pre><code>error: externally-managed-environment
+× This environment is externally managed</code></pre>
+<div class="callout warn">
+  This is <b>PEP 668</b> (Python Enhancement Proposal — Python's numbered design docs). The OS marks its Python as managed by apt/brew/the OS, not pip. The error is a <i>feature</i>: it pushes you into an environment. Never bypass with <code>--break-system-packages</code>.
+</div>
+<div class="card">
+  <table>
+    <tr><td class="cmd">See the error above</td><td class="desc">create a venv and install there</td></tr>
+    <tr><td class="cmd">Need a CLI tool globally</td><td class="desc"><code>uv tool install &lt;name&gt;</code> or <code>pipx install &lt;name&gt;</code> — private env per tool, just the command exposed</td></tr>
+    <tr><td class="cmd">Unsure which python runs</td><td class="desc"><code>which python</code> / <code>where python</code> — see §5</td></tr>
+  </table>
+</div>
+
+<!-- ============ CONTENDERS ============ -->
+<h2>2 · The contenders</h2>
+<div class="grid">
+  <div class="card">
+    <h3>venv — <i>"the toolbox in the trunk"</i></h3>
+    <p class="lead">Standard-library module (<code>python -m venv</code>); creates a bare env, pair with <b>pip</b> (Python's package installer, pulls from <b>PyPI</b> — the public package index). Always available, zero install. pip installs, venv isolates — partners, not rivals.</p>
+  </div>
+  <div class="card">
+    <h3>conda / Anaconda — <i>"the whole workshop"</i></h3>
+    <p class="lead">Cross-language package + env manager. <b>Anaconda</b> = distribution bundling conda + 200&plus; data-science packages. Installs pre-compiled <b>binary</b> packages incl. <b>non-Python deps</b> (CUDA, MKL, C libs) from <b>channels</b> (package repos; <code>conda-forge</code> is the community one). Data-science standard; the usual corporate/Windows setup.</p>
+  </div>
+  <div class="card">
+    <h3>uv — <i>"the electric screwdriver"</i></h3>
+    <p class="lead">Astral's Rust all-in-one: replaces venv + pip + pip-tools + pyenv + pipx, 10–100&times; faster than pip. Project-centric: <code>pyproject.toml</code> + <code>uv.lock</code>, auto-creates <code>.venv</code>, even downloads Python versions. The modern default recommendation (v0.11.x, 2026 — pre-1.0 but hundreds of millions of downloads/month).</p>
+  </div>
+  <div class="card">
+    <h3>pixi — <i>"conda's fast young cousin"</i></h3>
+    <p class="lead">By prefix.dev, also Rust. Modern successor for the conda ecosystem: speaks conda channels <b>and</b> PyPI, project-based (<code>pixi.toml</code>/<code>pyproject.toml</code>) with a cross-platform <b>lockfile</b> (machine-written exact pins of the whole dependency tree). cargo/npm-style workflow (v0.59, 2026).</p>
+  </div>
+</div>
+<div class="callout good">
+  <b>When to use what:</b>
+  <span class="pill">work / corporate / data-sci → conda</span>
+  <span class="pill">quick script → uv run script.py</span>
+  <span class="pill">new project → uv</span>
+  <span class="pill">reproduce a conda env → pixi (--import environment.yml) or conda</span>
+  <span class="pill">minimal / teaching → venv + pip</span>
+</div>
+
+<!-- ============ EQUIVALENCE ============ -->
+<h2>3 · Command equivalence (the Rosetta Stone)</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:19%">Task</th><th style="width:27%">venv + pip</th><th style="width:27%">conda</th><th style="width:27%">uv</th></tr>
+    <tr><td>Create</td><td><code>python -m venv .venv</code></td><td><code>conda create -n myenv python=3.12</code></td><td><code>uv venv</code> (or implicit via <code>uv init</code>+<code>uv add</code>)</td></tr>
+    <tr><td>Activate (mac/Linux)</td><td><code>source .venv/bin/activate</code></td><td><code>conda activate myenv</code></td><td>same as venv; often unneeded — <code>uv run</code> finds it</td></tr>
+    <tr><td>Activate (Windows)</td><td><code>.venv\Scripts\activate</code></td><td><code>conda activate myenv</code></td><td><code>.venv\Scripts\activate</code></td></tr>
+    <tr><td>Deactivate</td><td><code>deactivate</code></td><td><code>conda deactivate</code></td><td><code>deactivate</code></td></tr>
+    <tr><td>Install pkg</td><td><code>pip install requests</code></td><td><code>conda install requests</code></td><td><code>uv add requests</code> / <code>uv pip install requests</code></td></tr>
+    <tr><td>List pkgs</td><td><code>pip list</code></td><td><code>conda list</code></td><td><code>uv pip list</code></td></tr>
+    <tr><td>Export / lock</td><td><code>pip freeze &gt; requirements.txt</code></td><td><code>conda env export &gt; environment.yml</code></td><td><code>uv lock</code> → <code>uv.lock</code> (auto with <code>uv add</code>)</td></tr>
+    <tr><td>Recreate</td><td><code>pip install -r requirements.txt</code></td><td><code>conda env create -f environment.yml</code></td><td><code>uv sync</code></td></tr>
+    <tr><td>Remove env</td><td>delete <code>.venv/</code></td><td><code>conda env remove -n myenv</code></td><td>delete <code>.venv/</code></td></tr>
+    <tr><td>Run w/o activating</td><td><code>.venv/bin/python script.py</code></td><td><code>conda run -n myenv python script.py</code></td><td><code>uv run script.py</code></td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>pixi in one breath:</b> <code>pixi init</code> → <code>pixi add numpy</code> → <code>pixi run python</code> — no activation concept; <code>pixi shell</code> if you want one. <b>Convention:</b> name the env folder <code>.venv</code> in the project root — VS Code, uv, and most tools auto-detect it.
+</div>
+
+<!-- ============ SPEC FILES ============ -->
+<h2>4 · Spec files — declaring dependencies</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>requirements.txt</code> (pip)</td><td class="desc">flat list, one pkg per line (<code>pandas==2.2.0</code>); simple, but <code>pip freeze</code> captures everything installed, not just what you chose</td></tr>
+    <tr><td class="cmd"><code>environment.yml</code> (conda)</td><td class="desc">YAML (human-friendly config format): env name, channels, deps — incl. non-Python pkgs + a pip subsection</td></tr>
+    <tr><td class="cmd"><code>pyproject.toml</code> (standard)</td><td class="desc">TOML config; the <b>standardized</b> home for project metadata + deps (PEP 621) — read by uv, pixi, poetry, pip itself</td></tr>
+    <tr><td class="cmd"><code>uv.lock</code> / <code>pixi.lock</code></td><td class="desc">machine-generated exact pins + hashes of the whole tree. <b>Spec = what you want; lockfile = exactly what you got.</b> Commit both.</td></tr>
+  </table>
+</div>
+
+<!-- ============ WHICH PYTHON ============ -->
+<h2>5 · Which Python is active right now?</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd">Prompt prefix</td><td class="desc"><code>(.venv)</code> / <code>(base)</code> = env active. conda's <code>(base)</code> is its <i>default</i> env — fine to see, bad to install into; make named envs.</td></tr>
+    <tr><td class="cmd"><code>which python</code> / <code>where python</code></td><td class="desc">what the shell would run; under <code>.venv/</code> or <code>envs/myenv/</code> = you're in</td></tr>
+    <tr><td class="cmd"><code>python -c "import sys; print(sys.executable)"</code></td><td class="desc">ground truth from the running interpreter — definitive when the shell lies (aliases, stale PATH)</td></tr>
+  </table>
+</div>
+
+<!-- ============ EDITORS / NOTEBOOKS ============ -->
+<h2>6 · Editors &amp; notebooks</h2>
+<div class="grid">
+  <div class="card">
+    <h3>VS Code interpreter picker</h3>
+    <p class="lead">VS Code runs/debugs with whatever interpreter is <i>selected</i>, independent of your terminal. <kbd>⌘⇧P</kbd> → <b>"Python: Select Interpreter"</b> — it auto-lists <code>.venv/</code> and conda envs; the choice shows in the status bar. "Module not found" in VS Code but not terminal (or vice versa) = the two point at different interpreters.</p>
+  </div>
+  <div class="card">
+    <h3>Jupyter kernels</h3>
+    <p class="lead"><b>Kernel</b> = the process Jupyter sends notebook code to. Jupyter = the front desk; kernels = the rooms — they can live in different envs. Register an env as a kernel via <b>ipykernel</b>:</p>
+    <pre><code># inside the activated env:
+pip install ipykernel
+python -m ipykernel install --user \
+  --name myenv --display-name "Python (myenv)"</code></pre>
+    <p class="lead"><code>jupyter kernelspec list</code> shows kernels; <code>… uninstall myenv</code> removes one.</p>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>7 · Teardown — leaving and deleting envs</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>deactivate</code> / <code>conda deactivate</code></td><td class="desc">leave the env (venv/uv vs conda) — restores PATH; the env stays on disk</td></tr>
+    <tr><td class="cmd"><code>rm -rf .venv</code></td><td class="desc">delete a venv — it's <i>just a folder</i>; nothing else to unregister. uv recreates it from <code>pyproject.toml</code> + lockfile on the next <code>uv run</code>/<code>uv sync</code></td></tr>
+    <tr><td class="cmd"><code>conda env remove -n myenv</code></td><td class="desc">delete a conda env (deactivate first; <code>conda env list</code> to see what exists)</td></tr>
+    <tr><td class="cmd"><code>pip uninstall x</code> ≠ removing the env</td><td class="desc">uninstall removes <i>one package from</i> the env. Broken env? Don't surgically uninstall — delete and recreate from the spec file</td></tr>
+    <tr><td class="cmd"><code>jupyter kernelspec uninstall myenv</code></td><td class="desc">kernels register <i>separately</i> (§6) — deleting an env leaves a zombie kernel entry behind</td></tr>
+    <tr><td class="cmd"><code>which python</code> + <code>sys.executable</code></td><td class="desc">verify you're back on system Python — should point outside any <code>.venv/</code> or <code>envs/</code> path (§5)</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Virtual environment</b></td><td class="desc">isolated interpreter + private site-packages</td></tr>
+    <tr><td class="cmd"><b>Interpreter</b></td><td class="desc">the <code>python</code> executable that runs your code</td></tr>
+    <tr><td class="cmd"><b>site-packages</b></td><td class="desc">folder where installed packages live</td></tr>
+    <tr><td class="cmd"><b>PATH</b></td><td class="desc">shell var of dirs searched left→right; activation = prepending the env's <code>bin/</code></td></tr>
+    <tr><td class="cmd"><b>PEP 668</b></td><td class="desc">"externally-managed-environment" — pip refusing the OS's Python</td></tr>
+    <tr><td class="cmd"><b>pip / PyPI</b></td><td class="desc">Python's package installer / the public package index</td></tr>
+    <tr><td class="cmd"><b>conda channel</b></td><td class="desc">a conda package repository (e.g. conda-forge)</td></tr>
+    <tr><td class="cmd"><b>pyproject.toml</b></td><td class="desc">standardized project metadata + dependency file</td></tr>
+    <tr><td class="cmd"><b>Lockfile</b></td><td class="desc">exact pins of the full tree — spec = want, lock = got</td></tr>
+    <tr><td class="cmd"><b>Kernel / ipykernel</b></td><td class="desc">process executing notebook code / package making an env serve as one</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://docs.python.org/3/library/venv.html">Python docs — venv</a> ·
+  <a href="https://peps.python.org/pep-0668/">PEP 668</a> ·
+  <a href="https://docs.astral.sh/uv/">uv docs</a> ·
+  <a href="https://pixi.prefix.dev/latest/">pixi docs</a> ·
+  <a href="https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html">conda — managing environments</a> ·
+  <a href="https://ipython.readthedocs.io/en/stable/install/kernel_install.html">ipykernel install</a> ·
+  <a href="https://code.visualstudio.com/docs/python/environments">VS Code — Python environments</a>
+</p>
+
+</div>
+</body>
+</html>

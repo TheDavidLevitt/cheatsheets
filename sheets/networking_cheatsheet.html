@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Networking Cheat Sheet — how the internet works</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Networking Cheat Sheet — how the internet works</h1>
+<p class="sub">Layers · IP · DNS · URLs · HTTPS · the full journey · started 2026-06-06 · twin of <code>Tools/networking_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>The internet</b> = a network of networks, descended from <b>ARPANET</b> (Advanced Research Projects Agency Network, 1969) — built so messages could route around damaged links. Core idea, unchanged since: chop data into independent <b>packets</b>, let each find its own way, reassemble at the far end. A <b>protocol</b> = agreed rules for talking (who speaks first, message format, how to say "resend that").
+</div>
+<div class="callout">
+  <b>The postal system for packets:</b>
+  <pre><code>your message            →  cut into postcards  →  each gets an address
+(an HTTP request, say)     (packets)              (IP headers)
+      │                          │                       │
+postcards may take different routes, arrive out of order, or get
+lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code></pre>
+  <b>Packet</b> = one postcard (chunk of data + addressing). <b>Router</b> = postal sorting office: reads the destination, forwards one hop closer. Your message crosses ~10–20 routers it never sees.
+</div>
+<div class="card">
+  <h3>The layer stack — simplified 4-layer TCP/IP model (envelopes inside envelopes)</h3>
+  <table>
+    <tr><td class="cmd"><b>Application</b> — HTTP, DNS, SSH, SMTP</td><td class="desc">the actual message: "GET this page", "what's this name's IP?"</td></tr>
+    <tr><td class="cmd"><b>Transport</b> — TCP, UDP</td><td class="desc">port numbers + (TCP) ordering, resends, the "connection" illusion</td></tr>
+    <tr><td class="cmd"><b>Internet</b> — IP</td><td class="desc">source + destination IP addresses; routing across networks</td></tr>
+    <tr><td class="cmd"><b>Link</b> — Ethernet, Wi-Fi</td><td class="desc">MAC addresses; crossing ONE physical hop</td></tr>
+  </table>
+  <p class="lead"><b>TCP</b> (Transmission Control Protocol) = registered mail: numbered, acknowledged, resent, in order (HTTP, SSH, email). <b>UDP</b> (User Datagram Protocol) = plain postcard: fire-and-forget, low overhead (DNS, video calls, games). The textbook 7-layer <b>OSI model</b> (Open Systems Interconnection) splits the same idea more finely; this 4-layer view is what's actually deployed.</p>
+</div>
+
+<!-- ============ ADDRESSES ============ -->
+<h2>1 · Addresses — IP, NAT, ports, MAC</h2>
+<p class="lead">An <b>IP</b> (Internet Protocol) <b>address</b> identifies a machine. IPv4 = four numbers 0–255 (32 bits, ~4.3 billion addresses — which ran out, hence NAT and IPv6).</p>
+<pre><code> 203.0.113.42
+ └┬┘ └┬┘└┬┘└┬┘
+  each part = one byte (0–255); left ≈ "which network",
+  right ≈ "which host on it" (split point varies)</code></pre>
+<div class="grid">
+  <div class="card">
+    <h3>Private ranges (never routed publicly; everyone reuses them)</h3>
+    <table>
+      <tr><td class="cmd"><code>192.168.x.x</code></td><td class="desc">home routers — your laptop is probably <code>192.168.1.x</code></td></tr>
+      <tr><td class="cmd"><code>10.x.x.x</code></td><td class="desc">corporate networks, cloud VPCs</td></tr>
+      <tr><td class="cmd"><code>172.16–31.x.x</code></td><td class="desc">the forgotten middle child (Docker uses it)</td></tr>
+      <tr><td class="cmd"><code>127.0.0.1</code></td><td class="desc"><b>localhost</b> — "this machine talking to itself"; never leaves the box</td></tr>
+    </table>
+    <p class="lead">Docs (incl. this sheet) use <code>203.0.113.x</code> — reserved for documentation, can never collide with a real machine.</p>
+  </div>
+  <div class="card">
+    <h3>Famous ports — the apartment number</h3>
+    <p class="lead">IP gets you to the <i>building</i>; the <b>port</b> (0–65535) is the <i>apartment</i> — which program gets the packet. One IP can run web + mail + SSH side by side.</p>
+    <table>
+      <tr><td class="cmd"><b>22</b> — SSH (Secure Shell)</td><td class="desc">remote login — see the <a href="ssh_cheatsheet.html">SSH sheet</a></td></tr>
+      <tr><td class="cmd"><b>53</b> — DNS</td><td class="desc">the phone-book lookups (section 2)</td></tr>
+      <tr><td class="cmd"><b>80</b> — HTTP</td><td class="desc">plain web</td></tr>
+      <tr><td class="cmd"><b>443</b> — HTTPS</td><td class="desc">encrypted web (the padlock)</td></tr>
+    </table>
+    <p class="lead"><code>example.com:8080</code> = "this host, port 8080". Browsers silently assume <code>:80</code> for http, <code>:443</code> for https.</p>
+  </div>
+</div>
+<div class="callout">
+  <b>NAT</b> (Network Address Translation) — your router owns <b>one</b> public IP from your ISP (Internet Service Provider) and shares it among every device. Outbound, it rewrites private source addresses (<code>192.168.1.7</code>) to the public one and remembers the mapping; replies get translated back. Side effects: inside devices are unreachable from outside by default (a free crude firewall), and "what's my IP?" differs inside vs. outside.
+</div>
+<div class="callout good">
+  <b>IPv6</b> = the 128-bit successor (eight colon-separated hex groups, e.g. <code>2001:db8::1</code>; <code>::</code> compresses zeros). Enough addresses that every device can be public — no NAT needed; adoption is gradual.
+  <br><b>MAC</b> (Media Access Control) <b>address</b> = hardware serial number of your network card (<code>aa:bb:cc:dd:ee:ff</code>) — used only for the final local-network hop; never travels across the internet.
+</div>
+
+<!-- ============ DNS ============ -->
+<h2>2 · Names — DNS, the internet's phone book</h2>
+<p class="lead"><b>DNS</b> (Domain Name System) translates names (<code>example.com</code>) into IPs (<code>203.0.113.42</code>). A distributed, hierarchical database — no single machine holds the whole book.</p>
+<pre><code>1. browser → OS stub → RESOLVER       "what's www.example.com?"
+     (resolver = your ISP's, or public: 1.1.1.1 / 8.8.8.8)
+2. resolver → ROOT server             root: "ask the .com servers" →
+3. resolver → .com TLD server         TLD:  "ask example.com's servers" →
+4. resolver → AUTHORITATIVE server    "it's 203.0.113.42, cache 1h (TTL)"
+5. resolver → browser                 answer + cached for next time</code></pre>
+<div class="grid">
+  <div class="card">
+    <h3>Look it up yourself</h3>
+    <table>
+      <tr><td class="cmd"><code>dig example.com</code></td><td class="desc">full answer with TTLs (the pro tool)</td></tr>
+      <tr><td class="cmd"><code>dig +short example.com</code></td><td class="desc">just the IP</td></tr>
+      <tr><td class="cmd"><code>dig MX example.com</code></td><td class="desc">ask for a specific record type</td></tr>
+      <tr><td class="cmd"><code>nslookup example.com</code></td><td class="desc">older, everywhere (incl. Windows)</td></tr>
+    </table>
+    <p class="lead"><b>TLD</b> (Top-Level Domain) = the last label (<code>.com</code>, <code>.fr</code>). <b>Authoritative</b> = the server that owns the answer. <b>TTL</b> (Time To Live) = cache duration — why DNS changes "take a while to propagate".</p>
+  </div>
+  <div class="card">
+    <h3>Record types worth knowing</h3>
+    <table>
+      <tr><td class="cmd"><b>A</b></td><td class="desc">name → IPv4 address</td></tr>
+      <tr><td class="cmd"><b>AAAA</b></td><td class="desc">name → IPv6 ("quad-A" — 4× the bits of an A)</td></tr>
+      <tr><td class="cmd"><b>CNAME</b></td><td class="desc">alias: name → another <i>name</i> (<code>www → example.com</code>)</td></tr>
+      <tr><td class="cmd"><b>MX</b></td><td class="desc">Mail eXchange — where <code>@example.com</code> email goes</td></tr>
+      <tr><td class="cmd"><b>TXT</b></td><td class="desc">arbitrary text: ownership proofs, email anti-spoofing (SPF/DKIM)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ URI/URL/URN ============ -->
+<h2>3 · URI vs URL vs URN — and URL anatomy</h2>
+<div class="callout">
+  <b>URI</b> (Uniform Resource Identifier) = umbrella term: any string identifying a resource. <b>URL</b> (Uniform Resource Locator) = a URI that also says <i>where/how</i> to fetch it — almost everything you use. <b>URN</b> (Uniform Resource Name) = names without locating, e.g. <code>urn:isbn:0451450523</code> identifies a book but not where to get it. Every URL is a URI; not every URI is a URL.
+</div>
+<pre><code>https://alice@www.example.com:443/docs/intro.html?lang=en&amp;v=2#section-3
+└─┬─┘   └─┬─┘ └──────┬───────┘└┬┘└───────┬──────┘└────┬────┘ └───┬───┘
+scheme   user       host      port      path        query     fragment</code></pre>
+<div class="card">
+  <h3>URL parts decoded</h3>
+  <table>
+    <tr><td class="cmd"><b>scheme</b></td><td class="desc">protocol: <code>https</code>, <code>http</code>, <code>ssh</code>, <code>mailto</code>, <code>file</code></td></tr>
+    <tr><td class="cmd"><b>user@</b></td><td class="desc">identity for the connection (rare in browsers; common in SSH/Git URLs)</td></tr>
+    <tr><td class="cmd"><b>host</b></td><td class="desc">domain name (DNS-resolved) or literal IP</td></tr>
+    <tr><td class="cmd"><b>:port</b></td><td class="desc">apartment number; omitted = scheme default (80/443)</td></tr>
+    <tr><td class="cmd"><b>/path</b></td><td class="desc">which resource on the server (looks like a file path; usually isn't)</td></tr>
+    <tr><td class="cmd"><b>?query</b></td><td class="desc"><code>key=value</code> pairs joined by <code>&amp;</code> — parameters for the server</td></tr>
+    <tr><td class="cmd"><b>#fragment</b></td><td class="desc">jump-to anchor <i>within</i> the page — never sent to the server at all</td></tr>
+  </table>
+</div>
+
+<!-- ============ HTTP/HTTPS ============ -->
+<h2>4 · HTTP &amp; HTTPS — what TLS adds</h2>
+<p class="lead"><b>HTTP</b> (HyperText Transfer Protocol) = the web's request/response conversation: client sends <code>GET /docs/intro.html</code> + headers, server answers with a status code (<code>200 OK</code>, <code>404 Not Found</code>), headers, body. → Deeper coverage (verbs, status codes, REST) in <a href="formats_cheatsheet.html">formats_cheatsheet</a>.</p>
+<div class="callout good">
+  <b>HTTPS</b> = HTTP inside a <b>TLS</b> (Transport Layer Security) tunnel — successor to SSL (Secure Sockets Layer; the old name sticks, e.g. "SSL certificate"). TLS adds: <b>1. Encryption</b> — eavesdroppers see gibberish. <b>2. Authentication</b> — a <b>certificate</b> proves the server really is <code>example.com</code>, vouched for by a <b>CA</b> (Certificate Authority) your browser already trusts (Let's Encrypt, DigiCert…) — that's the padlock. <b>3. Integrity</b> — tampered packets are detected and rejected.
+</div>
+<pre><code>The TLS handshake in 4 steps
+1. ClientHello  →  "I speak TLS 1.3; here are my cipher suites + a random"
+2. ServerHello  ←  "use this cipher; here's my CERTIFICATE + key material"
+3. Verify+keys     client checks cert chain up to a trusted CA; both sides
+                   derive the same session keys (key-exchange math lets them
+                   agree on a secret even while eavesdropped)
+4. Finished     ⇄  everything from here is encrypted — HTTP flows inside</code></pre>
+<div class="callout warn">
+  <b>Why plain HTTP is fine on localhost but never on Wi-Fi:</b> traffic to <code>127.0.0.1</code> never leaves your machine — no wire to tap. On any shared network (café Wi-Fi especially), every plain-HTTP byte — cookies, passwords, pages — is readable and <i>modifiable</i> by anyone on it. (The <b>cookie</b> is named after the "magic cookie" of 1970s programming lore — an opaque token a program hands you to give back later, allegedly via fortune cookies.)
+</div>
+
+<!-- ============ FULL JOURNEY ============ -->
+<h2>5 · The full journey — type a URL, press Enter</h2>
+<p class="lead">What happens for <code>https://www.example.com/</code> with cold caches:</p>
+<pre><code> 1. DHCP      (earlier, on joining the network) the router's DHCP server —
+              Dynamic Host Configuration Protocol — handed your laptop an IP
+              (192.168.1.7), the gateway, and a DNS resolver to use
+ 2. Parse     browser splits the URL: scheme https → port 443, host www.example.com
+ 3. DNS       resolver walk (root → TLD → authoritative) returns 203.0.113.42
+ 4. TCP       three-way handshake to 203.0.113.42:443 — SYN → SYN-ACK → ACK
+              ("can you hear me?" / "yes, can you?" / "yes")
+ 5. TLS       4-step handshake above: verify certificate, derive session keys
+ 6. Request   browser sends "GET / HTTP/1.1" + headers (encrypted inside TLS)
+ 7. NAT/route packets NAT-rewritten at your router, hop across ~10–20 routers,
+              reassembled at the server
+ 8. Response  server replies "200 OK" + headers + the HTML body
+ 9. Subfetch  browser parses HTML, discovers CSS/JS/images, fires more requests
+              (reusing the open connection where possible)
+10. Render    HTML → DOM tree, CSS applied, JS runs, pixels appear —
+              typically well under a second for the whole journey</code></pre>
+
+<!-- ============ DIAGNOSTICS ============ -->
+<h2>6 · Diagnostic tools — first-aid kit</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>ping example.com</code></td><td class="desc">"is it alive, how far?" — round-trip ms. Named after sonar's <i>ping</i>: send a pulse, time the echo.</td></tr>
+    <tr><td class="cmd"><code>traceroute example.com</code></td><td class="desc">"which routers does my packet cross?" — every hop with timing; shows <i>where</i> a path breaks</td></tr>
+    <tr><td class="cmd"><code>dig example.com</code></td><td class="desc">"what does DNS say?" — records, TTLs, which server answered</td></tr>
+    <tr><td class="cmd"><code>curl -v https://example.com</code></td><td class="desc">"show the whole HTTP conversation" — DNS, TCP, TLS cert, request + response headers</td></tr>
+    <tr><td class="cmd"><code>ifconfig</code> / <code>ip addr</code></td><td class="desc">"what's <i>my</i> IP &amp; interfaces?" (macOS/BSD vs. modern Linux)</td></tr>
+    <tr><td class="cmd"><code>netstat -an</code> / <code>lsof -i</code></td><td class="desc">"which ports are open / which program owns that connection?" (<code>lsof -i :443</code>)</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>Triage order</b> when "the internet is broken": <code>ping 1.1.1.1</code> (raw connectivity, skipping DNS) → <code>ping example.com</code> (DNS working?) → <code>traceroute</code> (where does it die?) → <code>curl -v</code> (server's fault or mine?).
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>7 · Teardown / closing connections</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>lsof -i :8888</code> → <code>kill &lt;PID&gt;</code></td><td class="desc">find what's holding a port, then kill it (escalate to <code>kill -9</code> only if it ignores the polite one)</td></tr>
+    <tr><td class="cmd">port still "busy" after the kill?</td><td class="desc">normal: the OS holds the closed socket in <b>TIME_WAIT</b> ~30–60 s to absorb late packets — wait it out, or restart on another port</td></tr>
+    <tr><td class="cmd">flush the DNS cache</td><td class="desc">macOS: <code>sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder</code> · Windows: <code>ipconfig /flushdns</code> — forces fresh lookups after a DNS change</td></tr>
+    <tr><td class="cmd">renew a DHCP lease</td><td class="desc">macOS: <code>sudo ipconfig set en0 DHCP</code> (or System Settings ▸ Network ▸ TCP/IP ▸ Renew DHCP Lease) · Windows: <code>ipconfig /release</code> then <code>ipconfig /renew</code></td></tr>
+    <tr><td class="cmd">disconnect VPN / Wi-Fi cleanly</td><td class="desc">use the VPN client's own Disconnect (restores your routes and DNS); toggle Wi-Fi off before switching networks to drop the stale lease</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Packet</b></td><td class="desc">one self-addressed chunk of data; the postcard</td></tr>
+    <tr><td class="cmd"><b>Router</b></td><td class="desc">forwards packets one hop closer</td></tr>
+    <tr><td class="cmd"><b>TCP / UDP</b></td><td class="desc">reliable ordered delivery vs. fast fire-and-forget</td></tr>
+    <tr><td class="cmd"><b>IP address</b></td><td class="desc">machine's network address (IPv4 dotted quad / IPv6 hex)</td></tr>
+    <tr><td class="cmd"><b>NAT</b></td><td class="desc">router sharing one public IP among many private devices</td></tr>
+    <tr><td class="cmd"><b>Port</b></td><td class="desc">number selecting <i>which program</i> (22/53/80/443)</td></tr>
+    <tr><td class="cmd"><b>MAC address</b></td><td class="desc">hardware ID for the local-network hop only</td></tr>
+    <tr><td class="cmd"><b>DNS</b></td><td class="desc">name → IP lookup (resolver → root → TLD → authoritative)</td></tr>
+    <tr><td class="cmd"><b>TTL</b></td><td class="desc">how long a DNS answer may be cached</td></tr>
+    <tr><td class="cmd"><b>URI / URL / URN</b></td><td class="desc">identifier umbrella / locator / pure name</td></tr>
+    <tr><td class="cmd"><b>TLS</b></td><td class="desc">encryption + authentication layer under HTTPS (ex-SSL)</td></tr>
+    <tr><td class="cmd"><b>Certificate / CA</b></td><td class="desc">server's identity proof / the authority vouching for it</td></tr>
+    <tr><td class="cmd"><b>DHCP</b></td><td class="desc">auto-assigns your IP when you join a network</td></tr>
+  </table>
+</div>
+
+<div class="callout good">
+  <b>Companion:</b> port 22 has its own sheet — <a href="ssh_cheatsheet.html">SSH cheat sheet</a> (keys, config, tunnels; written in parallel with this one).
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works">MDN: How the web works</a> ·
+  <a href="https://www.cloudflare.com/learning/dns/what-is-dns/">Cloudflare: What is DNS?</a> ·
+  <a href="https://www.cloudflare.com/learning/ssl/what-happens-in-a-tls-handshake/">Cloudflare: TLS handshake</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_URL">MDN: What is a URL?</a> ·
+  <a href="https://www.rfc-editor.org/rfc/rfc5737">RFC 5737 (documentation IPs)</a>
+</p>
+
+</div>
+</body>
+</html>

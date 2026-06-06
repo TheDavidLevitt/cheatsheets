@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encryption &amp; Password Entropy Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+     padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:42%;}
+  td.desc{width:58%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  .ok{color:var(--accent2);} .mid{color:var(--warn);} .bad{color:#e06c75;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Encryption&nbsp;&amp;&nbsp;Password Entropy Cheat Sheet</h1>
+<p class="sub">Entropy · cracking timelines · quantum reality check · started 2026-06-06 · twin of <code>Tools/encryption_cheatsheet.md</code></p>
+
+<div class="callout warn">
+  <b>Scenario assumed throughout:</b> the attacker already holds the encrypted vault / hashed password file and brute-forces <b>offline</b> — the only case where password strength is the primary defense (online logins are rate-limited).
+</div>
+
+<!-- ============ MENTAL MODEL ============ -->
+<h2>0 · The mental model: entropy = doublings</h2>
+<div class="callout good">
+  <b>Entropy</b> measures unpredictability, in <b>bits</b>; each extra bit <b>doubles</b> the guesses required. 40 bits ≈ 1 trillion possibilities; 80 bits ≈ 1.2 septillion. Formula: <code>entropy = log₂(possible passwords)</code> — random chars: <code>log₂(alphabet) × length</code>; random words: <code>log₂(wordlist) × words</code> (a 7,776-word diceware list = <b>12.9 bits/word</b>).
+</div>
+<div class="callout">
+  <b>Etymology:</b> "entropy" comes from thermodynamics (Clausius, 1865 — Greek <i>entropia</i>, "transformation"); Claude Shannon imported it into information theory in 1948, allegedly on von Neumann's advice that "no one knows what entropy really is, so in a debate you will always have the advantage."
+</div>
+
+<!-- ============ APPROACHES ============ -->
+<h2>1 · Entropy of common password approaches</h2>
+<p class="lead">Entropy depends on <b>how it was generated</b>, not how it looks. Complex-looking human choices are weak; simple-looking random words are strong.</p>
+<div class="card">
+  <table>
+    <tr><th>Approach</th><th>Example</th><th>Entropy</th><th>Verdict</th></tr>
+    <tr><td>Human-chosen (name+date+symbol)</td><td><code>Fluffy2019!</code></td><td>~20–30 bits</td><td class="desc">dictionary attacks: seconds</td></tr>
+    <tr><td>Random 8 chars (full ASCII)</td><td><code>kX9#mQ2$</code></td><td>~52 bits</td><td class="desc">decent, short</td></tr>
+    <tr><td>Random 12 chars</td><td><code>aB3$kM9!xQ2&amp;</code></td><td>~79 bits</td><td class="desc">strong vs classical</td></tr>
+    <tr><td>Random 20 chars</td><td><code>Tp4&amp;mK8!bQ2#xL5@nR9*</code></td><td>~131 bits</td><td class="desc">very strong, unmemorizable</td></tr>
+    <tr><td>3 random words</td><td><code>cactus-mango-railroad</code></td><td>~39 bits</td><td class="desc">too few — borderline</td></tr>
+    <tr><td>4 random words</td><td><code>marble-cactus-train-foggy</code></td><td>~52 bits</td><td class="desc">reasonable, medium security</td></tr>
+    <tr><td>5 random words</td><td><code>olive-plaza-timber-glow-ranch</code></td><td>~65 bits</td><td class="desc">strong — EFF's 1995 minimum</td></tr>
+    <tr><td>6 random words</td><td><code>coral-blaze-orbit-maple-drift-quilt</code></td><td>~78 bits</td><td class="desc">EFF's current (2016) recommendation</td></tr>
+    <tr><td>4 words + random extras</td><td>(varies)</td><td>~60–75 bits</td><td class="desc">gain depends on randomness of placement</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  🎲 <b>The key word is RANDOM.</b> These numbers hold only under uniform random selection — dice, a <b>CSPRNG</b> (Cryptographically Secure Pseudo-Random Number Generator), or a password manager's generator. Words <i>you</i> pick cluster around familiar, emotionally salient choices and lose most of their entropy: 12.9 bits/word holds <b>only</b> for true random draws. Use a passphrase generator or physical dice + a <a href="https://www.eff.org/dice">published wordlist</a>.
+</div>
+
+<!-- ============ GUESS RATES ============ -->
+<h2>2 · How fast can attackers guess?</h2>
+<p class="lead">The <b>hash algorithm</b> sets the speed limit. Fast hashes are catastrophic for passwords; slow, memory-hard hashes are the defense.</p>
+<div class="card">
+  <table>
+    <tr><th>Algorithm</th><th>Guesses/sec (1× RTX 5090, 2025)</th><th>12-GPU rig</th><th>Design intent</th></tr>
+    <tr><td>MD5 (obsolete)</td><td>~160 billion</td><td>~1.9 trillion</td><td class="desc">never meant for passwords</td></tr>
+    <tr><td>SHA-256</td><td>~22 billion</td><td>~260 billion</td><td class="desc">general-purpose hash, not for passwords</td></tr>
+    <tr><td>bcrypt (cost 10)</td><td>~10,000</td><td>~120,000</td><td class="desc">deliberately slow; common in web frameworks</td></tr>
+    <tr><td><b>Argon2id</b> (64 MB, 3 iter)</td><td>~1,000–3,000</td><td>~12,000–36,000</td><td class="desc"><b>memory-hard</b>: 64 MB <i>per guess</i>; resists GPU parallelism</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  Real-world anchor: Bitwarden's default <b>Argon2id</b> (64 MB, 3 iterations, parallelism 4) holds a stolen-vault attacker with a top GPU rig to <b>~20k guesses/sec — not billions</b>. Argon2id won the 2015 Password Hashing Competition; "memory-hard" = every guess must occupy real RAM, which GPU farms can't fake cheaply.
+</div>
+
+<!-- ============ CLASSICAL ============ -->
+<h2>3 · Time to crack — classical computing (now → ~2035)</h2>
+<p class="lead">12-GPU attacker vs Argon2id (~20k guesses/sec); GPU speed doubles every ~3–4 years → ~2035 ≈ 10× faster.</p>
+<div class="card">
+  <table>
+    <tr><th>Entropy</th><th>Example</th><th>2025, 12 GPU</th><th>~2035, 10×</th></tr>
+    <tr><td>25 bits</td><td><code>Fluffy2019</code></td><td class="bad">~28 minutes</td><td class="bad">~3 minutes</td></tr>
+    <tr><td>35 bits</td><td>name+year+symbol pattern</td><td class="bad">~20 days</td><td class="bad">~2 days</td></tr>
+    <tr><td>40 bits</td><td>3-word passphrase</td><td class="mid">~1.7 years</td><td class="bad">~2 months</td></tr>
+    <tr><td>52 bits</td><td>4 random words / 8 random chars</td><td class="ok">~7,000 years</td><td class="ok">~700 years</td></tr>
+    <tr><td>65 bits</td><td>5 random words</td><td class="ok">~58 million years</td><td class="ok">~5.8 million years</td></tr>
+    <tr><td>78 bits</td><td>6 random words / 12 random chars</td><td class="ok">~480 billion years</td><td class="ok">~48 billion years</td></tr>
+    <tr><td>90 bits</td><td>7 random words</td><td class="ok">~2 × 10¹⁵ years</td><td class="ok">~2 × 10¹⁴ years</td></tr>
+    <tr><td>128 bits</td><td>20 random chars</td><td class="ok">~5 × 10²⁶ years</td><td class="ok">~5 × 10²⁵ years</td></tr>
+  </table>
+</div>
+<p class="lead">Reference: the universe is ~1.4 × 10¹⁰ years old. With a memory-hard hash, 4 random words is already millennia beyond feasible; 5 words is unbreakable by any classical computer that will ever exist.</p>
+
+<!-- ============ QUANTUM ============ -->
+<h2>4 · Time to crack — quantum computing</h2>
+<div class="callout">
+  <b>Grover's algorithm</b> gives brute-force search a <i>quadratic</i> speedup — in practice it <b>halves effective entropy</b>: a 64-bit password resists a quantum attacker like a 32-bit one resists a classical attacker. (<b>Shor's algorithm</b>, the other quantum threat, breaks RSA/ECC <i>keys</i> — different target than passwords.)
+</div>
+<div class="callout warn">
+  ⚠️ <b>Timeline reality check (early 2026):</b> no quantum computer can run Grover's against real passwords. Current machines: &lt;2,000 noisy physical qubits; an attack needs thousands of <i>logical</i> (error-corrected) qubits, each built from thousands of physical ones. The National Academies (2019) put AES-128 via Grover's at &gt;10¹² years on then-projected hardware. Not expected within a decade.
+</div>
+<div class="card">
+  <table>
+    <tr><th>Entropy</th><th>Effective vs quantum</th><th>Early CRQC (~2036)</th><th>Mature CRQC (by 2100)</th></tr>
+    <tr><td>25 bits</td><td>~12.5</td><td class="bad">instant</td><td class="bad">instant</td></tr>
+    <tr><td>35 bits</td><td>~17.5</td><td class="bad">seconds</td><td class="bad">instant</td></tr>
+    <tr><td>52 bits</td><td>~26</td><td class="mid">minutes–hours</td><td class="bad">seconds</td></tr>
+    <tr><td>65 bits</td><td>~32.5</td><td class="ok">days–weeks</td><td class="mid">minutes</td></tr>
+    <tr><td>78 bits</td><td>~39</td><td class="ok">years–decades</td><td class="mid">hours–days</td></tr>
+    <tr><td>90 bits</td><td>~45</td><td class="ok">centuries</td><td class="ok">weeks–months</td></tr>
+    <tr><td>128 bits</td><td>~64</td><td class="ok">billions of years</td><td class="ok">thousands of years</td></tr>
+    <tr><td>256 bits</td><td>~128</td><td class="ok">effectively forever</td><td class="ok">effectively forever</td></tr>
+  </table>
+</div>
+<p class="lead"><b>CRQC</b> = Cryptographically Relevant Quantum Computer — powerful enough to run Grover's/Shor's against real targets; none exists. "~2036" assumes ~10⁶ Grover iterations/sec (speculative); "2100" assumes ~10¹² (aggressive upper bound). The defense is plain: <b>longer passwords</b> — entropy that survives halving.</p>
+
+<!-- ============ PRACTICE ============ -->
+<h2>5 · What this means in practice</h2>
+<div class="card">
+  <table>
+    <tr><th>Threat</th><th>4 random words (~52 bits)</th><th>5 words (~65 bits)</th><th>20 random chars (~131 bits)</th></tr>
+    <tr><td>12-GPU rig today</td><td class="ok">✓ ~7,000 yr</td><td class="ok">✓ ~58M yr</td><td class="ok">✓ heat death of universe</td></tr>
+    <tr><td>10× hardware ~2035</td><td class="ok">✓ ~700 yr</td><td class="ok">✓ ~5.8M yr</td><td class="ok">✓</td></tr>
+    <tr><td>Early quantum ~2036</td><td class="mid">⚠️ marginal (hours)</td><td class="ok">✓ likely safe</td><td class="ok">✓ billions of yr</td></tr>
+    <tr><td>Mature quantum 2100</td><td class="bad">❌ seconds</td><td class="mid">⚠️ minutes</td><td class="ok">✓ thousands of yr</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  ✅ <b>Practical takeaway:</b> a 4-word random master passphrase is safe against everything that exists today or this decade; use <b>5–6 words</b> for margin against quantum machines that may emerge in your lifetime. Generated 20+-char passwords in a manager are already quantum-resistant. And the <i>real</i> threat is none of this — it's <b>phishing, credential reuse, and social engineering</b>, which <b>passkeys</b> eliminate. Migrating to passkeys matters more than adding a fifth word.
+</div>
+
+<!-- ============ HNDL ============ -->
+<h2>6 · Harvest Now, Decrypt Later (HNDL)</h2>
+<div class="callout">
+  <b>HNDL</b> = adversaries record encrypted traffic <i>today</i> to decrypt <i>later</i> with quantum computers. Real for <b>data in transit</b> (TLS sessions, VPN tunnels, encrypted email) — hence <b>NIST's 2024 post-quantum standards</b>: <b>ML-KEM</b> (key encapsulation, from CRYSTALS-Kyber) and <b>ML-DSA</b> (signatures, from CRYSTALS-Dilithium).
+</div>
+<div class="callout good">
+  HNDL does <b>not</b> apply to a password-manager master password: it never crosses the network — it's processed locally through Argon2id to derive the encryption key. Same for FileVault passphrases and device PINs. For vaults, the threat model remains "server breach exposes encrypted file" → the brute-force timelines above.
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>7 · Teardown / rotation hygiene</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd">Passphrase possibly exposed</td><td class="desc">rotate to a <i>new random</i> one, then de-authorize all sessions in the manager's security settings</td></tr>
+    <tr><td class="cmd">Old vault exports lying around</td><td class="desc">find and delete — an export is the vault <i>without</i> server-side protections; empty trash / secure-delete</td></tr>
+    <tr><td class="cmd">Retiring a password manager</td><td class="desc">export → import to new → verify → delete export → delete the old <i>account</i>, not just the app</td></tr>
+    <tr><td class="cmd">Leaked password reused anywhere</td><td class="desc">hunt every reuse (<a href="https://haveibeenpwned.com">haveibeenpwned.com</a>) and rotate each</td></tr>
+    <tr><td class="cmd">Old fast-hash accounts</td><td class="desc">you can't fix the server's hashing — compensate with high-entropy unique passwords</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Entropy (bits)</b></td><td class="desc">unpredictability; each bit doubles the search space</td></tr>
+    <tr><td class="cmd"><b>Diceware passphrase</b></td><td class="desc">random words; 12.9 bits/word on a 7,776 list</td></tr>
+    <tr><td class="cmd"><b>CSPRNG</b></td><td class="desc">Cryptographically Secure Pseudo-Random Number Generator</td></tr>
+    <tr><td class="cmd"><b>Hash</b></td><td class="desc">one-way fingerprint; passwords are stored as hashes</td></tr>
+    <tr><td class="cmd"><b>Argon2id</b></td><td class="desc">memory-hard hash; forces RAM per guess, neuters GPU farms</td></tr>
+    <tr><td class="cmd"><b>Grover's / Shor's</b></td><td class="desc">quantum search speedup (halves entropy) / quantum factoring (breaks RSA-ECC keys)</td></tr>
+    <tr><td class="cmd"><b>CRQC</b></td><td class="desc">Cryptographically Relevant Quantum Computer (doesn't exist yet)</td></tr>
+    <tr><td class="cmd"><b>HNDL</b></td><td class="desc">Harvest Now, Decrypt Later; threatens transmitted data, not local vaults</td></tr>
+    <tr><td class="cmd"><b>ML-KEM / ML-DSA</b></td><td class="desc">NIST 2024 post-quantum encryption / signature standards</td></tr>
+    <tr><td class="cmd"><b>Passkey</b></td><td class="desc">cryptographic credential replacing passwords; immune to phishing/reuse</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://www.eff.org/dice">EFF dice wordlists</a> ·
+  <a href="https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards">NIST PQC standards</a> ·
+  <a href="https://www.password-hashing.net/">Argon2 / PHC</a> ·
+  <a href="https://hashcat.net/hashcat/">Hashcat benchmarks</a> ·
+  <a href="https://nap.nationalacademies.org/catalog/25196/quantum-computing-progress-and-prospects">National Academies (2019)</a> ·
+  <a href="https://bitwarden.com/help/kdf-algorithms/">Bitwarden KDF docs</a>
+</p>
+
+</div>
+</body>
+</html>

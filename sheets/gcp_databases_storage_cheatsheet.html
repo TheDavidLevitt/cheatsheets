@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP Databases &amp; Storage Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+
+  /* sticky nav + collapsible service cards */
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+  nav.mini button{background:var(--kbd);color:var(--ink);border:1px solid var(--border);
+    border-radius:14px;padding:2px 10px;font-size:12px;cursor:pointer;margin-left:auto;}
+  nav.mini button:hover{border-color:var(--accent);color:var(--accent);}
+  nav.mini button + button{margin-left:0;}
+  details.svc{background:var(--card);border:1px solid var(--border);border-radius:10px;
+    margin:12px 0;padding:0;}
+  details.svc>summary{cursor:pointer;list-style:none;padding:12px 16px;font-size:15px;
+    font-weight:600;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  details.svc>summary::-webkit-details-marker{display:none;}
+  details.svc>summary::before{content:"▸";color:var(--accent);font-size:13px;}
+  details.svc[open]>summary::before{content:"▾";}
+  details.svc>summary .tag{color:var(--muted);font-weight:400;font-size:12.5px;}
+  details.svc .body{padding:0 16px 14px;border-top:1px solid var(--border);}
+  .doc{color:var(--accent2);font-family:ui-monospace,monospace;font-size:12px;
+    background:var(--code);border-radius:5px;padding:1px 7px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GCP Databases &amp; Storage Cheat Sheet</h1>
+<p class="sub">Which data service for which job — Cloud SQL · Spanner · AlloyDB · Firestore · Bigtable · Memorystore · BigQuery · Cloud Storage · disks — for the Associate Cloud Engineer track</p>
+
+<nav class="mini">
+  <a href="#spine">Decision spine</a>
+  <a href="#shapes">Data shapes</a>
+  <a href="#cloudsql">Cloud SQL</a>
+  <a href="#alloydb">AlloyDB</a>
+  <a href="#spanner">Spanner</a>
+  <a href="#firestore">Firestore</a>
+  <a href="#bigtable">Bigtable</a>
+  <a href="#memorystore">Memorystore</a>
+  <a href="#bigquery">BigQuery</a>
+  <a href="#gcs">Cloud Storage</a>
+  <a href="#block">Block storage</a>
+  <a href="#cost">Cost gotchas</a>
+  <a href="#glossary">Glossary</a>
+  <button id="expandAll" type="button">Expand all</button>
+  <button id="collapseAll" type="button">Collapse all</button>
+</nav>
+
+<!-- ============ DECISION SPINE ============ -->
+<h2 id="spine">0 · The decision spine (memorize this first)</h2>
+<div class="callout good">
+  Eight questions, eight services. Walk top to bottom and stop at the first yes:
+  <pre><code>Structured + transactional (an app's tables)?  → Cloud SQL
+   …but needs to be GLOBAL + strongly consistent? → Spanner
+   …but just needs FASTER regional Postgres?      → AlloyDB
+Flexible app/web/mobile data, JSON-ish docs?    → Firestore
+Massive throughput, key-lookup, time-series?    → Bigtable
+Just caching hot values for sub-ms reads?       → Memorystore
+Analyzing huge datasets with SQL (dashboards)?  → BigQuery
+Storing whole files (images, backups, logs)?    → Cloud Storage</code></pre>
+</div>
+<div class="callout">
+  <b>The exam's favorite split — OLTP vs OLAP.</b>
+  <b>OLTP</b> (Online Transaction Processing) = many small, fast reads/writes — what a live app does (place order, update profile). Cloud SQL, Spanner, AlloyDB, Firestore, Bigtable live here.
+  <b>OLAP</b> (Online Analytical Processing) = few huge queries scanning millions of rows to answer "what happened?" — BigQuery's whole job. Same language (SQL) as Cloud SQL, opposite workload.
+</div>
+<div class="card">
+  <h3>The eight services at a glance</h3>
+  <table>
+    <tr><th>Service</th><th>Category / data model</th><th>One-line pick rule</th></tr>
+    <tr><td><b>Cloud SQL</b></td><td class="desc">Relational — MySQL / PostgreSQL / SQL Server</td><td class="desc">default app database; joins + transactions; regional scale</td></tr>
+    <tr><td><b>AlloyDB</b></td><td class="desc">Relational — PostgreSQL-compatible, souped up</td><td class="desc">Postgres but faster; HTAP; Oracle-migration target</td></tr>
+    <tr><td><b>Spanner</b></td><td class="desc">Relational — globally distributed tables</td><td class="desc">relational <i>and</i> global <i>and</i> strongly consistent</td></tr>
+    <tr><td><b>Firestore</b></td><td class="desc">NoSQL document — collections of JSON-like docs</td><td class="desc">serverless flexible app data; real-time sync to clients</td></tr>
+    <tr><td><b>Bigtable</b></td><td class="desc">NoSQL wide-column — huge sparse key→columns</td><td class="desc">millions of writes/sec; time-series, IoT, telemetry</td></tr>
+    <tr><td><b>Memorystore</b></td><td class="desc">In-memory key→value (Redis / Memcached)</td><td class="desc">cache, sessions, leaderboards — <b>not durable</b></td></tr>
+    <tr><td><b>BigQuery</b></td><td class="desc">Serverless OLAP warehouse, columnar, SQL</td><td class="desc">analytics over huge data; <b>not</b> an app DB</td></tr>
+    <tr><td><b>Cloud Storage</b></td><td class="desc">Object storage — buckets of objects (files)</td><td class="desc">blobs: images, video, backups, exports, static sites</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Mnemonic — "SQL SAFe B-M-B-C":</b> <b>S</b>QL family (Cloud <b>S</b>QL, <b>A</b>lloyDB, Spanner) for transactions, <b>F</b>irestore for flexible docs, <b>B</b>igtable for throughput, <b>M</b>emorystore for cache, <b>B</b>igQuery for analysis, <b>C</b>loud Storage for files. Or just remember the spine's question order: <i>shape → scale → speed → analysis → files</i>.
+</div>
+
+<!-- ============ DATA SHAPES ============ -->
+<h2 id="shapes">1 · Data shapes — relational vs document vs wide-column vs key-value</h2>
+<p class="lead">Every database question is secretly a question about the <i>shape</i> of your data. Four shapes cover the exam.</p>
+<div class="card">
+  <table>
+    <tr><th>Shape</th><th>Metaphor</th><th>Looks like</th><th>GCP service(s)</th><th>Strength / weakness</th></tr>
+    <tr>
+      <td><b>Relational</b></td>
+      <td class="desc">a spreadsheet workbook — every row has the same columns</td>
+      <td class="desc">tables, rows, fixed schema, foreign keys</td>
+      <td class="desc">Cloud SQL, AlloyDB, Spanner</td>
+      <td class="desc">joins + ACID transactions / schema changes are ceremony</td>
+    </tr>
+    <tr>
+      <td><b>Document</b></td>
+      <td class="desc">a folder of forms — each form can have different fields</td>
+      <td class="desc">collections of nested JSON-like documents</td>
+      <td class="desc">Firestore</td>
+      <td class="desc">flexible schema, maps to app objects / weak at cross-document joins</td>
+    </tr>
+    <tr>
+      <td><b>Wide-column</b></td>
+      <td class="desc">a giant filing wall — billions of labeled drawers, most empty</td>
+      <td class="desc">one big sparse table: row key → column families → cells</td>
+      <td class="desc">Bigtable</td>
+      <td class="desc">huge scale, fast key lookups / no SQL, no joins, design lives in the row key</td>
+    </tr>
+    <tr>
+      <td><b>Key-value</b></td>
+      <td class="desc">a coat check — hand over a ticket, get exactly one item back</td>
+      <td class="desc">key → opaque value, nothing else</td>
+      <td class="desc">Memorystore</td>
+      <td class="desc">fastest possible lookup / can't query by content at all</td>
+    </tr>
+  </table>
+</div>
+<div class="callout">
+  <b>ACID</b> = Atomicity, Consistency, Isolation, Durability — the transaction guarantees relational databases make (a bank transfer either fully happens or fully doesn't). NoSQL systems relax some of these to win scale; how much they relax is exactly what differentiates Firestore (per-document and multi-document transactions) from Bigtable (single-row atomicity only).
+</div>
+
+<!-- ============ SERVICE DRILL-INS ============ -->
+<h2>2 · Per-service drill-ins (click to expand)</h2>
+
+<details class="svc" id="cloudsql">
+  <summary>Cloud SQL <span class="tag">— managed MySQL / PostgreSQL / SQL Server · the default app database</span></summary>
+  <div class="body">
+    <p class="lead">A managed VM running the database engine you already know. Google handles patches, backups, replication, failover; you get a normal connection string. Example: a chat app's relational store — users, messages, channels — lives happily in a Cloud SQL Postgres instance called <code>my-app-db</code>.</p>
+    <table>
+      <tr><td class="cmd"><b>Engines</b></td><td class="desc">MySQL, PostgreSQL, SQL Server — pick what your code speaks</td></tr>
+      <tr><td class="cmd"><b>Scale model</b></td><td class="desc"><i>vertical</i> (bigger machine) + read replicas; writes go through one primary</td></tr>
+      <tr><td class="cmd"><b>HA</b> (High Availability)</td><td class="desc">optional standby in another zone, automatic failover — regional, not global</td></tr>
+      <tr><td class="cmd"><b>Backups</b></td><td class="desc">automated daily + point-in-time recovery (PITR) via write-ahead logs</td></tr>
+      <tr><td class="cmd"><b>Connectivity</b></td><td class="desc">private IP, public IP + authorized networks, or the Cloud SQL Auth Proxy (IAM-authenticated tunnel — the recommended way)</td></tr>
+    </table>
+    <div class="callout warn"><b>Ceiling:</b> regional scale only. When one primary can't take the write load, or users span continents, you've outgrown it — that's the Spanner/AlloyDB fork.</div>
+    <p class="lead">Docs: <a href="https://cloud.google.com/sql/docs">cloud.google.com/sql/docs</a></p>
+  </div>
+</details>
+
+<details class="svc" id="alloydb">
+  <summary>AlloyDB <span class="tag">— PostgreSQL-compatible, rebuilt for speed · HTAP in one box</span></summary>
+  <div class="body">
+    <p class="lead">Google took the Postgres front end and swapped the storage engine underneath for its own disaggregated, log-structured one. Your app sees ordinary Postgres; Google claims ~4× transactional throughput vs stock Postgres.</p>
+    <table>
+      <tr><td class="cmd"><b>Killer feature</b></td><td class="desc">a built-in <b>columnar engine</b>: hot rows are also kept in column format in memory, so analytical queries run up to ~100× faster <i>on the same database</i></td></tr>
+      <tr><td class="cmd"><b>HTAP</b></td><td class="desc">Hybrid Transactional/Analytical Processing — one system serving both OLTP and OLAP, instead of exporting to a warehouse</td></tr>
+      <tr><td class="cmd"><b>Pick it when</b></td><td class="desc">Cloud SQL Postgres is too slow, you want dashboards over live data, or you're migrating off Oracle/commercial Postgres</td></tr>
+    </table>
+    <div class="callout warn"><b>Ceiling:</b> still a <b>single primary writer</b> — read pool scales out, writes don't. Global write scale remains Spanner's territory. Lightly tested on the ACE exam; know what it is and its niche.</div>
+    <p class="lead">Docs: <a href="https://cloud.google.com/alloydb/docs">cloud.google.com/alloydb/docs</a></p>
+  </div>
+</details>
+
+<details class="svc" id="spanner">
+  <summary>Spanner <span class="tag">— globally distributed relational · the "impossible" database</span></summary>
+  <div class="body">
+    <p class="lead">Relational tables + SQL + ACID transactions, but sharded across machines and continents with <i>horizontal scale-out</i> — add nodes, get more read <b>and write</b> capacity. The trick: <b>TrueTime</b>, Google's GPS-and-atomic-clock API that timestamps transactions globally.</p>
+    <table>
+      <tr><td class="cmd"><b>External consistency</b></td><td class="desc">the strongest guarantee: globally, transactions appear in the real-time order they committed — like one giant single machine</td></tr>
+      <tr><td class="cmd"><b>SLA</b></td><td class="desc">up to <b>99.999%</b> availability for multi-region configs (~5 min downtime/year)</td></tr>
+      <tr><td class="cmd"><b>Pick it when</b></td><td class="desc">relational <i>and</i> global <i>and</i> consistent — financial ledgers, global inventory, multiplayer game state</td></tr>
+    </table>
+    <div class="callout warn"><b>Watch out:</b> expensive (priced per node/processing unit + storage); individual queries can be slower than a local Postgres because consensus spans regions. Overkill unless you genuinely need global writes. Exam rule: see "global + relational + strong consistency" → answer Spanner.</div>
+    <p class="lead">Docs: <a href="https://cloud.google.com/spanner/docs">cloud.google.com/spanner/docs</a></p>
+  </div>
+</details>
+
+<details class="svc" id="firestore">
+  <summary>Firestore <span class="tag">— serverless NoSQL document DB · MongoDB family · real-time</span></summary>
+  <div class="body">
+    <p class="lead">Stores <b>documents</b> (JSON-like maps of fields) grouped into <b>collections</b>; documents can nest subcollections. Same family as MongoDB — if you'd reach for Mongo, on GCP you reach for Firestore. Example: a recipe-sharing app stores each recipe as one document — title, ingredients array, nested ratings — no schema migration when you add a field.</p>
+    <table>
+      <tr><td class="cmd"><b>Serverless</b></td><td class="desc">no instances to size; scales automatically; pay per operation + storage (generous free tier)</td></tr>
+      <tr><td class="cmd"><b>Real-time listeners</b></td><td class="desc">clients <i>subscribe</i> to a query and get pushed updates — chat and collaborative apps for free</td></tr>
+      <tr><td class="cmd"><b>Offline sync</b></td><td class="desc">mobile/web SDKs cache locally and reconcile when back online</td></tr>
+      <tr><td class="cmd"><b>Modes</b></td><td class="desc"><b>Native mode</b> (the one to pick) vs <b>Datastore mode</b> (backward-compatible with the older Datastore API; server-side only, no real-time)</td></tr>
+    </table>
+    <div class="callout warn"><b>Watch out:</b> queries need pre-built indexes; weak at heavy analytics and multi-document joins. For analysis, stream/export to BigQuery (see BigQuery card).</div>
+    <p class="lead">Docs: <a href="https://cloud.google.com/firestore/docs">cloud.google.com/firestore/docs</a></p>
+  </div>
+</details>
+
+<details class="svc" id="bigtable">
+  <summary>Bigtable <span class="tag">— wide-column NoSQL · the petabyte firehose</span></summary>
+  <div class="body">
+    <p class="lead">The system behind Search, Maps and Gmail, exposed as a service (HBase-compatible API). One enormous sparse table: a <b>row key</b> maps to column families full of timestamped cells. Rows are sorted by key and split into contiguous <b>key ranges</b> (tablets) spread across nodes — so throughput scales linearly: more nodes, more tablets served.</p>
+    <table>
+      <tr><td class="cmd"><b>Pick it when</b></td><td class="desc">millions of writes/sec at single-digit-ms latency: sensor/IoT (Internet of Things) telemetry, time-series metrics, ad-tech events, financial ticks</td></tr>
+      <tr><td class="cmd"><b>Row-key design</b></td><td class="desc">the <i>only</i> index — queries are key lookups and key-range scans. Design keys to spread load: <code>sensor42#2026-06-06T10:00</code> good; a plain timestamp prefix sends all writes to one node (<b>hotspotting</b>)</td></tr>
+      <tr><td class="cmd"><b>Atomicity</b></td><td class="desc">single-row only — no multi-row transactions, no SQL, no joins</td></tr>
+    </table>
+    <div class="callout warn"><b>Watch out:</b> minimum ~1 node always on — there's a meaningful monthly floor even at zero traffic. Bigtable is for big workloads; small flexible data wants Firestore.</div>
+    <p class="lead">Docs: <a href="https://cloud.google.com/bigtable/docs">cloud.google.com/bigtable/docs</a></p>
+  </div>
+</details>
+
+<details class="svc" id="memorystore">
+  <summary>Memorystore <span class="tag">— managed Redis / Memcached · a cache, not a store</span></summary>
+  <div class="body">
+    <p class="lead">In-memory key→value service for sub-millisecond reads. Sits <i>in front of</i> a real database: check the cache first, fall back to the DB, write the answer back into the cache (cache-aside pattern).</p>
+    <table>
+      <tr><td class="cmd"><b>Use for</b></td><td class="desc">caching query results, session state, leaderboards (Redis sorted sets), rate limiting, pub/sub fan-out</td></tr>
+      <tr><td class="cmd"><b>Redis vs Memcached</b></td><td class="desc">Redis = rich data types, persistence options, replication; Memcached = simpler, multi-node pure cache. Default to Redis unless migrating existing Memcached code</td></tr>
+      <tr><td class="cmd"><b>Tiers</b></td><td class="desc">Redis Basic (single node, cache only) vs Standard (replicated, HA with automatic failover)</td></tr>
+    </table>
+    <div class="callout warn"><b>The rule that matters:</b> RAM is <b>not durable</b>. A restart or eviction can empty it. Anything you can't recompute or refetch does not belong only in Memorystore. Exam phrasing: "store session data with lowest latency" → Memorystore; "store it durably" → a database.</div>
+    <p class="lead">Docs: <a href="https://cloud.google.com/memorystore/docs">cloud.google.com/memorystore/docs</a></p>
+  </div>
+</details>
+
+<details class="svc" id="bigquery">
+  <summary>BigQuery <span class="tag">— serverless columnar OLAP warehouse · priced per scan</span></summary>
+  <div class="body">
+    <p class="lead">The analytics roof over everything else. Fully serverless: no clusters to size — load (or stream) data, write SQL, and Google fans the query out over thousands of workers. Scans terabytes in seconds.</p>
+    <table>
+      <tr><td class="cmd"><b>Columnar storage</b></td><td class="desc">data stored per <i>column</i>, not per row — a query touching 3 of 200 columns reads only those 3. Great for analytics, wrong for single-row OLTP lookups</td></tr>
+      <tr><td class="cmd"><b>Pricing model</b></td><td class="desc">on-demand = pay per <b>bytes scanned</b> by each query (plus cheap storage); flat-rate/editions = reserved slots for heavy shops</td></tr>
+      <tr><td class="cmd"><b>External tables</b></td><td class="desc">query data <i>in place</i> without loading it — federation over <b>Cloud Storage</b> files (CSV/JSON/Parquet) and <b>Bigtable</b> (GA — Generally Available)</td></tr>
+      <tr><td class="cmd"><b>Firestore route</b></td><td class="desc">no direct federation — use the <i>Stream Firestore to BigQuery</i> extension / export pipeline to land documents as rows</td></tr>
+      <tr><td class="cmd"><b>Native JSON type</b></td><td class="desc">a <code>JSON</code> column type stores semi-structured data and queries it with dot notation — half-schemaless inside a warehouse</td></tr>
+      <tr><td class="cmd"><b>Extras</b></td><td class="desc">BigQuery ML (train models in SQL), scheduled queries, free 10 GiB storage + 1 TiB scan/month tier</td></tr>
+    </table>
+    <div class="callout warn"><b>Not an app database.</b> Per-query latency is seconds, inserts are batch/stream-oriented, and pricing punishes "SELECT one row" patterns. OLTP belongs in the spine's other branches.</div>
+    <p class="lead">Docs: <a href="https://cloud.google.com/bigquery/docs">cloud.google.com/bigquery/docs</a></p>
+  </div>
+</details>
+
+<details class="svc" id="gcs">
+  <summary>Cloud Storage <span class="tag">— object storage · buckets, classes, lifecycle, signed URLs</span></summary>
+  <div class="body">
+    <p class="lead"><b>Object storage</b> = whole files retrieved by name over HTTP, not a filesystem and not a disk. A <b>bucket</b> (globally-unique name, chosen location) holds <b>objects</b> (the files + metadata). Flat namespace — <code>photos/2026/cat.jpg</code> is one object whose name contains slashes; "folders" are an illusion the console draws.</p>
+    <table>
+      <tr><th>Class</th><th>Min storage duration</th><th>Use when accessed…</th></tr>
+      <tr><td><b>Standard</b></td><td class="desc">none</td><td class="desc">frequently — live website assets, active data</td></tr>
+      <tr><td><b>Nearline</b></td><td class="desc">30 days</td><td class="desc">≈ once a month — recent backups</td></tr>
+      <tr><td><b>Coldline</b></td><td class="desc">90 days</td><td class="desc">≈ once a quarter — DR (disaster recovery) copies</td></tr>
+      <tr><td><b>Archive</b></td><td class="desc">365 days</td><td class="desc">≈ once a year — compliance retention</td></tr>
+    </table>
+    <p class="lead">Colder = cheaper storage but pricier retrieval + early-deletion fees. All classes have the same ms-level access latency — "cold" means <i>billing</i> temperature, not tape robots.</p>
+    <table>
+      <tr><td class="cmd"><b>Lifecycle rules</b></td><td class="desc">per-bucket automation: "after 30 days → Nearline; after 365 → Archive; after 7 years → delete." Set once, forget forever</td></tr>
+      <tr><td class="cmd"><b>Signed URLs</b></td><td class="desc">time-limited tokenized links granting anyone (no Google account) GET/PUT on one object — how apps let users download private files or upload directly to the bucket</td></tr>
+      <tr><td class="cmd"><b>Also know</b></td><td class="desc">uniform bucket-level access (IAM only, recommended) vs fine-grained ACLs; object versioning; <code>gsutil</code>/<code>gcloud storage</code> CLI; static-website hosting</td></tr>
+    </table>
+    <p class="lead">Docs: <a href="https://cloud.google.com/storage/docs">cloud.google.com/storage/docs</a></p>
+  </div>
+</details>
+
+<!-- ============ BLOCK STORAGE ============ -->
+<h2 id="block">3 · Block storage — the disks under your VMs</h2>
+<div class="callout">
+  <b>Block vs object:</b> <b>block storage</b> = a raw virtual disk attached to one VM (Virtual Machine), formatted with a filesystem, read/written in small blocks — what a VM boots from and what a self-managed database writes to. <b>Object storage</b> = whole files by name over HTTP, attached to nothing. Disk : bucket :: internal drive : shared file box.
+</div>
+<div class="callout good">
+  <b>The substrate:</b> every <i>network-attached</i> disk (all Persistent Disk and Hyperdisk types) is virtual — blocks live replicated on <b>Colossus</b>, Google's distributed file system, and travel to your VM over the datacenter network. That's why a durable disk survives its VM and can grow live. Only <b>Local SSD</b> is a physical drive bolted to the host.
+</div>
+<div class="card">
+  <h3>Persistent Disk (PD) — performance scales <i>with size</i></h3>
+  <table>
+    <tr><th>Tier</th><th>Media · rough perf vs Standard</th><th>Best for</th></tr>
+    <tr><td><b>Standard PD</b> <code>pd-standard</code></td><td class="desc">HDD · ×1 baseline</td><td class="desc">cheap bulk/sequential data; non-boot drives</td></tr>
+    <tr><td><b>Balanced PD</b> <code>pd-balanced</code></td><td class="desc">SSD · ≈×18</td><td class="desc"><b>the sensible default</b>, incl. boot disks; best price/GB of the SSDs</td></tr>
+    <tr><td><b>SSD PD</b> <code>pd-ssd</code></td><td class="desc">SSD · ≈×90</td><td class="desc">performance-sensitive databases; best price/IOPS</td></tr>
+    <tr><td><b>Extreme PD</b> <code>pd-extreme</code></td><td class="desc">SSD, provisionable IOPS · ≈×310</td><td class="desc">high-end DBs (e.g. SAP HANA)</td></tr>
+  </table>
+  <p class="lead">PD's quirk: IOPS (Input/Output Operations Per Second — random read/write rate) and throughput (MiB/s — bulk sequential rate) grow with disk <i>size</i>. Need more speed? Buy more gigabytes, even empty ones.</p>
+</div>
+<div class="grid" style="margin-top:16px;">
+  <div class="card">
+    <h3>Hyperdisk — performance <i>decoupled</i> from capacity</h3>
+    <p class="lead">The newer generation fixes PD's quirk: provision size, IOPS and throughput as <b>three independent dials</b>, tunable <i>live</i> without detaching.</p>
+    <table>
+      <tr><td class="cmd"><b>Balanced</b></td><td class="desc">general default for new machine series</td></tr>
+      <tr><td class="cmd"><b>Balanced HA</b></td><td class="desc">synchronously replicated across two zones</td></tr>
+      <tr><td class="cmd"><b>Extreme</b></td><td class="desc">highest IOPS — mission-critical databases</td></tr>
+      <tr><td class="cmd"><b>ML</b></td><td class="desc">huge read throughput, attach read-only to many VMs — model/dataset loading</td></tr>
+      <tr><td class="cmd"><b>Throughput</b></td><td class="desc">cheap tunable MiB/s for analytics/scratch</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Local SSD &amp; boot disks</h3>
+    <table>
+      <tr><td class="cmd"><b>Local SSD</b></td><td class="desc"><b>physical</b> NVMe on the host: highest IOPS, lowest latency — and <b>ephemeral</b>: data is gone when the VM stops or migrates. Scratch space, caches, temp shuffle only</td></tr>
+      <tr><td class="cmd"><b>Boot disk</b></td><td class="desc">every VM has exactly one — holds the OS image; must be durable (so never Local SSD). Balanced PD / Hyperdisk Balanced is the normal choice</td></tr>
+    </table>
+    <div class="callout good" style="margin-bottom:0;"><b>Memory hook:</b> <i>durable disks are network fictions on Colossus; only Local SSD is real — and the real one forgets.</i></div>
+  </div>
+</div>
+<p class="lead" style="margin-top:10px;">Docs: <a href="https://cloud.google.com/compute/docs/disks">cloud.google.com/compute/docs/disks</a></p>
+
+<!-- ============ COST GOTCHAS ============ -->
+<h2 id="cost">4 · Cost gotchas — where beginners get billed</h2>
+<div class="grid">
+  <div class="card">
+    <h3>BigQuery: you pay per scan, not per answer</h3>
+    <p class="lead"><code>SELECT *</code> on a 2 TB table costs the same whether it returns one row or all of them — on-demand pricing bills <b>bytes scanned</b>. Defenses: never <code>SELECT *</code>; <b>partition</b> tables (by date) and <b>cluster</b> them so queries prune; check the dry-run estimate in the console before running; set per-user byte quotas.</p>
+  </div>
+  <div class="card">
+    <h3>Bigtable: the always-on floor</h3>
+    <p class="lead">A minimum ~1-node cluster bills 24/7 whether or not a single request arrives. There is no scale-to-zero. Prototyping a small dataset? Use Firestore (free tier, serverless) and graduate to Bigtable when throughput demands it.</p>
+  </div>
+  <div class="card">
+    <h3>Stopped VM ≠ free VM</h3>
+    <p class="lead">Stopping a VM stops <i>compute</i> billing — but its Persistent Disks, snapshots, and reserved static IPs keep billing. The classic surprise invoice is a fleet of stopped VMs with fat SSD disks attached. Delete the disk (or snapshot-then-delete) if you're done with it.</p>
+  </div>
+  <div class="card">
+    <h3>Egress: data checks in cheap, checks out expensive</h3>
+    <p class="lead">Ingress (data in) is free; <b>egress</b> (data out to the internet or across regions/continents) is billed per GB. Keep the VM, the database and the bucket in the <b>same region</b>; cold storage classes add per-GB <i>retrieval</i> fees on top of egress.</p>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Habit:</b> set a <b>budget alert</b> on day one (Billing → Budgets &amp; alerts) — it doesn't cap spending, but it emails you before a surprise becomes a story.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">5 · Acronym &amp; jargon decoder</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>OLTP</b></td><td class="desc">Online Transaction Processing — many small fast reads/writes (a live app)</td></tr>
+    <tr><td class="cmd"><b>OLAP</b></td><td class="desc">Online Analytical Processing — few huge scans for analysis (a warehouse)</td></tr>
+    <tr><td class="cmd"><b>HTAP</b></td><td class="desc">Hybrid Transactional/Analytical Processing — one engine doing both (AlloyDB)</td></tr>
+    <tr><td class="cmd"><b>ACID</b></td><td class="desc">Atomicity, Consistency, Isolation, Durability — transaction guarantees</td></tr>
+    <tr><td class="cmd"><b>IOPS</b></td><td class="desc">Input/Output Operations Per Second — random-access rate; databases care</td></tr>
+    <tr><td class="cmd"><b>Throughput</b></td><td class="desc">MiB/s of bulk sequential data; analytics and big files care</td></tr>
+    <tr><td class="cmd"><b>Serverless</b></td><td class="desc">no servers to manage, autoscaling, pay-per-use — still servers underneath, like "wireless" still has wires</td></tr>
+    <tr><td class="cmd"><b>HA / SLA</b></td><td class="desc">High Availability / Service Level Agreement (the uptime promise, e.g. 99.999%)</td></tr>
+    <tr><td class="cmd"><b>PITR</b></td><td class="desc">Point-In-Time Recovery — restore a DB to any moment, via replayed logs</td></tr>
+    <tr><td class="cmd"><b>External consistency</b></td><td class="desc">Spanner's guarantee: global transactions appear in true commit order</td></tr>
+    <tr><td class="cmd"><b>Hotspotting</b></td><td class="desc">a key design that funnels traffic to one node (e.g. timestamp-prefixed Bigtable row keys)</td></tr>
+    <tr><td class="cmd"><b>Federation / external table</b></td><td class="desc">querying data where it lives instead of loading it (BigQuery over GCS/Bigtable)</td></tr>
+    <tr><td class="cmd"><b>Egress / ingress</b></td><td class="desc">data leaving / entering — leaving is the one that costs</td></tr>
+    <tr><td class="cmd"><b>Colossus</b></td><td class="desc">Google's internal distributed file system — the substrate under PD, Hyperdisk, GCS, and the databases</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/sql/docs">Cloud SQL</a> ·
+  <a href="https://cloud.google.com/alloydb/docs">AlloyDB</a> ·
+  <a href="https://cloud.google.com/spanner/docs">Spanner</a> ·
+  <a href="https://cloud.google.com/firestore/docs">Firestore</a> ·
+  <a href="https://cloud.google.com/bigtable/docs">Bigtable</a> ·
+  <a href="https://cloud.google.com/memorystore/docs">Memorystore</a> ·
+  <a href="https://cloud.google.com/bigquery/docs">BigQuery</a> ·
+  <a href="https://cloud.google.com/storage/docs">Cloud Storage</a> ·
+  <a href="https://cloud.google.com/compute/docs/disks">Disks</a> ·
+  <a href="https://cloud.google.com/bigquery/pricing">BQ pricing</a>
+</p>
+
+</div>
+<script>
+  var cards = document.querySelectorAll('details.svc');
+  document.getElementById('expandAll').addEventListener('click', function(){
+    cards.forEach(function(d){ d.open = true; });
+  });
+  document.getElementById('collapseAll').addEventListener('click', function(){
+    cards.forEach(function(d){ d.open = false; });
+  });
+  // If the URL targets a collapsed card (via mini-nav anchor), open it.
+  function openTarget(){
+    var t = location.hash && document.querySelector(location.hash);
+    if (t && t.tagName === 'DETAILS') t.open = true;
+  }
+  window.addEventListener('hashchange', openTarget);
+  openTarget();
+</script>
+</body>
+</html>

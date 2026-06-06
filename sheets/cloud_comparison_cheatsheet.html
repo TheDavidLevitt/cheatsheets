@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud Comparison Cheat Sheet — AWS vs Azure vs GCP</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:0;display:inline;}
+  details{border-bottom:1px solid var(--border);padding:0 0 6px;margin:22px 0 0;}
+  summary{cursor:pointer;padding:6px 0;list-style:none;}
+  summary::-webkit-details-marker{display:none;}
+  summary::before{content:"▸";color:var(--muted);display:inline-block;width:18px;
+    transition:transform .15s;}
+  details[open] summary::before{transform:rotate(90deg);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;font-size:12px;letter-spacing:.05em;
+     text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.aws{width:20%;}
+  td.az{width:22%;}
+  td.gcp{width:22%;}
+  td.desc{width:36%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;margin:12px 0;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  .lead{color:var(--muted);font-size:13.5px;margin:8px 0 10px;}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent);}
+  a:hover{border-bottom-style:solid;}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  /* sticky nav */
+  nav.toc{position:sticky;top:0;z-index:5;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 4px;
+    font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  nav.toc a{background:var(--card);border:1px solid var(--border);border-radius:6px;
+    padding:2px 9px;color:var(--ink);border-bottom:1px solid var(--border);}
+  nav.toc a:hover{border-color:var(--accent);}
+  nav.toc button{background:var(--kbd);border:1px solid var(--border);border-radius:6px;
+    color:var(--ink);padding:2px 9px;font-size:12px;cursor:pointer;margin-left:auto;}
+  nav.toc button:hover{border-color:var(--accent2);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Cloud Comparison Cheat Sheet</h1>
+<p class="sub">AWS vs Azure vs GCP service Rosetta Stone · started 2026-06-06 · twin of <code>Tools/cloud_comparison_cheatsheet.md</code></p>
+
+<nav class="toc">
+  <a href="#model">Model</a>
+  <a href="#hierarchy">IAM &amp; hierarchy</a>
+  <a href="#compute">Compute</a>
+  <a href="#storage">Storage</a>
+  <a href="#databases">Databases</a>
+  <a href="#networking">Networking</a>
+  <a href="#ops">Monitoring</a>
+  <a href="#data">Data/ETL</a>
+  <a href="#ai">AI</a>
+  <a href="#teardown">Teardown</a>
+  <a href="#glossary">Glossary</a>
+  <button onclick="setAll(true)">Expand all</button>
+  <button onclick="setAll(false)">Collapse all</button>
+</nav>
+
+<!-- ============ MENTAL MODEL ============ -->
+<details id="model" open>
+<summary><h2>0 · The mental model (read once)</h2></summary>
+<div class="callout good">
+  <b>AWS</b> = Amazon Web Services (2006, first mover, biggest catalog, quirkiest names). <b>Azure</b> = Microsoft Azure (2010, enterprise/hybrid play, glued to Windows/Office/Entra identity). <b>GCP</b> = Google Cloud Platform (2008, infrastructure-first from running Google itself; strongest in data/analytics/ML).
+</div>
+<div class="callout">
+  All three sell the <b>same ~20 primitives</b> — VMs, buckets, managed DBs, a software-defined network, identity, billing hierarchy. Knowing one cloud, learning another is <b>~80% vocabulary translation, ~20% real conceptual differences</b>. The 20% lives in (1) the <b>resource/billing hierarchy</b> (section 1 — actually think about this one) and (2) <b>scope defaults</b> — e.g. a GCP VPC is <b>global</b>, an AWS VPC / Azure VNet is <b>regional</b>. Same word, different blast radius.
+</div>
+<div class="card">
+  <h3>Naming-style decoder</h3>
+  <table>
+    <tr><th>Cloud</th><th>Style</th><th colspan="2">Examples</th></tr>
+    <tr><td class="aws"><b>AWS</b></td><td class="az">Brand names + acronyms you must expand &amp; memorize</td><td class="desc" colspan="2"><b>S3</b> = Simple Storage Service · <b>EC2</b> = Elastic Compute Cloud · <b>EBS</b> = Elastic Block Store · <b>EFS</b> = Elastic File System · <b>RDS</b> = Relational Database Service · <b>EMR</b> = Elastic MapReduce · pure brands: Lambda, Fargate, Redshift, Glue, Kinesis, SageMaker, Bedrock</td></tr>
+    <tr><td class="aws"><b>Azure</b></td><td class="az">Literal <code>Azure &lt;thing&gt;</code> — says what it is</td><td class="desc" colspan="2">Azure Virtual Machines, Azure Functions, Azure Blob Storage, Azure SQL Database, AKS, Azure Monitor. Exceptions = acquired/legacy brands: Cosmos DB, Entra ID (ex-Azure AD), Fabric</td></tr>
+    <tr><td class="aws"><b>GCP</b></td><td class="az">Literal <code>Cloud &lt;thing&gt;</code> — Google drops its own name</td><td class="desc" colspan="2">Compute Engine, Cloud Storage, Cloud SQL, Cloud Run, Cloud DNS, Pub/Sub, BigQuery. Exceptions = pet brands: Spanner, Bigtable, Firestore, Dataflow, Vertex AI</td></tr>
+  </table>
+  <p class="lead">Rule of thumb: forget a GCP name → guess <code>Cloud &lt;noun&gt;</code>, often right. Forget an AWS name → you can't guess, look it up. Azure sits in between.</p>
+</div>
+</details>
+
+<!-- ============ HIERARCHY ============ -->
+<details id="hierarchy" open>
+<summary><h2>1 · IAM &amp; org hierarchy — the conceptual heart</h2></summary>
+<p class="lead"><b>IAM</b> = Identity and Access Management: <i>who</i> (identity) can do <i>what</i> (role) on <i>which</i> resource (scope). All three inherit permissions <b>down</b> the hierarchy — what differs is what the layers are.</p>
+<pre><code>AWS                      Azure                         GCP
+───                      ─────                         ───
+Organization             Tenant (Entra ID directory)   Organization
+ └─ Organizational        └─ Management Group           └─ Folder
+    Unit (OU)                 └─ Subscription               └─ Project
+     └─ Account                   └─ Resource Group             └─ Resources
+         └─ Resources                 └─ Resources</code></pre>
+<div class="card">
+  <h3>Layer-by-layer</h3>
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>Role the layer plays</th></tr>
+    <tr><td class="aws">AWS Organizations (mgmt account)</td><td class="az"><a href="https://learn.microsoft.com/en-us/entra/fundamentals/whatis"><b>Tenant</b></a> — the Entra ID directory itself</td><td class="gcp"><a href="https://cloud.google.com/resource-manager/docs/cloud-platform-resource-hierarchy"><b>Organization</b></a></td><td class="desc">identity directory + root of trust</td></tr>
+    <tr><td class="aws"><b>Organizational Unit (OU)</b> — nestable</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/governance/management-groups/overview"><b>Management Group</b></a> — nestable, up to 6 levels</td><td class="gcp"><a href="https://cloud.google.com/resource-manager/docs/creating-managing-folders"><b>Folder</b></a> — nestable (dept / team / env)</td><td class="desc">grouping layer for policy inheritance</td></tr>
+    <tr><td class="aws"><b>Account</b> — the hard wall: own root user, own IAM universe</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/cost-management-billing/manage/create-subscription"><b>Subscription</b></a> — billing + quota boundary</td><td class="gcp"><a href="https://cloud.google.com/resource-manager/docs/creating-managing-projects"><b>Project</b></a> — APIs, quota, billing link, IAM all hang off it</td><td class="desc">isolation + billing-attribution boundary</td></tr>
+    <tr><td class="aws">(tags only)</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/overview"><b>Resource Group</b></a> — mandatory, delete-as-a-unit</td><td class="gcp">(labels only)</td><td class="desc">lightweight grouping inside the boundary</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>The rough equation:</b> AWS <b>Account</b> ≈ Azure <b>Subscription</b> ≈ GCP <b>Project</b> — each is the unit of isolation, quota, and billing attribution. But the <i>weight</i> differs: an AWS account is heavy (companies script account factories); an Azure subscription is medium; a <b>GCP project is deliberately cheap</b> — one per app per environment is normal.
+</div>
+<div class="callout">
+  <b>Azure's two oddities:</b> (1) the <b>Resource Group</b> has no AWS/GCP container equivalent — a mandatory folder inside a subscription, deletable as a unit (GCP achieves the same by deleting a project). (2) Azure <b>splits identity from resources</b>: the Tenant (Entra ID, ex-Azure Active Directory) exists even with zero subscriptions and is shared with Microsoft 365.
+</div>
+<div class="callout warn">
+  <b>Billing attaches differently:</b> AWS per account (consolidated at org) · Azure per subscription · GCP a separate <b>billing account</b> object <i>linked</i> to projects — one billing account can pay for many projects. ACE exam loves this.
+</div>
+<div class="card">
+  <h3>Identity &amp; access services</h3>
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws">AWS IAM (JSON policies)</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/role-based-access-control/overview">Azure RBAC</a> (role assignments)</td><td class="gcp"><a href="https://cloud.google.com/iam">Cloud IAM</a> (role bindings)</td><td class="desc">core permission system; deny-by-default everywhere</td></tr>
+    <tr><td class="aws">IAM Identity Center</td><td class="az"><a href="https://learn.microsoft.com/en-us/entra/fundamentals/whatis"><b>Microsoft Entra ID</b></a> (ex-Azure AD)</td><td class="gcp"><a href="https://cloud.google.com/identity">Cloud Identity</a></td><td class="desc">user directory / SSO</td></tr>
+    <tr><td class="aws">IAM Role</td><td class="az"><a href="https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview">Managed Identity</a></td><td class="gcp"><a href="https://cloud.google.com/iam/docs/service-account-overview">Service Account</a></td><td class="desc">machine identity for code</td></tr>
+    <tr><td class="aws">Service Control Policies (SCPs)</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/governance/policy/overview">Azure Policy</a></td><td class="gcp"><a href="https://cloud.google.com/resource-manager/docs/organization-policy/overview">Organization Policy Service</a></td><td class="desc">org-wide guardrails ("no public buckets, ever")</td></tr>
+  </table>
+</div>
+</details>
+
+<!-- ============ COMPUTE ============ -->
+<details id="compute" open>
+<summary><h2>2 · Compute</h2></summary>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws"><b>EC2</b> (Elastic Compute Cloud)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/virtual-machines">Azure Virtual Machines</a></td><td class="gcp"><a href="https://cloud.google.com/compute"><b>Compute Engine</b></a></td><td class="desc">rentable virtual machines — the IaaS bedrock</td></tr>
+    <tr><td class="aws">EC2 Auto Scaling group</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/virtual-machine-scale-sets">Virtual Machine Scale Sets</a> (VMSS)</td><td class="gcp"><a href="https://cloud.google.com/compute/docs/instance-groups"><b>Managed Instance Group</b></a> (MIG)</td><td class="desc">autoscaling fleet of identical VMs</td></tr>
+    <tr><td class="aws"><b>Lambda</b></td><td class="az"><a href="https://azure.microsoft.com/en-us/products/functions">Azure Functions</a></td><td class="gcp"><a href="https://cloud.google.com/functions"><b>Cloud Run functions</b></a> (ex-Cloud Functions)</td><td class="desc">serverless functions — code runs on events, pay per invocation</td></tr>
+    <tr><td class="aws">Fargate / App Runner</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/container-apps">Azure Container Apps</a></td><td class="gcp"><a href="https://cloud.google.com/run"><b>Cloud Run</b></a></td><td class="desc">serverless containers — bring an image, no cluster to manage</td></tr>
+    <tr><td class="aws"><b>EKS</b> (Elastic Kubernetes Service)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/kubernetes-service"><b>AKS</b></a> (Azure Kubernetes Service)</td><td class="gcp"><a href="https://cloud.google.com/kubernetes-engine"><b>GKE</b></a> (Google Kubernetes Engine)</td><td class="desc">managed Kubernetes (K8s = container orchestrator, born at Google)</td></tr>
+    <tr><td class="aws"><b>ECR</b> (Elastic Container Registry)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/container-registry">Azure Container Registry</a> (ACR)</td><td class="gcp"><a href="https://cloud.google.com/artifact-registry">Artifact Registry</a></td><td class="desc">container image registry</td></tr>
+    <tr><td class="aws">Elastic Beanstalk</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/app-service">Azure App Service</a></td><td class="gcp"><a href="https://cloud.google.com/appengine"><b>App Engine</b></a> (GCP's 2008 founding product)</td><td class="desc">PaaS (Platform as a Service) — push code, platform runs it</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>GCP positioning:</b> <b>Cloud Run is the modern default</b> for "just run my app". App Engine predates it; Cloud Run functions are now a Cloud Run feature. ACE: Cloud Run = container · functions = single-purpose event handler · App Engine = legacy-ish PaaS.
+</div>
+</details>
+
+<!-- ============ STORAGE ============ -->
+<details id="storage">
+<summary><h2>3 · Storage</h2></summary>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws"><b>S3</b> (Simple Storage Service)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/storage/blobs">Azure Blob Storage</a></td><td class="gcp"><a href="https://cloud.google.com/storage"><b>Cloud Storage</b></a></td><td class="desc">object storage — buckets of whole files by name</td></tr>
+    <tr><td class="aws"><b>EBS</b> (Elastic Block Store)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/storage/disks">Azure Managed Disks</a></td><td class="gcp"><a href="https://cloud.google.com/products/persistent-disk"><b>Persistent Disk / Hyperdisk</b></a></td><td class="desc">block storage — virtual disks a VM boots from</td></tr>
+    <tr><td class="aws"><b>EFS</b> (Elastic File System) / FSx</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/storage/files">Azure Files</a></td><td class="gcp"><a href="https://cloud.google.com/filestore">Filestore</a></td><td class="desc">shared NFS/SMB filesystem mounted by many VMs</td></tr>
+    <tr><td class="aws">S3 Glacier</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview">Blob <b>Archive</b> access tier</a></td><td class="gcp"><a href="https://cloud.google.com/storage/docs/storage-classes">Cloud Storage <b>Archive</b> class</a></td><td class="desc">cheapest tier for rarely-touched data, retrieval penalty</td></tr>
+  </table>
+</div>
+<div class="callout">
+  AWS makes archive a separate-ish product (Glacier); Azure and GCP make it a <b>tier/class of the same bucket</b>. GCP ladder: Standard → Nearline → Coldline → Archive, per object or via lifecycle rules. Block-storage depth: see <code>Tools/gcp_storage_reference.md</code> Table 2.
+</div>
+</details>
+
+<!-- ============ DATABASES ============ -->
+<details id="databases">
+<summary><h2>4 · Databases</h2></summary>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws"><b>RDS</b> (Relational Database Service)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/azure-sql/database">Azure SQL Database</a> / <a href="https://azure.microsoft.com/en-us/products/postgresql">Azure Database for PostgreSQL</a></td><td class="gcp"><a href="https://cloud.google.com/sql"><b>Cloud SQL</b></a></td><td class="desc">managed relational DB (MySQL/Postgres/SQL Server) — the standard app DB</td></tr>
+    <tr><td class="aws">Aurora</td><td class="az">Azure SQL Hyperscale tier</td><td class="gcp"><a href="https://cloud.google.com/alloydb"><b>AlloyDB</b></a> (Postgres-compatible)</td><td class="desc">premium cloud-native relational engine, faster than the vanilla service</td></tr>
+    <tr><td class="aws">(no true equivalent)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/cosmos-db">Cosmos DB</a> <i>partially</i></td><td class="gcp"><a href="https://cloud.google.com/spanner"><b>Spanner</b></a></td><td class="desc">globally distributed relational with strong consistency</td></tr>
+    <tr><td class="aws">DocumentDB</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/cosmos-db">Cosmos DB</a> (document API)</td><td class="gcp"><a href="https://cloud.google.com/firestore"><b>Firestore</b></a></td><td class="desc">NoSQL document DB — JSON-like docs, flexible schema</td></tr>
+    <tr><td class="aws"><b>DynamoDB</b></td><td class="az"><a href="https://azure.microsoft.com/en-us/products/cosmos-db">Cosmos DB</a> (Table/Cassandra API)</td><td class="gcp"><a href="https://cloud.google.com/bigtable"><b>Bigtable</b></a></td><td class="desc">NoSQL key-value / wide-column — massive throughput, low latency</td></tr>
+    <tr><td class="aws">ElastiCache</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/cache">Azure Cache for Redis</a></td><td class="gcp"><a href="https://cloud.google.com/memorystore"><b>Memorystore</b></a></td><td class="desc">in-memory cache, sub-ms key→value — <b>not durable</b></td></tr>
+    <tr><td class="aws">Redshift</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/synapse-analytics">Azure Synapse Analytics</a> (→ Fabric)</td><td class="gcp"><a href="https://cloud.google.com/bigquery"><b>BigQuery</b></a></td><td class="desc">analytics warehouse (OLAP = Online Analytical Processing — big scans, not app traffic)</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  <b>Translation gotcha:</b> Azure's <b>Cosmos DB</b> is one multi-model product wearing many hats — it's the answer to <i>document</i>, <i>key-value</i>, <i>wide-column</i>, and even <i>global relational-ish</i>. AWS and GCP ship a separate product per model. GCP decision spine: <code>Tools/gcp_storage_reference.md</code> Table 1.
+</div>
+</details>
+
+<!-- ============ NETWORKING ============ -->
+<details id="networking">
+<summary><h2>5 · Networking</h2></summary>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws"><b>VPC</b> (Virtual Private Cloud) — <b>regional</b></td><td class="az"><a href="https://azure.microsoft.com/en-us/products/virtual-network">Virtual Network</a> (<b>VNet</b>) — <b>regional</b></td><td class="gcp"><a href="https://cloud.google.com/vpc"><b>VPC</b></a> — <b>global</b> (subnets regional)</td><td class="desc">software-defined private network for your resources</td></tr>
+    <tr><td class="aws"><b>ELB</b>: ALB (L7) / NLB (L4)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/load-balancer">Azure Load Balancer</a> (L4) / <a href="https://azure.microsoft.com/en-us/products/application-gateway">Application Gateway</a> (L7)</td><td class="gcp"><a href="https://cloud.google.com/load-balancing"><b>Cloud Load Balancing</b></a> (one global anycast product)</td><td class="desc">load balancer — spreads traffic across instances</td></tr>
+    <tr><td class="aws">Route 53</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/dns">Azure DNS</a></td><td class="gcp"><a href="https://cloud.google.com/dns">Cloud DNS</a></td><td class="desc">managed DNS (Domain Name System) — name → IP</td></tr>
+    <tr><td class="aws">CloudFront</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/frontdoor">Azure Front Door</a> / Azure CDN</td><td class="gcp"><a href="https://cloud.google.com/cdn">Cloud CDN</a></td><td class="desc">CDN (Content Delivery Network) — edge caches near users</td></tr>
+    <tr><td class="aws">Direct Connect</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/expressroute"><b>ExpressRoute</b></a></td><td class="gcp"><a href="https://cloud.google.com/network-connectivity/docs/interconnect"><b>Cloud Interconnect</b></a></td><td class="desc">dedicated private fiber to on-prem, bypasses public internet</td></tr>
+    <tr><td class="aws">Site-to-Site VPN</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/vpn-gateway">VPN Gateway</a></td><td class="gcp"><a href="https://cloud.google.com/network-connectivity/docs/vpn">Cloud VPN</a></td><td class="desc">encrypted IPsec tunnel to on-prem (cheaper, over internet)</td></tr>
+    <tr><td class="aws"><b>PrivateLink</b></td><td class="az"><a href="https://azure.microsoft.com/en-us/products/private-link">Private Link</a> / Private Endpoint</td><td class="gcp"><a href="https://cloud.google.com/vpc/docs/private-service-connect"><b>Private Service Connect</b></a></td><td class="desc">private endpoint to a managed/SaaS service, no public IPs</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>The headline difference:</b> GCP's VPC is <b>global</b> — one VPC spans every region, no peering needed for cross-region private traffic. AWS/Azure need peering or a hub (Transit Gateway / Virtual WAN). Favorite exam trap and a genuine architectural simplification.
+</div>
+</details>
+
+<!-- ============ MONITORING & OPS ============ -->
+<details id="ops">
+<summary><h2>6 · Monitoring &amp; ops</h2></summary>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws">CloudWatch</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/monitor">Azure Monitor</a></td><td class="gcp"><a href="https://cloud.google.com/monitoring">Cloud Monitoring</a> (ex-Stackdriver)</td><td class="desc">metrics, dashboards, alerting</td></tr>
+    <tr><td class="aws">CloudWatch Logs</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-analytics-overview">Azure Monitor Logs</a> (Log Analytics)</td><td class="gcp"><a href="https://cloud.google.com/logging">Cloud Logging</a></td><td class="desc">centralized log collection &amp; search</td></tr>
+    <tr><td class="aws"><b>CloudTrail</b></td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log">Azure Activity Log</a></td><td class="gcp"><a href="https://cloud.google.com/audit-logs"><b>Cloud Audit Logs</b></a></td><td class="desc">audit trail — who did what in the cloud account</td></tr>
+    <tr><td class="aws">CloudFormation</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview">ARM templates / <b>Bicep</b></a></td><td class="gcp"><a href="https://cloud.google.com/infrastructure-manager/docs">Infrastructure Manager</a> (Terraform-based; Deployment Manager legacy)</td><td class="desc">IaC (Infrastructure as Code) — declare resources in files, deploy repeatably</td></tr>
+    <tr><td class="aws"><code>aws</code></td><td class="az"><a href="https://learn.microsoft.com/en-us/cli/azure/"><code>az</code></a></td><td class="gcp"><a href="https://cloud.google.com/sdk"><code>gcloud</code></a> (+ <code>bq</code>, <code>gcloud storage</code>)</td><td class="desc">command-line interface</td></tr>
+    <tr><td class="aws">AWS CloudShell</td><td class="az"><a href="https://learn.microsoft.com/en-us/azure/cloud-shell/overview">Azure Cloud Shell</a></td><td class="gcp"><a href="https://cloud.google.com/shell">Cloud Shell</a></td><td class="desc">browser shell with CLI preinstalled</td></tr>
+  </table>
+</div>
+</details>
+
+<!-- ============ DATA & ETL ============ -->
+<details id="data">
+<summary><h2>7 · Data &amp; ETL</h2></summary>
+<p class="lead"><b>ETL</b> = Extract, Transform, Load — moving data from sources into a warehouse, reshaping it on the way.</p>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws"><b>Glue</b></td><td class="az"><a href="https://azure.microsoft.com/en-us/products/data-factory">Azure Data Factory</a></td><td class="gcp"><a href="https://cloud.google.com/data-fusion">Cloud Data Fusion</a> (GUI) / <a href="https://cloud.google.com/dataflow"><b>Dataflow</b></a> (code)</td><td class="desc">managed ETL / data-integration service</td></tr>
+    <tr><td class="aws">Kinesis Data Analytics (Managed Flink)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/stream-analytics">Azure Stream Analytics</a></td><td class="gcp"><a href="https://cloud.google.com/dataflow"><b>Dataflow</b></a> (runs Apache Beam)</td><td class="desc">unified stream + batch processing pipelines</td></tr>
+    <tr><td class="aws"><b>EMR</b> (Elastic MapReduce)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/hdinsight">HDInsight</a> / Azure Databricks</td><td class="gcp"><a href="https://cloud.google.com/dataproc"><b>Dataproc</b></a></td><td class="desc">managed Hadoop/Spark clusters</td></tr>
+    <tr><td class="aws">Kinesis / SNS + SQS</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/event-hubs">Event Hubs</a> / <a href="https://azure.microsoft.com/en-us/products/service-bus">Service Bus</a></td><td class="gcp"><a href="https://cloud.google.com/pubsub"><b>Pub/Sub</b></a> (covers both)</td><td class="desc">pub/sub messaging — decoupled event ingestion at scale</td></tr>
+    <tr><td class="aws">MWAA (Managed Workflows for Apache Airflow)</td><td class="az">Data Factory pipelines</td><td class="gcp"><a href="https://cloud.google.com/composer"><b>Cloud Composer</b></a></td><td class="desc">workflow orchestration (managed Apache Airflow)</td></tr>
+  </table>
+</div>
+</details>
+
+<!-- ============ AI ============ -->
+<details id="ai">
+<summary><h2>8 · AI platforms</h2></summary>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws"><b>SageMaker</b></td><td class="az"><a href="https://azure.microsoft.com/en-us/products/machine-learning">Azure Machine Learning</a></td><td class="gcp"><a href="https://cloud.google.com/vertex-ai"><b>Vertex AI</b></a></td><td class="desc">end-to-end ML platform — train, tune, deploy, MLOps</td></tr>
+    <tr><td class="aws"><b>Bedrock</b> (Anthropic, Meta, …)</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/ai-services/openai-service">Azure OpenAI Service</a> (in AI Foundry)</td><td class="gcp"><a href="https://cloud.google.com/vertex-ai/generative-ai/docs/overview">Vertex AI Model Garden + <b>Gemini API</b></a></td><td class="desc">hosted foundation-model / GenAI API</td></tr>
+    <tr><td class="aws">Rekognition</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/ai-services/ai-vision">Azure AI Vision</a></td><td class="gcp"><a href="https://cloud.google.com/vision">Cloud Vision API</a></td><td class="desc">pre-trained vision API (labels, OCR, faces)</td></tr>
+    <tr><td class="aws">Transcribe / Polly</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/ai-services/ai-speech">Azure AI Speech</a></td><td class="gcp"><a href="https://cloud.google.com/speech-to-text">Speech-to-Text / Text-to-Speech</a></td><td class="desc">speech ↔ text</td></tr>
+    <tr><td class="aws">Translate</td><td class="az"><a href="https://azure.microsoft.com/en-us/products/ai-services/translator">Azure AI Translator</a></td><td class="gcp"><a href="https://cloud.google.com/translate">Cloud Translation</a></td><td class="desc">machine translation</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>Pattern:</b> each cloud bets on its home team — Bedrock is a multi-vendor marketplace (incl. Anthropic's Claude), Azure is the OpenAI channel, GCP serves its own Gemini family (+ third parties via Model Garden).
+</div>
+</details>
+
+<!-- ============ TEARDOWN ============ -->
+<details id="teardown">
+<summary><h2>9 · Teardown — "delete everything" per cloud</h2></summary>
+<p class="lead">The cleanup story reveals each cloud's hierarchy philosophy.</p>
+<div class="card">
+  <table>
+    <tr><th>AWS</th><th>Azure</th><th>GCP</th><th>What it is</th></tr>
+    <tr><td class="aws"><b>None</b> — no single command; delete per service, or close the whole account</td><td class="az"><code>az group delete --name rg-demo</code> — <b>resource-group deletion is THE Azure superpower</b> (everything in the group goes)</td><td class="gcp"><code>gcloud projects delete my-project</code> — <b>project deletion is THE GCP superpower</b> (30-day grace period, then everything goes)</td><td class="desc">one-command "delete it all"</td></tr>
+    <tr><td class="aws">CloudFormation: delete the stack</td><td class="az">delete the deployment's resource group</td><td class="gcp"><code>terraform destroy</code> (see the Terraform sheet)</td><td class="desc">IaC-managed cleanup</td></tr>
+    <tr><td class="aws">close the account (drastic) or hunt resources per region per service</td><td class="az">cancel the subscription</td><td class="gcp">unlink the billing account from the project</td><td class="desc">stop the bleeding fast</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  <b>Billing alarm advice:</b> on every cloud, set <b>budget alerts</b> <i>before</i> experimenting (AWS Budgets / Azure Cost Management budgets / GCP Budgets &amp; alerts). Forgotten resources bill silently; an alert email is the only thing standing between a teardown you forgot and a surprise invoice.
+</div>
+</details>
+
+<!-- ============ GLOSSARY ============ -->
+<details id="glossary">
+<summary><h2>10 · Glossary recap</h2></summary>
+<div class="card">
+  <table>
+    <tr><td class="aws"><b>IaaS / PaaS / SaaS</b></td><td class="desc" colspan="3">Infrastructure / Platform / Software as a Service — you manage less at each step (VM → code → just use the app)</td></tr>
+    <tr><td class="aws"><b>IAM</b></td><td class="desc" colspan="3">Identity and Access Management — who can do what on which resource</td></tr>
+    <tr><td class="aws"><b>RBAC</b></td><td class="desc" colspan="3">Role-Based Access Control (Azure's IAM flavor)</td></tr>
+    <tr><td class="aws"><b>Tenant / Subscription / Resource Group</b></td><td class="desc" colspan="3">Azure's hierarchy layers</td></tr>
+    <tr><td class="aws"><b>Org / Folder / Project</b></td><td class="desc" colspan="3">GCP's hierarchy layers</td></tr>
+    <tr><td class="aws"><b>Org / OU / Account</b></td><td class="desc" colspan="3">AWS's hierarchy layers</td></tr>
+    <tr><td class="aws"><b>VPC / VNet</b></td><td class="desc" colspan="3">Virtual Private Cloud / Virtual Network — your private software-defined network (global in GCP, regional in AWS/Azure)</td></tr>
+    <tr><td class="aws"><b>OLTP / OLAP</b></td><td class="desc" colspan="3">transaction processing (app DB) vs analytical processing (warehouse)</td></tr>
+    <tr><td class="aws"><b>CDN</b></td><td class="desc" colspan="3">Content Delivery Network — edge caches near users</td></tr>
+    <tr><td class="aws"><b>ETL</b></td><td class="desc" colspan="3">Extract, Transform, Load</td></tr>
+    <tr><td class="aws"><b>IaC</b></td><td class="desc" colspan="3">Infrastructure as Code</td></tr>
+    <tr><td class="aws"><b>K8s</b></td><td class="desc" colspan="3">Kubernetes, the container orchestrator (born at Google)</td></tr>
+    <tr><td class="aws"><b>Serverless</b></td><td class="desc" colspan="3">no servers <i>to manage</i> — autoscales (often to zero), pay-per-use</td></tr>
+  </table>
+</div>
+</details>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/docs/get-started/aws-azure-gcp-service-comparison">GCP: AWS/Azure → Google Cloud comparison</a> ·
+  <a href="https://learn.microsoft.com/en-us/azure/architecture/aws-professional/">Azure for AWS professionals</a> ·
+  <a href="https://learn.microsoft.com/en-us/azure/architecture/gcp-professional/">Azure for GCP professionals</a> ·
+  <a href="https://cloud.google.com/resource-manager/docs/cloud-platform-resource-hierarchy">GCP resource hierarchy</a> ·
+  <a href="https://learn.microsoft.com/en-us/azure/governance/management-groups/overview">Azure management groups</a> ·
+  <a href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html">AWS Organizations</a>
+</p>
+
+</div>
+<script>
+function setAll(open){
+  document.querySelectorAll("details").forEach(d => d.open = open);
+}
+// open the section targeted by an anchor click, even if collapsed
+window.addEventListener("hashchange", () => {
+  const d = document.querySelector(location.hash);
+  if (d && d.tagName === "DETAILS") d.open = true;
+});
+</script>
+</body>
+</html>

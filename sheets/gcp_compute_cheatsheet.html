@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP Compute Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+  .doclink{font-size:12px;color:var(--muted);margin:4px 0 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GCP Compute Cheat Sheet</h1>
+<p class="sub">The compute spectrum, Compute Engine machinery, VM abstractions, MIGs, boot customization, SSH &amp; IAP, and service-account identity — at GCP Associate Cloud Engineer depth.</p>
+
+<nav class="mini">
+  <a href="#spectrum">Spectrum</a>
+  <a href="#machinery">Machines &amp; images</a>
+  <a href="#abstractions">VM abstractions</a>
+  <a href="#migs">MIGs</a>
+  <a href="#boot">Boot customization</a>
+  <a href="#connect">Connecting</a>
+  <a href="#identity">Identity</a>
+  <a href="#commands">Commands</a>
+</nav>
+
+<!-- ============ SPECTRUM ============ -->
+<h2 id="spectrum">1 · The compute spectrum — managed → control</h2>
+<div class="callout good">
+  <b>The one rule that answers half the exam questions:</b> pick the <b>most managed</b> option that still fits the requirements. Only move right on the spectrum (toward raw VMs) when the requirement forces you — a kernel module, a specific OS, a license tied to physical hardware, a legacy daemon that can't be containerized.
+</div>
+<pre><code> most managed ◄──────────────────────────────────────────────► most control
+
+ Cloud Functions ─ Cloud Run ─ App Engine ─ GKE ─────────── Compute Engine
+ (one function)   (containers) (legacy PaaS) (Kubernetes)   (full VMs)
+ "run my code     "run my       "run my app"  "orchestrate   "give me a
+  on events"       container"                  my containers"  machine"</code></pre>
+<div class="callout">
+  <b>"Serverless" defined properly:</b> there <i>are</i> servers — like "wireless" networks still have wires somewhere. Serverless means <b>you</b> don't manage servers: the platform <b>autoscales to zero</b> (no traffic → no instances → no bill), bills <b>per use</b> (per request / per 100ms of CPU), and handles patching, capacity, and load balancing. The trade: less control over the runtime environment.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Cloud Functions (now "Cloud Run functions")</h3>
+    <p class="lead"><b>FaaS</b> (Function as a Service): you write a single function in a supported language (Python, Node.js, Go…); GCP wraps, deploys, and scales it. Triggered by HTTP requests or <b>events</b> (a file lands in a Cloud Storage bucket, a Pub/Sub message arrives). Smallest unit of compute — glue code, webhooks, lightweight ETL (Extract-Transform-Load).</p>
+    <p class="doclink"><a href="https://cloud.google.com/functions/docs">docs: cloud.google.com/functions</a></p>
+  </div>
+  <div class="card">
+    <h3>Cloud Run — serverless containers</h3>
+    <p class="lead">You hand GCP a <b>container image</b> (any language, any binary — if it fits in a container, it runs); GCP runs it serverlessly: scale-to-zero, scale-out under load, pay-per-use. Two shapes:</p>
+    <table>
+      <tr><td class="cmd"><b>Service</b></td><td class="desc">listens for HTTP requests; stays up while traffic flows; the default web-app/API answer</td></tr>
+      <tr><td class="cmd"><b>Job</b></td><td class="desc">runs to completion then exits — batch work, migrations, scheduled tasks; no HTTP endpoint</td></tr>
+    </table>
+    <p class="doclink"><a href="https://cloud.google.com/run/docs">docs: cloud.google.com/run</a></p>
+  </div>
+  <div class="card">
+    <h3>App Engine — the legacy note</h3>
+    <p class="lead">GCP's original <b>PaaS</b> (Platform as a Service, 2008): deploy source code, platform does the rest. Two flavors (Standard = sandboxed runtimes, Flexible = container on a managed VM). Still supported and still on the exam, but for <i>new</i> projects Google steers you to <b>Cloud Run</b>, which does the same job with fewer constraints. Recognize it; don't reach for it first.</p>
+    <p class="doclink"><a href="https://cloud.google.com/appengine/docs">docs: cloud.google.com/appengine</a></p>
+  </div>
+  <div class="card">
+    <h3>GKE — Google Kubernetes Engine</h3>
+    <p class="lead">Managed <b>Kubernetes</b> (the open-source container <i>orchestrator</i> Google created — Greek κυβερνήτης, "helmsman"; abbreviated <b>K8s</b>, K + 8 letters + s). Choose it when one container isn't enough: many cooperating services, custom networking, fine-grained scheduling, or portability to other clouds. <b>Autopilot</b> mode manages the nodes for you; <b>Standard</b> mode gives you the node VMs. If Cloud Run fits, prefer Cloud Run — GKE is power with operational cost.</p>
+    <p class="doclink"><a href="https://cloud.google.com/kubernetes-engine/docs">docs: cloud.google.com/kubernetes-engine</a></p>
+  </div>
+  <div class="card">
+    <h3>Compute Engine — full VMs (IaaS)</h3>
+    <p class="lead"><b>IaaS</b> (Infrastructure as a Service): virtual machines with your choice of CPU, memory, disks, and OS. You get root; you also get the patching, scaling, and 3-a.m. pages. The answer when you need OS-level control, lift-and-shift of existing servers, GPUs with custom drivers, or software that can't be containerized. The rest of this sheet drills into it.</p>
+    <p class="doclink"><a href="https://cloud.google.com/compute/docs">docs: cloud.google.com/compute</a></p>
+  </div>
+  <div class="card">
+    <h3>Exam decision reflex</h3>
+    <table>
+      <tr><td class="cmd">"event-driven", "trigger on upload"</td><td class="desc">Cloud Functions</td></tr>
+      <tr><td class="cmd">"containerized", "stateless HTTP", "scale to zero"</td><td class="desc">Cloud Run</td></tr>
+      <tr><td class="cmd">"microservices", "orchestration", "portability"</td><td class="desc">GKE</td></tr>
+      <tr><td class="cmd">"lift and shift", "custom OS/kernel", "specific license"</td><td class="desc">Compute Engine</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ MACHINERY ============ -->
+<h2 id="machinery">2 · Compute Engine machinery — machine types, images, Spot</h2>
+
+<div class="card">
+  <h3>Machine families &amp; types — decoding <code>e2-small</code></h3>
+  <p class="lead">A <b>machine type</b> name reads <code>family-shape</code> (sometimes <code>family-shape-vCPUs</code>). The letter says the <i>optimization</i>, the digit says the <i>generation</i>:</p>
+  <table>
+    <tr><th>Prefix</th><th>Mnemonic &amp; use</th></tr>
+    <tr><td class="cmd"><code>e2</code>, <code>n2</code>, <code>n4</code></td><td class="desc"><b>General-purpose</b>. <b>E</b> = <i>economy/efficient</i> (cheapest, dev/test, small services); <b>N</b> = <i>normal</i> balanced workhorse. <code>e2-micro</code>, <code>e2-small</code>, <code>e2-medium</code> are shared-core sizes for learning labs.</td></tr>
+    <tr><td class="cmd"><code>c3</code>, <code>c4</code></td><td class="desc"><b>C</b>ompute-optimized: highest sustained CPU performance — gaming servers, HPC (High-Performance Computing), media transcoding.</td></tr>
+    <tr><td class="cmd"><code>m3</code>, <code>m4</code></td><td class="desc"><b>M</b>emory-optimized: huge RAM-to-CPU ratios — in-memory databases like SAP HANA.</td></tr>
+    <tr><td class="cmd"><code>a3</code>, <code>g2</code></td><td class="desc"><b>A</b>ccelerator / <b>G</b>PU-attached: machine learning training and inference.</td></tr>
+    <tr><td class="cmd"><code>t2a</code>, <code>c4a</code></td><td class="desc"><b>Arm</b>-based (a-suffix): Arm64 CPUs (Ampere, Google Axion) — cheaper per core if your software has arm64 builds.</td></tr>
+  </table>
+  <p class="lead">Example: <code>n2-standard-4</code> = N family, gen 2, standard CPU:RAM ratio, 4 vCPUs. <b>Custom machine types</b> let you dial exact vCPU/RAM when no preset fits.</p>
+  <p class="doclink"><a href="https://cloud.google.com/compute/docs/machine-resource">docs: machine families resource guide</a></p>
+</div>
+
+<div class="card">
+  <h3>Boot images &amp; image families</h3>
+  <p class="lead">Every VM boots from an <b>image</b> — a prebuilt disk containing an OS. Images live in per-OS <b>public projects</b> (<code>debian-cloud</code>, <code>ubuntu-os-cloud</code>, <code>rocky-linux-cloud</code>, <code>windows-cloud</code>…). Specific images get dated names (<code>debian-12-bookworm-v20250610</code>) and eventually deprecate; an <b>image family</b> is a moving pointer to the newest non-deprecated image in a line:</p>
+  <pre><code># family → always-current image, the right thing to reference in scripts
+gcloud compute instances create my-instance-01 \
+  --image-family=debian-12 --image-project=debian-cloud
+
+# Ubuntu family names encode version + arch:
+#   ubuntu-2404-lts-amd64   ← x86-64 build
+#   ubuntu-2404-lts-arm64   ← Arm build (must match an Arm machine type!)</code></pre>
+  <p class="lead"><b>Default:</b> omit the image flags and you get the latest Debian LTS (Long-Term Support) from <code>debian-cloud</code> — Debian is Compute Engine's house default. The <code>amd64</code>/<code>arm64</code> suffix is the CPU architecture; <i>amd64 = x86-64</i> (AMD shipped the 64-bit x86 extension first, hence the name — it runs on Intel too).</p>
+  <p class="doclink"><a href="https://cloud.google.com/compute/docs/images">docs: OS images &amp; families</a></p>
+</div>
+
+<div class="card">
+  <h3>Spot VMs (née preemptible)</h3>
+  <p class="lead"><b>Spot VMs</b> use Google's spare capacity at a 60–91% discount — but GCP can <b>preempt</b> (reclaim) them at any time with a 30-second warning. The older <b>preemptible VM</b> model is the same idea with a hard 24-hour maximum lifetime; Spot is its successor (no 24h cap). Both terms appear on the exam.</p>
+  <table>
+    <tr><td class="cmd">Good for</td><td class="desc">batch jobs, CI (Continuous Integration) runners, fault-tolerant data processing, anything restartable</td></tr>
+    <tr><td class="cmd">Never for</td><td class="desc">databases, single-instance production services, anything that can't die mid-task</td></tr>
+    <tr><td class="cmd">Flag</td><td class="desc"><code>--provisioning-model=SPOT</code> on <code>instances create</code></td></tr>
+  </table>
+  <p class="doclink"><a href="https://cloud.google.com/compute/docs/instances/spot">docs: Spot VMs</a></p>
+</div>
+
+<!-- ============ ABSTRACTIONS ============ -->
+<h2 id="abstractions">3 · VM-creation abstractions — instance vs template vs machine image vs snapshot</h2>
+<p class="lead">Five things that all sound like "a copy of a VM" but aren't. This table is exam gold.</p>
+<div class="card">
+  <table>
+    <tr><th style="width:22%">Thing</th><th style="width:30%">What it actually is</th><th style="width:24%">Contains data?</th><th style="width:24%">When it's the answer</th></tr>
+    <tr>
+      <td><b>VM instance</b></td>
+      <td class="desc">the live, running (or stopped) machine itself</td>
+      <td class="desc">yes — it <i>is</i> the data</td>
+      <td class="desc">you need… a computer</td>
+    </tr>
+    <tr>
+      <td><b>Instance template</b></td>
+      <td class="desc">a <b>recipe</b>: machine type, image, disks-to-create, network, metadata — config only. <b>Free</b>, <b>immutable</b> (edit = create new version), global resource.</td>
+      <td class="desc"><b>no</b> — zero disk data, just settings</td>
+      <td class="desc">feeding a <b>MIG</b> (§4); stamping out identical VMs; "standardize VM creation"</td>
+    </tr>
+    <tr>
+      <td><b>Machine image</b></td>
+      <td class="desc">a <b>full clone</b>: configuration <i>plus</i> the data of <b>all</b> attached disks, in one resource</td>
+      <td class="desc"><b>yes — every disk</b></td>
+      <td class="desc">back up or migrate an <i>entire</i> VM, multi-disk included; "restore the whole machine"</td>
+    </tr>
+    <tr>
+      <td><b>Disk snapshot</b></td>
+      <td class="desc">point-in-time copy of <b>one</b> disk; incremental (later snapshots store only changed blocks); can be scheduled</td>
+      <td class="desc">yes — one disk</td>
+      <td class="desc">routine disk backup; "scheduled backups of the data disk"</td>
+    </tr>
+    <tr>
+      <td><b>Custom (disk) image</b></td>
+      <td class="desc">a reusable boot-disk golden image: one disk, prepared (software baked in), used to <i>create</i> new VMs</td>
+      <td class="desc">yes — one disk</td>
+      <td class="desc">"pre-installed software on every new VM" — bake once, boot many</td>
+    </tr>
+    <tr>
+      <td><b>Sole-tenant node</b></td>
+      <td class="desc">a <b>dedicated physical host</b> — your VMs share the hardware with no other customer</td>
+      <td class="desc">n/a (it's a host)</td>
+      <td class="desc">compliance isolation; <b>BYOL</b> (Bring Your Own License) software licensed per physical core/socket</td>
+    </tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Memory hooks:</b> template = <i>recipe</i> (no food in a recipe). Machine image = <i>the whole frozen meal</i>. Snapshot = <i>one frozen dish</i>. Custom image = <i>a dish you mass-produce from</i>. Sole-tenant = <i>private kitchen</i>.
+</div>
+<div class="callout warn">
+  <b>Classic exam trap:</b> "copy a VM including its data" → machine image, <i>not</i> instance template (templates carry no data). "Standardize config for an autoscaled group" → instance template. "Windows Server license tied to physical cores" → sole-tenant node.
+</div>
+<p class="doclink"><a href="https://cloud.google.com/compute/docs/machine-images">docs: machine images (includes the official comparison table)</a></p>
+
+<!-- ============ MIGS ============ -->
+<h2 id="migs">4 · MIGs — Managed Instance Groups</h2>
+<p class="lead">A <b>MIG</b> is a pool of identical VMs created from one instance template, managed as a unit. It's the standard exam answer for <b>"scalable, resilient, stateless workload on VMs."</b></p>
+<div class="grid">
+  <div class="card">
+    <h3>What a MIG gives you</h3>
+    <table>
+      <tr><td class="cmd"><b>Autoscaling</b></td><td class="desc">add/remove instances on CPU utilization, load-balancer load, or custom metrics; set min/max size</td></tr>
+      <tr><td class="cmd"><b>Autohealing</b></td><td class="desc">a health check probes each VM; failed VMs are deleted and <b>recreated</b> from the template (not rebooted — recreated, so don't store state on them)</td></tr>
+      <tr><td class="cmd"><b>Rolling updates</b></td><td class="desc">swap in a new template gradually (<code>rolling-action start-update</code>); canary a subset first</td></tr>
+      <tr><td class="cmd"><b>Regional MIGs</b></td><td class="desc">spread instances across multiple zones in a region — survives a zone outage</td></tr>
+      <tr><td class="cmd"><b>Load balancing</b></td><td class="desc">a MIG is the natural <i>backend</i> of a GCP load balancer</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Minimal MIG, end to end</h3>
+    <pre><code># 1. the recipe
+gcloud compute instance-templates create web-template \
+  --machine-type=e2-small \
+  --image-family=debian-12 --image-project=debian-cloud \
+  --tags=http-server
+
+# 2. the group (regional, 2–10 instances)
+gcloud compute instance-groups managed create web-mig \
+  --template=web-template --size=2 --region=europe-west1
+
+# 3. autoscale on CPU
+gcloud compute instance-groups managed set-autoscaling web-mig \
+  --region=europe-west1 --min-num-replicas=2 \
+  --max-num-replicas=10 --target-cpu-utilization=0.6</code></pre>
+  </div>
+</div>
+<div class="callout">
+  <b>Unmanaged instance groups</b> also exist: a bag of heterogeneous, hand-made VMs grouped only for load balancing. No template, no autoscaling, no autohealing. If the exam says "existing dissimilar VMs behind one load balancer," that's the one — otherwise the answer is always the managed kind.
+</div>
+<p class="doclink"><a href="https://cloud.google.com/compute/docs/instance-groups">docs: instance groups</a></p>
+
+<!-- ============ BOOT ============ -->
+<h2 id="boot">5 · Customization at boot — metadata, startup scripts, cloud-init</h2>
+<p class="lead">How a freshly cloned image becomes <i>your</i> server, without baking a custom image.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Instance metadata — the VM's key-value config store</h3>
+    <p class="lead">Every VM gets a <b>metadata server</b> — an internal HTTP endpoint (<code>metadata.google.internal</code>, IP <code>169.254.169.254</code>) serving key-value pairs about and for the instance. Two layers: <b>project-wide</b> metadata (applies to all VMs in the project) and <b>instance</b> metadata (this VM only; wins on conflict). GCP itself uses it for SSH keys (§6) and service-account tokens (§7); you use it to pass config:</p>
+    <pre><code>gcloud compute instances add-metadata my-instance-01 \
+  --metadata=env=staging,owner=alex@example.com
+
+# read it from inside the VM (the header is mandatory):
+curl -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/instance/attributes/env"</code></pre>
+  </div>
+  <div class="card">
+    <h3>Startup scripts — run as root, every boot</h3>
+    <p class="lead">A script stored in metadata under the key <code>startup-script</code>; the guest environment runs it <b>as root on every boot</b> (not just the first). Make it idempotent — safe to re-run.</p>
+    <pre><code># inline
+gcloud compute instances create my-instance-01 \
+  --metadata=startup-script='#!/bin/bash
+apt-get update &amp;&amp; apt-get install -y nginx'
+
+# or from a local file
+gcloud compute instances create my-instance-01 \
+  --metadata-from-file=startup-script=startup.sh
+
+# debug: where did my script's output go?
+sudo journalctl -u google-startup-scripts.service</code></pre>
+    <p class="lead">There's a matching <code>shutdown-script</code> key (best-effort, ~90s budget on normal stops — and only the 30s warning window on Spot preemption).</p>
+  </div>
+  <div class="card">
+    <h3>cloud-init — declarative first-boot config</h3>
+    <p class="lead"><b>cloud-init</b> is the cross-cloud standard for first-boot VM configuration (Ubuntu and Container-Optimized OS images run it natively). Instead of an imperative script, you declare users, packages, and files in YAML, passed via the metadata key <code>user-data</code>:</p>
+    <pre><code>gcloud compute instances create my-instance-01 \
+  --image-family=ubuntu-2404-lts-amd64 \
+  --image-project=ubuntu-os-cloud \
+  --metadata-from-file=user-data=cloud-init.yaml
+
+# cloud-init.yaml
+#cloud-config
+packages: [nginx]
+runcmd:
+  - systemctl enable --now nginx</code></pre>
+    <p class="lead"><b>Which runs when:</b> cloud-init's config phases run on <i>first boot</i> (per instance); GCP startup-scripts run <i>every</i> boot. For ACE, startup scripts are the expected answer; cloud-init is the portable power tool.</p>
+  </div>
+</div>
+<p class="doclink"><a href="https://cloud.google.com/compute/docs/instances/startup-scripts">docs: startup scripts</a> · <a href="https://cloud.google.com/compute/docs/metadata/overview">metadata overview</a></p>
+
+<!-- ============ CONNECT ============ -->
+<h2 id="connect">6 · Connecting — gcloud ssh and IAP tunnels</h2>
+<div class="card">
+  <h3>What <code>gcloud compute ssh</code> actually does</h3>
+  <p class="lead">It's not magic — it's automated key plumbing. First run:</p>
+  <pre><code>gcloud compute ssh my-instance-01 --zone=europe-west1-b</code></pre>
+  <ol style="font-size:13.5px;color:var(--muted);margin:0;padding-left:20px;">
+    <li><b>Keygen:</b> generates an SSH keypair at <code>~/.ssh/google_compute_engine</code> if none exists.</li>
+    <li><b>Metadata push:</b> uploads the public key into project (or instance) metadata under <code>ssh-keys</code>.</li>
+    <li><b>Guest agent:</b> the <b>guest environment</b> (an agent baked into Google's images) watches metadata, sees the new key, <b>creates a matching Linux user</b> on the VM and installs the key in its <code>authorized_keys</code>.</li>
+    <li><b>Connect:</b> plain <code>ssh</code> to the VM's external IP as that user.</li>
+  </ol>
+  <p class="lead" style="margin-top:8px;">That's why SSH "just works" with no password setup — and why it <i>doesn't</i> work on images without the guest agent. <b>OS Login</b> (<code>enable-oslogin=TRUE</code> metadata) is the modern upgrade: keys live on your Google identity and access is controlled by IAM (Identity and Access Management) roles instead of raw metadata.</p>
+</div>
+<div class="card">
+  <h3>IAP tunneling — SSH with no external IP</h3>
+  <p class="lead"><b>IAP</b> (Identity-Aware Proxy) lets Google's frontend proxy your SSH/RDP traffic to a VM's <i>internal</i> IP after checking your Google identity. The security win: VMs need <b>no external IP at all</b> — no internet-facing port 22.</p>
+  <pre><code>gcloud compute ssh my-instance-01 --zone=europe-west1-b \
+  --tunnel-through-iap</code></pre>
+  <p class="lead">Three prerequisites (each one is an exam question):</p>
+  <table>
+    <tr><td class="cmd">1 · API</td><td class="desc">enable the IAP API (<code>iap.googleapis.com</code>) in the project</td></tr>
+    <tr><td class="cmd">2 · IAM role</td><td class="desc">caller needs <code>roles/iap.tunnelResourceAccessor</code> (plus normal instance access)</td></tr>
+    <tr><td class="cmd">3 · Firewall</td><td class="desc">allow ingress from <b><code>35.235.240.0/20</code></b> (Google's fixed IAP source range) on <code>tcp:22</code></td></tr>
+  </table>
+  <pre><code>gcloud compute firewall-rules create allow-iap-ssh \
+  --direction=INGRESS --action=ALLOW --rules=tcp:22 \
+  --source-ranges=35.235.240.0/20</code></pre>
+  <p class="doclink"><a href="https://cloud.google.com/iap/docs/using-tcp-forwarding">docs: IAP TCP forwarding</a></p>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> the IAP range <code>35.235.240.0/20</code> — "35, 235: same digits, one borrows a 2." It's the only CIDR (Classless Inter-Domain Routing) block worth memorizing for the ACE.
+</div>
+
+<!-- ============ IDENTITY ============ -->
+<h2 id="identity">7 · Identity — every VM is somebody</h2>
+<p class="lead">A VM doesn't call GCP APIs as <i>you</i>; it calls them as its <b>attached service account</b> — a robot identity with its own email and IAM roles. Code on the VM gets tokens from the metadata server, no key files needed:</p>
+<pre><code># from inside the VM — who am I?
+curl -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email"
+# → vm-runtime-sa@example-project-123.iam.gserviceaccount.com
+
+# get an OAuth access token (what client libraries do under the hood)
+curl -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"</code></pre>
+<div class="callout warn">
+  <b>Default Compute Engine service account caution.</b> New VMs default to <code>PROJECT_NUMBER-compute@developer.gserviceaccount.com</code>, which historically carries the project-wide <b>Editor</b> role — far too much power. One compromised VM = an editor of your whole project. Best practice (and the exam answer): create a <b>dedicated least-privilege service account</b> per workload and attach it explicitly:
+  <pre><code>gcloud iam service-accounts create app-runtime-sa
+gcloud compute instances create my-instance-01 \
+  --service-account=app-runtime-sa@example-project-123.iam.gserviceaccount.com \
+  --scopes=cloud-platform   # let IAM roles, not legacy scopes, do the limiting</code></pre>
+</div>
+<p class="lead">Two-layer model worth keeping straight: <b>access scopes</b> (legacy, per-VM OAuth ceiling) ∩ <b>IAM roles</b> (the real permissions on the service account) = what the VM can actually do. Modern practice: scope <code>cloud-platform</code> (wide open) and constrain with tight IAM roles.</p>
+<p class="doclink"><a href="https://cloud.google.com/compute/docs/access/service-accounts">docs: service accounts for instances</a></p>
+
+<!-- ============ COMMANDS ============ -->
+<h2 id="commands">8 · Command quick reference</h2>
+<p class="lead">Grammar reminder: <code>gcloud compute &lt;resource&gt; &lt;verb&gt; [name] [--flags]</code>. Add <code>--zone</code>/<code>--region</code> or set defaults with <code>gcloud config set compute/zone</code>.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>gcloud compute instances create my-instance-01 --machine-type=e2-small --zone=europe-west1-b</code></td><td class="desc">create a VM (default = latest Debian, default service account)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances list</code></td><td class="desc">all VMs in the project, every zone</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances describe my-instance-01</code></td><td class="desc">full config dump (IPs, disks, metadata, service account)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances stop / start my-instance-01</code></td><td class="desc">stop = no CPU/RAM billing (disks still bill); start it again later</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances delete my-instance-01</code></td><td class="desc">gone (boot disk too, unless <code>--keep-disks</code>)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute ssh my-instance-01 --zone=…</code></td><td class="desc">SSH with automatic key plumbing (§6); add <code>--tunnel-through-iap</code> for no-external-IP VMs</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instance-templates create web-template --machine-type=e2-small …</code></td><td class="desc">create the reusable recipe (config only, free)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instance-groups managed create web-mig --template=web-template --size=3</code></td><td class="desc">MIG from a template</td></tr>
+    <tr><td class="cmd"><code>gcloud compute machine-images create my-backup --source-instance=my-instance-01</code></td><td class="desc">full-VM clone: config + all disk data</td></tr>
+    <tr><td class="cmd"><code>gcloud compute disks snapshot my-data-disk --snapshot-names=data-snap-01</code></td><td class="desc">point-in-time copy of one disk</td></tr>
+    <tr><td class="cmd"><code>gcloud compute images list --filter="family:debian"</code></td><td class="desc">browse public boot images; <code>--filter</code> takes <code>key:value</code> or expressions like <code>family~ubuntu-24</code></td></tr>
+    <tr><td class="cmd"><code>gcloud compute machine-types list --zones=europe-west1-b --filter="name~e2"</code></td><td class="desc">what machine types exist in a zone</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Wallet hook:</b> <code>stop</code> pauses compute billing but disks and static IPs keep billing; <code>delete</code> is the only true zero. For practice projects: create, play, <b>delete</b>.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>IaaS / PaaS / FaaS</b></td><td class="desc">Infrastructure / Platform / Function as a Service — descending amounts of stuff you manage</td></tr>
+    <tr><td class="cmd"><b>Serverless</b></td><td class="desc">servers exist, you don't manage them: scale-to-zero, pay-per-use</td></tr>
+    <tr><td class="cmd"><b>GKE / K8s</b></td><td class="desc">Google Kubernetes Engine; Kubernetes = container orchestrator ("helmsman")</td></tr>
+    <tr><td class="cmd"><b>Machine type</b></td><td class="desc"><code>family-shape-vCPUs</code>; E=economy, N=normal, C=compute, M=memory, A=accelerator</td></tr>
+    <tr><td class="cmd"><b>Image family</b></td><td class="desc">moving pointer to the newest image in an OS line (e.g. <code>debian-12</code>)</td></tr>
+    <tr><td class="cmd"><b>Spot / preemptible VM</b></td><td class="desc">deep-discount spare capacity, reclaimable with 30s notice</td></tr>
+    <tr><td class="cmd"><b>Instance template</b></td><td class="desc">config-only VM recipe; free, immutable, feeds MIGs; carries no data</td></tr>
+    <tr><td class="cmd"><b>Machine image</b></td><td class="desc">full VM clone — config + all disks' data</td></tr>
+    <tr><td class="cmd"><b>MIG</b></td><td class="desc">Managed Instance Group: template + autoscaling + autohealing</td></tr>
+    <tr><td class="cmd"><b>Sole-tenant node</b></td><td class="desc">dedicated physical host — compliance and per-core licensing</td></tr>
+    <tr><td class="cmd"><b>Metadata server</b></td><td class="desc">in-VM HTTP endpoint for config, SSH keys, and service-account tokens</td></tr>
+    <tr><td class="cmd"><b>IAP</b></td><td class="desc">Identity-Aware Proxy — identity-checked tunnel to internal IPs; range <code>35.235.240.0/20</code></td></tr>
+    <tr><td class="cmd"><b>OS Login</b></td><td class="desc">IAM-governed SSH access tied to Google identities, replacing metadata keys</td></tr>
+    <tr><td class="cmd"><b>Service account</b></td><td class="desc">robot identity a VM runs as; replace the over-privileged default with least-privilege</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/compute/docs">Compute Engine docs</a> ·
+  <a href="https://cloud.google.com/run/docs">Cloud Run docs</a> ·
+  <a href="https://cloud.google.com/kubernetes-engine/docs">GKE docs</a> ·
+  <a href="https://cloud.google.com/compute/docs/machine-resource">machine families</a> ·
+  <a href="https://cloud.google.com/compute/docs/images">OS images</a> ·
+  <a href="https://cloud.google.com/compute/docs/machine-images">machine images comparison</a> ·
+  <a href="https://cloud.google.com/compute/docs/instance-groups">instance groups</a> ·
+  <a href="https://cloud.google.com/iap/docs/using-tcp-forwarding">IAP TCP forwarding</a> ·
+  <a href="https://cloud.google.com/compute/docs/access/service-accounts">VM service accounts</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/compute">gcloud compute reference</a>
+</p>
+
+</div>
+</body>
+</html>

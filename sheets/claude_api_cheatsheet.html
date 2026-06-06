@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude API Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Claude API Cheat Sheet</h1>
+<p class="sub">Messages API: requests · tool use · caching · errors · models · started 2026-06-06 · twin of <code>Tools/claude_api_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>API</b> (Application Programming Interface) = an HTTP contract for talking to software. The <b>Claude API</b> = <code>POST https://api.anthropic.com/v1/messages</code> — JSON in, JSON <code>Message</code> out. The <b>SDK</b> (Software Development Kit) = the <code>anthropic</code> client library that wraps the HTTP plumbing.
+</div>
+<div class="callout">
+  <b>The API is stateless</b> — the single most important idea. The server remembers nothing between calls; every request carries the <b>entire conversation history</b>:
+  <pre><code>call 1: [user:"Hi"]                                  → asst:"Hello!"
+call 2: [user:"Hi", asst:"Hello!", user:"2+2?"]      → asst:"4"
+call 3: [user:"Hi", asst:"Hello!", user:"2+2?",
+         asst:"4", user:"Double it"]                  → asst:"8"</code></pre>
+  <b>You are the memory</b>: keep a <code>messages</code> list, append every turn, resend it whole. You pay input tokens for the full history each call (→ prompt caching, §6). Memory hook: it's the <i>Messages</i> API, plural — you always send messages, never a message.
+</div>
+<div class="callout good">
+  <b>Request grammar:</b> three required fields — <code>model</code>, <code>max_tokens</code>, <code>messages</code> — everything else optional. Roles in <code>messages</code> are only <code>user</code> / <code>assistant</code>, alternating; the system prompt is its <b>own top-level field</b>, not a role (that's the OpenAI convention, not Anthropic's). <code>max_tokens</code> is a hard ceiling, not a target — replies truncate at it.
+</div>
+
+<!-- ============ SETUP ============ -->
+<h2>1 · Setup: auth + SDK</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Raw HTTP headers (SDK sets these)</h3>
+    <pre><code>x-api-key: sk-ant-...        ← key (placeholder!)
+anthropic-version: 2023-06-01 ← API version pin
+content-type: application/json</code></pre>
+    <p class="lead"><b>Never hard-code the key.</b> <code>export ANTHROPIC_API_KEY=sk-ant-...</code> or a <code>.env</code> file. Hook: <code>sk-ant</code> = <b>s</b>ecret <b>k</b>ey, <b>ant</b>hropic.</p>
+  </div>
+  <div class="card">
+    <h3>Python SDK — canonical call</h3>
+    <pre><code># pip install anthropic
+import anthropic
+client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
+
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    system="You are a concise assistant.",
+    messages=[{"role":"user","content":"Hello"}],
+)
+print(response.content[0].text)</code></pre>
+  </div>
+</div>
+
+<!-- ============ RESPONSE ============ -->
+<h2>2 · The response object (Message)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Fields</h3>
+    <table>
+      <tr><td class="cmd"><code>response.content</code></td><td class="desc"><b>always a list</b> of typed content blocks</td></tr>
+      <tr><td class="cmd"><code>response.stop_reason</code></td><td class="desc">why generation ended (table →)</td></tr>
+      <tr><td class="cmd"><code>response.usage.input_tokens / output_tokens</code></td><td class="desc">billing counts</td></tr>
+      <tr><td class="cmd"><code>usage.cache_creation_input_tokens / cache_read_input_tokens</code></td><td class="desc">cache diagnostics (§6)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Stop reasons</h3>
+    <table>
+      <tr><td class="cmd"><code>end_turn</code></td><td class="desc">natural end</td></tr>
+      <tr><td class="cmd"><code>max_tokens</code></td><td class="desc">hit the ceiling — truncated</td></tr>
+      <tr><td class="cmd"><code>stop_sequence</code></td><td class="desc">a custom stop string fired</td></tr>
+      <tr><td class="cmd"><code>tool_use</code></td><td class="desc">model wants a tool — your move (§4)</td></tr>
+      <tr><td class="cmd"><code>pause_turn</code></td><td class="desc">long-running server tool needs time</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Filter blocks by type, never index by position.</b> <code>content[0].text</code> breaks the moment tool use / thinking / vision appears — and block ordering is model-dependent (Sonnet often <code>[text, tool_use]</code>, Haiku often <code>[tool_use]</code> only).
+  <pre><code>text = next((b.text for b in response.content if b.type == "text"), None)
+tool = next((b for b in response.content if b.type == "tool_use"), None)</code></pre>
+</div>
+
+<!-- ============ PARAMETERS ============ -->
+<h2>3 · Key parameters</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Knobs</h3>
+    <table>
+      <tr><td class="cmd"><code>temperature</code></td><td class="desc">randomness 0–1 (default 1.0). 0 ≈ deterministic — extraction/classification; 1.0 — creative. Rarely touch <code>top_p</code>/<code>top_k</code>.</td></tr>
+      <tr><td class="cmd"><code>stop_sequences</code></td><td class="desc">strings that halt generation; the stop string is NOT included in output</td></tr>
+      <tr><td class="cmd"><code>system</code></td><td class="desc">persona/standing instructions; must be a <b>list</b> of blocks when caching (§6)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Streaming</h3>
+    <p class="lead">Same content, delivered incrementally — show tokens as they generate.</p>
+    <pre><code>with client.messages.stream(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        messages=messages) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)</code></pre>
+  </div>
+</div>
+
+<!-- ============ TOOL USE ============ -->
+<h2>4 · Tool use — the agentic loop</h2>
+<div class="callout good">
+  <b>Claude can't run code — it can only ask you to.</b> Five steps:
+  <pre><code>1. you   → prompt + tool schemas
+2. model → stop_reason="tool_use" + tool_use block(s)
+3. you   → execute the tool locally
+4. you   → user message with tool_result block(s)
+5. model → final answer (or more tool calls — loop to 2)</code></pre>
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Tool schema (JSON Schema subset)</h3>
+    <pre><code>{
+  "name": "get_weather",
+  "description": "Get current weather for a city.
+     Use when the user asks about weather.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "city":  {"type":"string",
+                "description":"City name"},
+      "units": {"type":"string",
+                "enum":["celsius","fahrenheit"]}
+    },
+    "required": ["city"]
+  }
+}</code></pre>
+    <p class="lead">⭐ <b><code>description</code> is the most important field</b> — it drives <i>when</i> Claude calls the tool. Param descriptions second. <code>"strict": True</code> guarantees schema-exact calls — the modern structured-output route (prefill is dead on 4.6+).</p>
+  </div>
+  <div class="card">
+    <h3>Result back + dispatch</h3>
+    <pre><code>{"role": "user", "content": [{
+  "type": "tool_result",
+  "tool_use_id": tool_use.id,  # pairs req &amp; result
+  "content": json.dumps(result),
+  "is_error": False  # True → model recovers
+}]}</code></pre>
+    <pre><code>TOOLS = {"get_weather": get_weather,
+         "get_news": get_news}
+func = TOOLS[tool_use.name]
+result = func(**tool_use.input)
+# ** unpacks dict as kwargs — schema params
+# must match function param names</code></pre>
+    <p class="lead">Built-in <b>server</b> tools need no dispatcher: <code>web_search_*</code>, code execution, text editor (current name: <code>str_replace_based_edit_tool</code> — versioned, must match exactly).</p>
+  </div>
+</div>
+
+<!-- ============ MULTIMODAL ============ -->
+<h2>5 · Vision, PDFs, extended thinking</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Images &amp; PDFs (content blocks)</h3>
+    <pre><code>{"type": "image",
+ "source": {
+   "type": "base64",       # or "url"
+   "media_type": "image/png",
+   "data": base64.standard_b64encode(
+             img_bytes).decode("utf-8")}}</code></pre>
+    <p class="lead">PDFs: same pattern with <code>"type": "document"</code> — Claude reads text AND layout/figures natively.</p>
+  </div>
+  <div class="card">
+    <h3>Extended thinking</h3>
+    <p class="lead">Internal reasoning before answering. Modern: <code>thinking={"type": "adaptive"}</code> (model picks depth). Legacy <code>"enabled"</code> needs <code>budget_tokens</code>. Responses gain <code>thinking</code> blocks; <code>redacted_thinking</code> blocks must round-trip <b>unchanged</b> with tools.</p>
+  </div>
+</div>
+
+<!-- ============ CACHING ============ -->
+<h2>6 · Prompt caching</h2>
+<div class="callout">
+  Stop re-paying for the stable prefix (big system prompt, tool schemas, long docs) on every stateless call. Mark a block with <code>"cache_control": {"type": "ephemeral"}</code>. Cache covers everything <b>up to and including</b> the last marked block — order content stable-first, volatile-last. <b>TTL</b> (Time To Live) = 5 min, refreshed on each hit. Verify in <code>usage</code>: <code>cache_creation_input_tokens</code> first call, <code>cache_read_input_tokens</code> (~10% of input price) after.
+</div>
+<pre><code>system=[{                        # ⚠ system must be a LIST when caching —
+    "type": "text",              #   bare string/dict throws
+    "text": big_system_prompt,   #   400: system: Input should be a valid array
+    "cache_control": {"type": "ephemeral"},
+}]</code></pre>
+
+<!-- ============ MODELS ============ -->
+<h2>7 · Model family (verified 2026-06-06)</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Opus 4.8</b> · <code>claude-opus-4-8</code></td><td class="desc">most capable, most expensive — hard reasoning, long-horizon agents</td></tr>
+    <tr><td class="cmd"><b>Sonnet 4.6</b> · <code>claude-sonnet-4-6</code></td><td class="desc"><b>the default</b> — balanced capability/cost, most production work</td></tr>
+    <tr><td class="cmd"><b>Haiku 4.5</b> · <code>claude-haiku-4-5</code></td><td class="desc">fastest, cheapest — classification, translation, summarization, high volume</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> the names are poem lengths — <b>Haiku</b> (shortest) → <b>Sonnet</b> → <b>Opus</b> (a grand work). Every ID is a <b>pinned snapshot</b>; since the 4.6 generation IDs are dateless (<code>claude-sonnet-4-6</code>) but still pinned; older ones carry a date (<code>claude-sonnet-4-5-20250929</code>). All current models: 200K input context, default max output 4096. Strategy: default Sonnet → up to Opus when it fails → down to Haiku when overkill.
+</div>
+
+<!-- ============ ERRORS ============ -->
+<h2>8 · Errors + retry conventions</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Status codes</h3>
+    <table>
+      <tr><td class="cmd"><code>400</code> invalid_request</td><td class="desc">malformed request — fix it, don't retry</td></tr>
+      <tr><td class="cmd"><code>401</code> authentication</td><td class="desc">bad/missing key — check <code>ANTHROPIC_API_KEY</code></td></tr>
+      <tr><td class="cmd"><code>403</code> permission</td><td class="desc">key lacks access</td></tr>
+      <tr><td class="cmd"><code>404</code> not_found</td><td class="desc">bad model name / endpoint</td></tr>
+      <tr><td class="cmd"><code>413</code> request_too_large</td><td class="desc">trim the payload</td></tr>
+      <tr><td class="cmd"><code>429</code> rate_limit</td><td class="desc">back off &amp; retry; honor <code>retry-after</code></td></tr>
+      <tr><td class="cmd"><code>500</code> api_error</td><td class="desc">Anthropic-side — retry with backoff</td></tr>
+      <tr><td class="cmd"><code>529</code> overloaded</td><td class="desc">temporarily overloaded — retry with backoff</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Retry rules of thumb</h3>
+    <p class="lead"><b>4xx (except 429) = your bug</b>, don't retry. <b>429/5xx = transient</b>: retry with <b>exponential backoff</b> (1s, 2s, 4s… + jitter). The SDK auto-retries these twice (<code>max_retries</code>).</p>
+    <p class="lead"><code>RemoteProtocolError</code> (connection drops, no clean 400) often = wrong endpoint routing — beta feature on the non-beta endpoint (<code>client.beta.messages.create(betas=[...])</code>). And read SDK warning lines in tracebacks — they often diagnose before the headline exception.</p>
+  </div>
+</div>
+
+<!-- ============ PROMPT ENGINEERING ============ -->
+<h2>9 · Prompt engineering quick hits</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Six techniques (priority order)</h3>
+    <table>
+      <tr><td class="cmd">1 · Clear &amp; direct</td><td class="desc">explicit goals, no hedging</td></tr>
+      <tr><td class="cmd">2 · Specific</td><td class="desc">concrete examples beat abstract instructions</td></tr>
+      <tr><td class="cmd">3 · XML tags</td><td class="desc">separate data from instructions; cuts injection risk</td></tr>
+      <tr><td class="cmd">4 · Few-shot examples</td><td class="desc"><i>show</i> the output shape, don't describe it</td></tr>
+      <tr><td class="cmd">5 · Chain of thought</td><td class="desc">"think step-by-step"; superseded by extended thinking for hard tasks</td></tr>
+      <tr><td class="cmd">6 · Role assignment</td><td class="desc">system prompt anchors persona</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>XML conventions + prefill caveat</h3>
+    <p class="lead">Common tags:
+      <span class="pill">&lt;context&gt;</span>
+      <span class="pill">&lt;task&gt;</span>
+      <span class="pill">&lt;input&gt;</span>
+      <span class="pill">&lt;instructions&gt;</span>
+      <span class="pill">&lt;examples&gt;</span>
+      <span class="pill">&lt;format&gt;</span>
+      <span class="pill">&lt;thinking&gt;</span>
+      — names arbitrary, consistency matters. Pairs with f-strings: <code>f"&lt;input&gt;\n{user_data}\n&lt;/input&gt;"</code>.</p>
+    <p class="lead"><b>Prefilling</b> (pre-writing the assistant turn to steer continuation) is a classic technique but <b>disabled on Sonnet 4.6+</b>. Modern structured output: <code>output_config.format</code> with a JSON schema, or strict tool use.</p>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>10 · Teardown / hygiene</h2>
+<div class="callout">
+  <b>There is no session to close</b> — the API is stateless (§0). "Ending a conversation" = discarding your local <code>messages</code> list; the server already forgot. What actually needs cleaning up:
+</div>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>API keys</b></td><td class="desc">revoke or rotate in the <a href="https://console.anthropic.com/">Console</a> (Settings → API keys) — especially any key that may have leaked</td></tr>
+    <tr><td class="cmd"><b>Uploaded files</b></td><td class="desc">delete via the Files API — <code>client.beta.files.delete(file_id)</code>; uploads persist until you remove them</td></tr>
+    <tr><td class="cmd"><b>Cached prompts</b></td><td class="desc">nothing to do — TTL-based (5 min, §6), they expire on their own</td></tr>
+    <tr><td class="cmd"><b>Spend on a stale key</b></td><td class="desc">set the key's/workspace's spend limit to zero in the Console — a kill switch without deleting the key</td></tr>
+    <tr><td class="cmd"><b>Local hygiene</b></td><td class="desc">never leave keys in code, notebooks, or shell history — env vars or a secrets manager; <code>.env</code> in <code>.gitignore</code></td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Memory hook:</b> stateless server = nothing to tear down <i>there</i>; the teardown surface is all on <i>your</i> side — keys, files, local copies.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>11 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>API</b></td><td class="desc">Application Programming Interface — the HTTP contract at <code>api.anthropic.com</code></td></tr>
+    <tr><td class="cmd"><b>SDK</b></td><td class="desc">Software Development Kit — the <code>anthropic</code> client library</td></tr>
+    <tr><td class="cmd"><b>Stateless</b></td><td class="desc">server keeps no memory; client resends full history each call</td></tr>
+    <tr><td class="cmd"><b>Content block</b></td><td class="desc">typed unit inside <code>content</code> (<code>text</code>, <code>tool_use</code>, <code>thinking</code>, <code>image</code>, …)</td></tr>
+    <tr><td class="cmd"><b>System prompt</b></td><td class="desc">standing instructions; top-level field, not a message role</td></tr>
+    <tr><td class="cmd"><b>Tool use</b></td><td class="desc">Claude requests a function call; you execute &amp; return a <code>tool_result</code></td></tr>
+    <tr><td class="cmd"><b>JSON Schema</b></td><td class="desc">vocabulary that tool <code>input_schema</code>s are written in</td></tr>
+    <tr><td class="cmd"><b>Prompt caching</b></td><td class="desc">reuse of a stable prompt prefix (<code>cache_control</code>, 5-min TTL)</td></tr>
+    <tr><td class="cmd"><b>TTL</b></td><td class="desc">Time To Live — how long a cache entry survives without a hit</td></tr>
+    <tr><td class="cmd"><b>Stop reason</b></td><td class="desc">why generation ended (<code>end_turn</code>, <code>max_tokens</code>, <code>tool_use</code>, …)</td></tr>
+    <tr><td class="cmd"><b>Exponential backoff</b></td><td class="desc">retry waits that double each attempt — for 429/5xx</td></tr>
+    <tr><td class="cmd"><b>Prefill</b></td><td class="desc">legacy: pre-writing the assistant turn; disabled on 4.6+</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://docs.claude.com/">Claude API docs</a> ·
+  <a href="https://platform.claude.com/docs/en/api/messages">Messages API reference</a> ·
+  <a href="https://platform.claude.com/docs/en/about-claude/models/overview">Models overview</a> ·
+  <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview">Tool use</a> ·
+  <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Prompt caching</a> ·
+  <a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs">Structured outputs</a> ·
+  <a href="https://platform.claude.com/docs/en/api/errors">Errors</a> ·
+  <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview">Prompt engineering</a> ·
+  companion: <code>Tools/cwca_review.md</code>
+</p>
+
+</div>
+</body>
+</html>
