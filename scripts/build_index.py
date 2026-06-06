@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """Build the cheat-sheet site into _site/.
 
-Scans sheets/*.html, pulls each page's <title> and subtitle line, and writes
-an index.html with a live search bar and three category columns
-(Languages / Tools / Architecture). Sheets listed in GROUPS are nested behind
-a single card that links to a generated hub page (e.g. gcp.html).
-Run by the GitHub Actions workflow on every push (and locally:
-`python scripts/build_index.py`).
+Scans sheets/*.html and writes an index.html with a live full-text search bar
+and three ordered columns (Architecture / Tools / Languages). Entries in
+LAYOUT control column + order; "@slug" entries place a GROUPS hub card
+(one card on the home page → generated hub page, e.g. gcp.html).
+BLURBS supplies the one-line description under each card title.
 
-To place a new sheet, add its filename to CATEGORIES (unknown sheets land in
-"Tools") or to a GROUPS entry.
+Run by GitHub Actions on every push, or locally:
+`python scripts/build_index.py`.
+
+Adding a sheet: drop the HTML in sheets/, then add a LAYOUT entry (else it
+lands at the bottom of Tools) and a BLURB (else the sheet's subtitle is used).
 """
 
+import json
 import re
 import shutil
 from datetime import date
@@ -21,42 +24,44 @@ ROOT = Path(__file__).resolve().parent.parent
 SHEETS = ROOT / "sheets"
 SITE = ROOT / "_site"
 
-COLUMNS = ["Languages", "Tools", "Architecture"]
-
-CATEGORIES = {
-    # Languages — syntax you read & write
-    "python_cheatsheet.html": "Languages",
-    "html_cheatsheet.html": "Languages",
-    "bash_zsh_cheatsheet.html": "Languages",
-    "powershell_cheatsheet.html": "Languages",
-    "formats_cheatsheet.html": "Languages",
-    # Tools — software you operate
-    "git_cheatsheet.html": "Tools",
-    "github_cheatsheet.html": "Tools",
-    "vim_cheatsheet.html": "Tools",
-    "vscode_cheatsheet.html": "Tools",
-    "homebrew_cheatsheet.html": "Tools",
-    "obsidian_cheatsheet.html": "Tools",
-    "excel_functions_cheatsheet.html": "Tools",
-    "claude_api_cheatsheet.html": "Tools",
-    "terraform_cheatsheet.html": "Tools",
-    "python_environments_cheatsheet.html": "Tools",
-    # Architecture — how systems are put together
-    "cloud_comparison_cheatsheet.html": "Architecture",
-    "azure_cheatsheet.html": "Architecture",
-    "hardware_cheatsheet.html": "Architecture",
-    "system_architecture_cheatsheet.html": "Architecture",
-    "networking_cheatsheet.html": "Architecture",
-    "ssh_cheatsheet.html": "Architecture",
-    "encryption_cheatsheet.html": "Architecture",
+# Column order on the page; entries within each list are display order.
+# Plain entries are filenames in sheets/; "@slug" places a GROUPS hub card.
+LAYOUT = {
+    "Architecture": [
+        "hardware_cheatsheet.html",
+        "system_architecture_cheatsheet.html",
+        "networking_cheatsheet.html",
+        "encryption_cheatsheet.html",
+        "ssh_cheatsheet.html",
+        "cloud_comparison_cheatsheet.html",
+        "@gcp",
+        "azure_cheatsheet.html",
+    ],
+    "Tools": [
+        "vscode_cheatsheet.html",
+        "git_cheatsheet.html",
+        "github_cheatsheet.html",
+        "vim_cheatsheet.html",
+        "homebrew_cheatsheet.html",
+        "claude_api_cheatsheet.html",
+        "terraform_cheatsheet.html",
+        "obsidian_cheatsheet.html",
+        "excel_functions_cheatsheet.html",
+    ],
+    "Languages": [
+        "bash_zsh_cheatsheet.html",
+        "powershell_cheatsheet.html",
+        "python_cheatsheet.html",
+        "python_environments_cheatsheet.html",
+        "formats_cheatsheet.html",
+        "html_cheatsheet.html",
+    ],
 }
 
-# Nested collections: one card on the home page → a hub page listing members.
 GROUPS = {
     "gcp": {
         "name": "GCP — Google Cloud",
-        "category": "Architecture",
-        "blurb": "Four drill-ins: IAM & auth, compute, databases & storage, data analytics.",
+        "blurb": "Google's cloud, drilled in: IAM, compute, databases, analytics.",
         "files": [
             "gcp_iam_auth_cheatsheet.html",
             "gcp_compute_cheatsheet.html",
@@ -64,6 +69,40 @@ GROUPS = {
             "gcp_data_analytics_cheatsheet.html",
         ],
     },
+}
+
+# One line under each title: what it is / what it's for. Light where obvious.
+BLURBS = {
+    # Architecture
+    "hardware_cheatsheet.html": "What the computer is made of — and why AI wants all the RAM.",
+    "system_architecture_cheatsheet.html": "Everything between the silicon and your script: languages, kernels, containers.",
+    "networking_cheatsheet.html": "How the internet works, packet by packet.",
+    "encryption_cheatsheet.html": "When will your personal data be public?",
+    "ssh_cheatsheet.html": "A terminal on someone else's computer, safely.",
+    "cloud_comparison_cheatsheet.html": "Same Lego bricks, three sticker sheets.",
+    "azure_cheatsheet.html": "Microsoft's cloud — and the corporate data maze (SharePoint, Dataverse, Fabric).",
+    # Tools
+    "vscode_cheatsheet.html": "The editor. Plus Jupyter without the browser.",
+    "git_cheatsheet.html": "Version management.",
+    "github_cheatsheet.html": "Where your code meets everyone else's.",
+    "vim_cheatsheet.html": "The editor you didn't open on purpose.",
+    "homebrew_cheatsheet.html": "Install programs from your CLI.",
+    "claude_api_cheatsheet.html": "Talk to Claude from code instead of a chat box.",
+    "terraform_cheatsheet.html": "Build cloud infrastructure by writing it down.",
+    "obsidian_cheatsheet.html": "Plain-text notes that link to each other.",
+    "excel_functions_cheatsheet.html": "LAMBDA, CUBEVALUE, DATEDIF, EOMONTH — the greatest hits.",
+    # Languages
+    "bash_zsh_cheatsheet.html": "The terminal's native language; the glue holding everything together.",
+    "powershell_cheatsheet.html": "Bash for Windows — except it pipes objects, not text.",
+    "python_cheatsheet.html": "The default language for data, science, and AI.",
+    "python_environments_cheatsheet.html": "Keep one project's packages from poisoning another's.",
+    "formats_cheatsheet.html": "JSON, REST, YAML — how programs talk to each other.",
+    "html_cheatsheet.html": "The structure of every web page.",
+    # GCP members (shown on the hub page)
+    "gcp_iam_auth_cheatsheet.html": "Who may do what — permissions, roles, and the two credential stores.",
+    "gcp_compute_cheatsheet.html": "VMs to serverless: the managed-vs-control spectrum.",
+    "gcp_databases_storage_cheatsheet.html": "Which data goes in which box (and what it costs).",
+    "gcp_data_analytics_cheatsheet.html": "Big data: from MapReduce lore to BigQuery bills.",
 }
 
 CARD = """      <a class="card" href="{href}" data-search="{search}" data-key="{key}">
@@ -206,9 +245,10 @@ def sheet_card(f: Path, href: str) -> tuple[str, str, str]:
     """Return (card html, searchable meta, body word index) for one sheet."""
     html = f.read_text(encoding="utf-8")
     title = clean_title(extract(html, r"<title>(.*?)</title>", f.stem))
-    sub = extract(html, r'<p class="sub">(.*?)</p>', "")
-    sub = re.sub(r"<[^>]+>", "", sub)
-    sub = sub.split("·")[0].strip()
+    sub = BLURBS.get(f.name)
+    if not sub:
+        sub = extract(html, r'<p class="sub">(.*?)</p>', "")
+        sub = re.sub(r"<[^>]+>", "", sub).split("·")[0].strip()
     search = f"{title} {sub} {f.stem}".lower().replace('"', "")
     card = CARD.format(href=href, title=title, sub=sub, search=search, key=f.name)
     return card, search, body_words(html)
@@ -230,55 +270,67 @@ def main() -> None:
             except OSError:
                 print(f"warning: could not remove stale {old}")
 
-    grouped = {fname: slug for slug, g in GROUPS.items() for fname in g["files"]}
-    by_col: dict[str, list[str]] = {c: [] for c in COLUMNS}
-    group_cards: dict[str, list[str]] = {slug: [] for slug in GROUPS}
-    group_search: dict[str, list[str]] = {slug: [] for slug in GROUPS}
+    # Build a card for every sheet; copy into the site.
+    cards: dict[str, str] = {}
+    searches: dict[str, str] = {}
     content_index: dict[str, str] = {}
-    n = 0
-
     for f in sorted(SHEETS.glob("*.html")):
         shutil.copy2(f, SITE / "sheets" / f.name)
-        n += 1
         card, search, words = sheet_card(f, f"sheets/{f.name}")
-        if f.name in grouped:
-            slug = grouped[f.name]
-            group_cards[slug].append(card)
-            group_search[slug].append(search)
-            content_index[slug] = content_index.get(slug, "") + " " + words
-        else:
-            by_col[CATEGORIES.get(f.name, "Tools")].append(card)
-            content_index[f.name] = words
+        cards[f.name], searches[f.name], content_index[f.name] = card, search, words
 
-    # One card per group on the home page; hub page holds the members.
+    # Hub pages + hub cards for groups.
+    grouped_files: set[str] = set()
+    hub_cards: dict[str, str] = {}
     for slug, g in GROUPS.items():
-        if not group_cards[slug]:
+        members = [m for m in g["files"] if m in cards]
+        if not members:
             continue
+        grouped_files.update(members)
         (SITE / f"{slug}.html").write_text(
             HUB.format(css=CSS, name=g["name"], blurb=g["blurb"],
-                       cards="\n".join(group_cards[slug]), today=today, repo=repo),
+                       cards="\n".join(cards[m] for m in members),
+                       today=today, repo=repo),
             encoding="utf-8",
         )
-        search = f'{g["name"]} {g["blurb"]} ' + " ".join(group_search[slug])
-        by_col[g["category"]].append(
-            CARD.format(href=f"{slug}.html",
-                        title=f'{g["name"]}<span class="badge">{len(group_cards[slug])} sheets</span>',
-                        sub=g["blurb"], search=search.lower().replace('"', ""),
-                        key=slug)
+        content_index[slug] = " ".join(content_index.pop(m, "") for m in members)
+        search = (g["name"] + " " + g["blurb"] + " "
+                  + " ".join(searches[m] for m in members)).lower().replace('"', "")
+        hub_cards[slug] = CARD.format(
+            href=f"{slug}.html",
+            title=f'{g["name"]}<span class="badge">{len(members)} sheets</span>',
+            sub=g["blurb"], search=search, key=slug,
         )
 
-    import json
+    # Assemble columns per LAYOUT; unknown sheets fall to the end of Tools.
+    placed: set[str] = set()
+    by_col: dict[str, list[str]] = {}
+    for col, entries in LAYOUT.items():
+        out = []
+        for e in entries:
+            if e.startswith("@"):
+                if e[1:] in hub_cards:
+                    out.append(hub_cards[e[1:]])
+                    placed.add(e[1:])
+            elif e in cards and e not in grouped_files:
+                out.append(cards[e])
+                placed.add(e)
+        by_col[col] = out
+    for name, card in cards.items():
+        if name not in placed and name not in grouped_files:
+            by_col["Tools"].append(card)
 
     columns = "\n".join(
         COLUMN.format(cid=c.lower(), cname=c, cards="\n".join(by_col[c]) or "")
-        for c in COLUMNS
+        for c in LAYOUT
     )
     (SITE / "index.html").write_text(
         PAGE.format(css=CSS, columns=columns, today=today, repo=repo,
                     content_index=json.dumps(content_index, separators=(",", ":"))),
         encoding="utf-8",
     )
-    print(f"Built _site/ with {n} sheet(s); {len(GROUPS)} group hub(s).")
+    n = len(cards)
+    print(f"Built _site/ with {n} sheet(s); {len(hub_cards)} group hub(s).")
 
 
 if __name__ == "__main__":
