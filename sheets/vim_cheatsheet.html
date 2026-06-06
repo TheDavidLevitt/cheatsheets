@@ -33,7 +33,7 @@
     white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
   pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
     overflow-x:auto;font-size:12.8px;line-height:1.55;}
-  pre code{background:none;padding:0;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
   .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
     padding:12px 16px;margin:12px 0;font-size:14px;}
   .callout.warn{border-left-color:var(--warn);}
@@ -107,14 +107,14 @@ COMMAND-LINE     VISUAL  ← (v) select text to act on
     <p class="lead"><kbd>Esc</kbd> always returns to Normal mode.</p>
   </div>
   <div class="card">
-    <h3>The Git "uncomment & save" flow</h3>
+    <h3>The Git "uncomment &amp; save" flow</h3>
     <p class="lead">In Git config, comments start with <code>;</code> or <code>#</code>; "uncomment" = delete that leading char.</p>
     <pre><code>1. Move cursor onto the ; or #   (arrows or h j k l)
 2. Press  x   ← deletes that one char (no Insert needed!)
    or:  i , then Backspace it
 3. Need a value? press  a , type it
 4. Esc   (-- INSERT -- disappears)
-5. :wq  Enter   to save & quit
+5. :wq  Enter   to save &amp; quit
    messed up? Esc , :q!  Enter</code></pre>
   </div>
 </div>

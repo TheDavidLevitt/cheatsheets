@@ -33,7 +33,7 @@
     white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
   pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
     overflow-x:auto;font-size:12.8px;line-height:1.55;}
-  pre code{background:none;padding:0;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
   .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
     padding:12px 16px;margin:12px 0;font-size:14px;}
   .callout.warn{border-left-color:var(--warn);}
@@ -77,6 +77,20 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
     <tr><td class="cmd"><b>Link</b> — Ethernet, Wi-Fi</td><td class="desc">MAC addresses; crossing ONE physical hop</td></tr>
   </table>
   <p class="lead"><b>TCP</b> (Transmission Control Protocol) = registered mail: numbered, acknowledged, resent, in order (HTTP, SSH, email). <b>UDP</b> (User Datagram Protocol) = plain postcard: fire-and-forget, low overhead (DNS, video calls, games). The textbook 7-layer <b>OSI model</b> (Open Systems Interconnection) splits the same idea more finely; this 4-layer view is what's actually deployed.</p>
+</div>
+<div class="card">
+  <h3>"Layer 7", "L4" — the OSI numbering everyone actually uses</h3>
+  <p class="lead">The <b>OSI model</b> (Open Systems Interconnection — ISO standard, 1984) is a 7-layer reference model that lost the deployment war to TCP/IP but <b>won the vocabulary war</b>: its layer <i>numbers</i> are universal shorthand across networking, cloud docs, and certifications.</p>
+  <table>
+    <tr><td class="cmd"><b>L7</b> Application</td><td class="desc">HTTP, DNS, SSH — the content. "L7 load balancer" routes on URLs/headers (e.g. GCP's HTTP(S) LB)</td></tr>
+    <tr><td class="cmd"><b>L6</b> Presentation</td><td class="desc">encoding/encryption (TLS, roughly) — rarely named in practice</td></tr>
+    <tr><td class="cmd"><b>L5</b> Session</td><td class="desc">connection management — rarely named in practice</td></tr>
+    <tr><td class="cmd"><b>L4</b> Transport</td><td class="desc">TCP/UDP + ports. "L4 load balancer" routes on IP:port, blind to content</td></tr>
+    <tr><td class="cmd"><b>L3</b> Network</td><td class="desc">IP, routing. "L3 switch" = a switch that also routes</td></tr>
+    <tr><td class="cmd"><b>L2</b> Data link</td><td class="desc">Ethernet/Wi-Fi, MAC addresses. "L2 segment" = one local network</td></tr>
+    <tr><td class="cmd"><b>L1</b> Physical</td><td class="desc">cables, radio, light pulses</td></tr>
+  </table>
+  <p class="lead">Mapping to the 4-layer view above: L7(+6+5) = Application, L4 = Transport, L3 = Internet, L2+L1 = Link. L5/L6 mostly exist in textbooks — real protocols fold them into the application. The numbers you'll actually hear: <b>L2, L3, L4, L7</b>. (Office joke: "layer 8" = the user.)</p>
 </div>
 
 <!-- ============ ADDRESSES ============ -->
