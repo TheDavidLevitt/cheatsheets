@@ -79,8 +79,8 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
   <p class="lead"><b>TCP</b> (Transmission Control Protocol) = registered mail: numbered, acknowledged, resent, in order (HTTP, SSH, email). <b>UDP</b> (User Datagram Protocol) = plain postcard: fire-and-forget, low overhead (DNS, video calls, games). The textbook 7-layer <b>OSI model</b> (Open Systems Interconnection) splits the same idea more finely; this 4-layer view is what's actually deployed.</p>
 </div>
 <div class="card">
-  <h3>"Layer 7", "L4" — the OSI numbering everyone actually uses</h3>
-  <p class="lead">The <b>OSI model</b> (Open Systems Interconnection — ISO standard, 1984) is a 7-layer reference model that lost the deployment war to TCP/IP but <b>won the vocabulary war</b>: its layer <i>numbers</i> are universal shorthand across networking, cloud docs, and certifications.</p>
+  <h3>The OSI model — where the "layer" numbers come from</h3>
+  <p class="lead">The <b>OSI model</b> (Open Systems Interconnection — ISO standard, 1984) is a 7-layer reference model that lost the deployment war to TCP/IP but <b>won the vocabulary war</b>: when cloud docs or network engineers say "layer 7" or "L4", they're counting OSI layers. Universal shorthand across networking, cloud platforms, and certifications.</p>
   <table>
     <tr><td class="cmd"><b>L7</b> Application</td><td class="desc">HTTP, DNS, SSH — the content. "L7 load balancer" routes on URLs/headers (e.g. GCP's HTTP(S) LB)</td></tr>
     <tr><td class="cmd"><b>L6</b> Presentation</td><td class="desc">encoding/encryption (TLS, roughly) — rarely named in practice</td></tr>
@@ -95,7 +95,7 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
 
 <!-- ============ ADDRESSES ============ -->
 <h2>1 · Addresses — IP, NAT, ports, MAC</h2>
-<p class="lead">An <b>IP</b> (Internet Protocol) <b>address</b> identifies a machine. IPv4 = four numbers 0–255 (32 bits, ~4.3 billion addresses — which ran out, hence NAT and IPv6).</p>
+<p class="lead">An <b>IP</b> (Internet Protocol) <b>address</b> identifies a machine. <b>IPv4</b> = Internet Protocol <b>version 4</b> — the 1981 standard still carrying most traffic: four numbers 0–255 (32 bits, ~4.3 billion addresses — which ran out, hence NAT and IPv6). The successor is version <b>6</b> because the number 5 was already taken by an experimental 1980s streaming protocol (ST) that never shipped.</p>
 <pre><code> 203.0.113.42
  └┬┘ └┬┘└┬┘└┬┘
   each part = one byte (0–255); left ≈ "which network",
@@ -127,7 +127,7 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
   <b>NAT</b> (Network Address Translation) — your router owns <b>one</b> public IP from your ISP (Internet Service Provider) and shares it among every device. Outbound, it rewrites private source addresses (<code>192.168.1.7</code>) to the public one and remembers the mapping; replies get translated back. Side effects: inside devices are unreachable from outside by default (a free crude firewall), and "what's my IP?" differs inside vs. outside.
 </div>
 <div class="callout good">
-  <b>IPv6</b> = the 128-bit successor (eight colon-separated hex groups, e.g. <code>2001:db8::1</code>; <code>::</code> compresses zeros). Enough addresses that every device can be public — no NAT needed; adoption is gradual.
+  <b>IPv6</b> (Internet Protocol version 6) = the 128-bit successor (eight colon-separated hex groups, e.g. <code>2001:db8::1</code>; <code>::</code> compresses zeros). Enough addresses that every device can be public — no NAT needed; adoption is gradual.
   <br><b>MAC</b> (Media Access Control) <b>address</b> = hardware serial number of your network card (<code>aa:bb:cc:dd:ee:ff</code>) — used only for the final local-network hop; never travels across the internet.
 </div>
 
@@ -142,9 +142,10 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
 5. resolver → browser                 answer + cached for next time</code></pre>
 <div class="grid">
   <div class="card">
-    <h3>Look it up yourself</h3>
+    <h3>Do a DNS lookup yourself <span class="pill">CLI</span></h3>
+    <p class="lead">These are <b>terminal commands</b> — type them at a shell prompt (Terminal on Mac/Linux, where <code>dig</code> is preinstalled; on Windows use <code>nslookup</code> in PowerShell). Same convention everywhere on this sheet: anything in a command table or starting with <code>$</code> runs in your terminal.</p>
     <table>
-      <tr><td class="cmd"><code>dig example.com</code></td><td class="desc">full answer with TTLs (the pro tool)</td></tr>
+      <tr><td class="cmd"><code>dig example.com</code></td><td class="desc">full answer with TTLs (the pro tool; "domain information groper")</td></tr>
       <tr><td class="cmd"><code>dig +short example.com</code></td><td class="desc">just the IP</td></tr>
       <tr><td class="cmd"><code>dig MX example.com</code></td><td class="desc">ask for a specific record type</td></tr>
       <tr><td class="cmd"><code>nslookup example.com</code></td><td class="desc">older, everywhere (incl. Windows)</td></tr>
@@ -153,12 +154,14 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
   </div>
   <div class="card">
     <h3>Record types worth knowing</h3>
+    <p class="lead">A DNS <b>record</b> = one typed row in a domain's zone file: <i>name → typed value</i>, served by the authoritative server. You create/edit these in your registrar or DNS console (Cloudflare, Route 53, Cloud DNS…) when you set up a website or email. The <b>type</b> tells clients what kind of answer it is:</p>
     <table>
-      <tr><td class="cmd"><b>A</b></td><td class="desc">name → IPv4 address</td></tr>
-      <tr><td class="cmd"><b>AAAA</b></td><td class="desc">name → IPv6 ("quad-A" — 4× the bits of an A)</td></tr>
-      <tr><td class="cmd"><b>CNAME</b></td><td class="desc">alias: name → another <i>name</i> (<code>www → example.com</code>)</td></tr>
-      <tr><td class="cmd"><b>MX</b></td><td class="desc">Mail eXchange — where <code>@example.com</code> email goes</td></tr>
-      <tr><td class="cmd"><b>TXT</b></td><td class="desc">arbitrary text: ownership proofs, email anti-spoofing (SPF/DKIM)</td></tr>
+      <tr><td class="cmd"><b>A</b> ("address")</td><td class="desc">name → IPv4 address. The workhorse: <code>example.com → 203.0.113.42</code>. A browser asks for this first.</td></tr>
+      <tr><td class="cmd"><b>AAAA</b> ("quad-A")</td><td class="desc">same, but → IPv6. Named AAAA because IPv6 addresses are 4× the size of an A record's IPv4.</td></tr>
+      <tr><td class="cmd"><b>CNAME</b> (Canonical Name)</td><td class="desc">alias: name → another <i>name</i>, which is then looked up in turn. E.g. <code>www.example.com → example.com</code>, or a GitHub Pages custom domain → <code>username.github.io</code>. Lets many names follow one moving target.</td></tr>
+      <tr><td class="cmd"><b>MX</b> (Mail eXchange)</td><td class="desc">where email for <code>@example.com</code> should be delivered — the hostname of the mail server, with a priority number. No MX = no inbound mail.</td></tr>
+      <tr><td class="cmd"><b>TXT</b> (text)</td><td class="desc">free-form text attached to the name. Two big uses: proving you own a domain (Google/Microsoft make you paste a token here) and email anti-spoofing policies (<b>SPF</b> lists who may send as you; <b>DKIM</b> publishes a signing key).</td></tr>
+      <tr><td class="cmd"><b>NS</b> (Name Server)</td><td class="desc">which servers are authoritative for the domain — the pointer the TLD hands out in step 3 of the lookup walk above.</td></tr>
     </table>
   </div>
 </div>
@@ -222,7 +225,8 @@ scheme   user       host      port      path        query     fragment</code></p
               typically well under a second for the whole journey</code></pre>
 
 <!-- ============ DIAGNOSTICS ============ -->
-<h2>6 · Diagnostic tools — first-aid kit</h2>
+<h2>6 · Diagnostic tools — first-aid kit <span class="pill">CLI</span></h2>
+<p class="lead">All terminal commands — Terminal app on Mac/Linux, PowerShell on Windows (names vary slightly there).</p>
 <div class="card">
   <table>
     <tr><td class="cmd"><code>ping example.com</code></td><td class="desc">"is it alive, how far?" — round-trip ms. Named after sonar's <i>ping</i>: send a pulse, time the echo.</td></tr>
