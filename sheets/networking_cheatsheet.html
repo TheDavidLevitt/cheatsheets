@@ -92,6 +92,19 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
   </table>
   <p class="lead">Mapping to the 4-layer view above: L7(+6+5) = Application, L4 = Transport, L3 = Internet, L2+L1 = Link. L5/L6 mostly exist in textbooks — real protocols fold them into the application. The numbers you'll actually hear: <b>L2, L3, L4, L7</b>. (Office joke: "layer 8" = the user.)</p>
 </div>
+<div class="card">
+  <h3>TCP vs UDP — the decision rule</h3>
+  <p class="lead">IP alone is <b>best-effort</b>: packets may be lost, duplicated, or arrive out of order, and IP doesn't care. The transport layer decides what to do about that:</p>
+  <table>
+    <tr><td class="cmd"><b>Setup</b></td><td class="desc">TCP: handshake first (the "connection") · UDP: none — just send</td></tr>
+    <tr><td class="cmd"><b>Loss</b></td><td class="desc">TCP: detected (ACKs) and <b>retransmitted</b> · UDP: gone is gone</td></tr>
+    <tr><td class="cmd"><b>Order</b></td><td class="desc">TCP: sequence numbers → delivered in order · UDP: whatever order arrives</td></tr>
+    <tr><td class="cmd"><b>Pacing</b></td><td class="desc">TCP: congestion control (slows down when the network chokes) · UDP: sender's problem</td></tr>
+    <tr><td class="cmd"><b>Cost</b></td><td class="desc">TCP: latency — waiting for ACKs and resends · UDP: minimal — one datagram, done</td></tr>
+  </table>
+  <p class="lead"><b>Decision rule:</b> every byte must arrive, in order (web pages, SSH, file transfer, databases) → <b>TCP</b>. Freshest-data-now matters and a lost packet is better skipped than replayed late (live voice/video, gaming, a one-shot DNS query) → <b>UDP</b> — in a call, resending a 2-second-old audio packet is worse than a glitch.</p>
+  <p class="lead"><b>QUIC</b> (the transport under <b>HTTP/3</b>) = reliability <i>rebuilt on top of UDP</i> — TCP-like guarantees without TCP's inflexibility; recognition only (if you see <code>udp:443</code> carrying web traffic, that's QUIC). <b>Why firewall rules say <code>tcp:22</code>, not just <code>22</code>:</b> TCP and UDP port numbers are <i>independent namespaces</i> — <code>tcp:53</code> and <code>udp:53</code> are different doors that merely share a number. A service is identified by the <b>(protocol, port) pair</b>, so rules must name both.</p>
+</div>
 
 <!-- ============ ADDRESSES ============ -->
 <h2>1 · Addresses — IP, NAT, ports, MAC</h2>
@@ -113,18 +126,46 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
   </div>
   <div class="card">
     <h3>Famous ports — the apartment number</h3>
-    <p class="lead">IP gets you to the <i>building</i>; the <b>port</b> (0–65535) is the <i>apartment</i> — which program gets the packet. One IP can run web + mail + SSH side by side.</p>
+    <p class="lead">IP gets you to the <i>building</i>; the <b>port</b> (1–65535) is the <i>apartment</i> — which program gets the packet. One IP can run web + mail + SSH side by side. Every packet carries <b>two</b> ports — <code>source IP:port → destination IP:port</code> — so the reply knows where to go. <b>Servers listen on well-known ports</b> (below) so clients know where to knock; <b>clients pick a random ephemeral source port</b> (typically 49152–65535, e.g. <code>:53000</code>) per conversation — just a return address, used once and thrown away.</p>
     <table>
       <tr><td class="cmd"><b>22</b> — SSH (Secure Shell)</td><td class="desc">remote login — see the <a href="ssh_cheatsheet.html">SSH sheet</a></td></tr>
       <tr><td class="cmd"><b>53</b> — DNS</td><td class="desc">the phone-book lookups (section 2)</td></tr>
       <tr><td class="cmd"><b>80</b> — HTTP</td><td class="desc">plain web</td></tr>
       <tr><td class="cmd"><b>443</b> — HTTPS</td><td class="desc">encrypted web (the padlock)</td></tr>
+      <tr><td class="cmd"><b>3389</b> — RDP (Remote Desktop Protocol)</td><td class="desc">Windows GUI remote control</td></tr>
     </table>
     <p class="lead"><code>example.com:8080</code> = "this host, port 8080". Browsers silently assume <code>:80</code> for http, <code>:443</code> for https.</p>
+    <p class="lead"><b>Port numbers are pure convention, socially enforced.</b> IANA (Internet Assigned Numbers Authority) <i>assigns meanings</i> (0–1023 "well-known", 1024–49151 registered, rest ephemeral), but nothing in the network enforces them — 22 is just where SSH clients knock <i>by default</i>. You can run SSH on 2222 (<code>Port 2222</code> in <code>sshd_config</code>, allow <code>tcp:2222</code> in the firewall, connect with <code>ssh -p 2222</code>). The convention's only technical teeth: on Unix, <b>binding a port below 1024 requires root</b>. Moving SSH off 22 cuts bot-scan log noise but is <i>noise reduction, not security</i>.</p>
+    <p class="lead"><b>Same number, two ledgers:</b> TCP and UDP port namespaces are independent, so one machine can serve different things on <code>tcp:5000</code> and <code>udp:5000</code> simultaneously. Live example: modern web servers speak <code>tcp:443</code> (HTTPS) <i>and</i> <code>udp:443</code> (QUIC/HTTP-3) at once — your browser tries QUIC, falls back to TCP.</p>
+  </div>
+  <div class="card">
+    <h3>CIDR — the /N grammar for "a range of addresses"</h3>
+    <p class="lead"><b>CIDR</b> (Classless Inter-Domain Routing) notation — <code>address/N</code> — is the universal way to write <i>any</i> range of IPs: N = how many leading bits are fixed; the remaining 32−N bits vary, giving 2^(32−N) addresses. Think of /N as a <b>zoom level</b> — small N = zoomed out, big N = zoomed in:</p>
+    <table>
+      <tr><td class="cmd"><code>0.0.0.0/0</code></td><td class="desc">all 4.3 billion — "the entire internet" in a firewall rule (beware)</td></tr>
+      <tr><td class="cmd"><code>10.0.0.0/8</code></td><td class="desc">~16.8 million — a huge block, one byte fixed</td></tr>
+      <tr><td class="cmd"><code>192.168.1.0/24</code></td><td class="desc">256 addresses — a typical home/office subnet, three bytes fixed</td></tr>
+      <tr><td class="cmd"><code>203.0.113.42/32</code></td><td class="desc">exactly <b>1</b> host — how you write "only my IP" in an allowlist</td></tr>
+    </table>
+    <p class="lead">Not just for subnets — the same /N appears anywhere a range is needed: firewall <b>source ranges</b> (<code>source: 203.0.113.0/24</code>), VPC subnet definitions, route tables, allowlists. The RFC 1918 private ranges in CIDR form: <code>192.168.0.0/16</code>, <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>.</p>
   </div>
 </div>
 <div class="callout">
   <b>NAT</b> (Network Address Translation) — your router owns <b>one</b> public IP from your ISP (Internet Service Provider) and shares it among every device. Outbound, it rewrites private source addresses (<code>192.168.1.7</code>) to the public one and remembers the mapping; replies get translated back. Side effects: inside devices are unreachable from outside by default (a free crude firewall), and "what's my IP?" differs inside vs. outside.
+</div>
+<div class="card">
+  <h3>NAT mechanics — the 4-step rewrite</h3>
+  <p class="lead">NAT works by rewriting the <code>source IP:port</code> on the way out and keeping a <b>NAT table</b> — a ledger of "who asked for what" — so replies find their way back. The receptionist analogy: the building (public IP) has one street address; the receptionist (router) relabels outgoing mail with "reply to desk 61001" and notes which room sent it.</p>
+  <table>
+    <tr><td class="cmd"><b>1</b> · laptop sends from <code>192.168.1.42:53000</code></td><td class="desc">private source — would be dropped on the public internet</td></tr>
+    <tr><td class="cmd"><b>2</b> · router rewrites source → <code>203.0.113.9:61001</code></td><td class="desc">and <b>writes a table row</b>: <code>192.168.1.42:53000 ↔ 203.0.113.9:61001</code></td></tr>
+    <tr><td class="cmd"><b>3</b> · server replies to <code>203.0.113.9:61001</code></td><td class="desc">it only ever saw the public pair</td></tr>
+    <tr><td class="cmd"><b>4</b> · router looks up port <code>61001</code> in the table</td><td class="desc">rewrites destination back to <code>192.168.1.42:53000</code> → delivered</td></tr>
+  </table>
+  <p class="lead">Four consequences fall out of the table: <b>1.</b> Replies get back in because the <i>outbound</i> packet left a ledger entry — why browsing "just works" behind NAT. <b>2.</b> Unsolicited inbound matches no row → <b>dropped</b>. NAT is an <i>accidental one-way mirror</i> — crude inbound protection never designed as a firewall (port-forwarding = manually pre-writing a permanent row). <b>3.</b> ~65k ports ≈ ~65k concurrent conversations through one public IP. <b>4.</b> Idle entries expire (minutes for TCP, less for UDP) — why long-silent connections die and apps send keep-alives.</p>
+</div>
+<div class="callout">
+  <b>Who gets a dedicated public IP — the conservation ladder.</b> Classic fixed-line broadband = <b>one public IP per home</b>: established ISPs sit on legacy IPv4 blocks, sharing would break port-forwarding/gaming/self-hosting, and one-IP-per-subscriber makes abuse attribution easy. <b>CGNAT</b> (Carrier-Grade NAT) = the <i>ISP itself</i> runs a second NAT layer, stacking hundreds of customers behind one public IP — standard on mobile networks and many newer ISPs (symptom: your router's WAN IP looks private, often <code>100.64.x.x</code>, and differs from what "what's my IP" sites report). The ladder as IPv4 ran out: one IP <i>per device</i> (1980s dream) → per <i>home</i> (NAT) → per <i>hundreds of homes</i> (CGNAT). <b>VPN servers</b> = the same pooling chosen voluntarily — many users exit through one shared IP.
 </div>
 <div class="callout good">
   <b>IPv6</b> (Internet Protocol version 6) = the 128-bit successor (eight colon-separated hex groups, e.g. <code>2001:db8::1</code>; <code>::</code> compresses zeros). Enough addresses that every device can be public — no NAT needed; adoption is gradual.
@@ -261,8 +302,12 @@ scheme   user       host      port      path        query     fragment</code></p
     <tr><td class="cmd"><b>Router</b></td><td class="desc">forwards packets one hop closer</td></tr>
     <tr><td class="cmd"><b>TCP / UDP</b></td><td class="desc">reliable ordered delivery vs. fast fire-and-forget</td></tr>
     <tr><td class="cmd"><b>IP address</b></td><td class="desc">machine's network address (IPv4 dotted quad / IPv6 hex)</td></tr>
-    <tr><td class="cmd"><b>NAT</b></td><td class="desc">router sharing one public IP among many private devices</td></tr>
+    <tr><td class="cmd"><b>NAT</b></td><td class="desc">router sharing one public IP among many private devices, via a rewrite table of <code>private IP:port ↔ public IP:port</code> rows</td></tr>
+    <tr><td class="cmd"><b>CGNAT</b></td><td class="desc">the same trick at ISP scale: hundreds of homes behind one IP</td></tr>
+    <tr><td class="cmd"><b>CIDR</b></td><td class="desc"><code>/N</code> range notation: /24 = 256 addresses, /32 = one host, /0 = everything</td></tr>
     <tr><td class="cmd"><b>Port</b></td><td class="desc">number selecting <i>which program</i> (22/53/80/443)</td></tr>
+    <tr><td class="cmd"><b>Ephemeral port</b></td><td class="desc">random high source port a client uses as its return address for one conversation</td></tr>
+    <tr><td class="cmd"><b>QUIC</b></td><td class="desc">TCP-style reliability rebuilt over UDP; the transport of HTTP/3</td></tr>
     <tr><td class="cmd"><b>MAC address</b></td><td class="desc">hardware ID for the local-network hop only</td></tr>
     <tr><td class="cmd"><b>DNS</b></td><td class="desc">name → IP lookup (resolver → root → TLD → authoritative)</td></tr>
     <tr><td class="cmd"><b>TTL</b></td><td class="desc">how long a DNS answer may be cached</td></tr>

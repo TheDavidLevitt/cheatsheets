@@ -68,6 +68,7 @@
   <a href="#roles">Roles</a>
   <a href="#sa">Service accounts</a>
   <a href="#adc">ADC &amp; gcloud auth</a>
+  <a href="#oauthmap">GCP ↔ OAuth</a>
   <a href="#three">Keys vs IAM vs APIs</a>
   <a href="#commands">Commands</a>
   <a href="#glossary">Glossary</a>
@@ -175,6 +176,9 @@
 <div class="callout good">
   <b>Memory hook:</b> basic = <i>blunt</i>, predefined = <i>precise</i>, custom = <i>crafted</i>. The exam's least-privilege ladder runs blunt → precise → crafted; climb only as far as you must.
 </div>
+<div class="callout warn">
+  <b>Cloud Storage ACLs (Access Control Lists):</b> a legacy, storage-only permission system that predates IAM and runs <i>in parallel</i> with it — access is granted if <b>either</b> allows. Prefer <b>uniform bucket-level access</b>, which disables ACLs so IAM is the single source of truth — see the <a href="gcp_databases_storage_cheatsheet.html">storage sheet</a>.
+</div>
 
 <!-- ============ SERVICE ACCOUNTS ============ -->
 <h2 id="sa">3 · Service accounts — non-human identities</h2>
@@ -246,8 +250,30 @@ ERROR: could not find default credentials</code></pre>
   <b>Managed-account reauth (the <code>invalid_rapt</code> error):</b> Workspace / Cloud Identity admins can enforce <b>session control</b> — cloud sessions expire (e.g. every 16 h) even though the refresh token exists. Symptom: commands that worked yesterday fail with <code>invalid_rapt</code> (ReAuth Proof Token) or "reauthentication required". <b>Fix: just log in again</b> — <code>gcloud auth login</code> and/or <code>gcloud auth application-default login</code>, matching whichever store expired. Personal gmail.com accounts never see this.
 </div>
 
+<!-- ============ GCP ↔ OAUTH ============ -->
+<h2 id="oauthmap">5 · How GCP auth maps to OAuth</h2>
+<p class="lead">Everything in §4 is plain <b>OAuth 2.0</b> (the open delegation standard — actors, flows, and token mechanics in the companion <a href="authentication_cheatsheet.html">Authentication &amp; OAuth sheet</a>) wearing Google branding. Decoder ring:</p>
+<div class="card">
+  <table>
+    <tr><th>GCP thing</th><th>What it is in OAuth terms</th></tr>
+    <tr><td class="cmd"><code>gcloud auth login</code></td><td class="desc">a textbook <b>authorization-code flow</b>: gcloud opens your browser, you log in and consent at <code>accounts.google.com</code> (the authorization server), gcloud receives the code on a localhost redirect and swaps it for tokens</td></tr>
+    <tr><td class="cmd">cached credential on disk</td><td class="desc">the <b>refresh token</b> from that flow — long-lived minter, which is why you log in once, not hourly</td></tr>
+    <tr><td class="cmd">what every API call sends</td><td class="desc">an <b>access token</b> — the short-lived (~1 h) bearer token in <code>Authorization: Bearer …</code>; <code>gcloud auth print-access-token</code> shows you one</td></tr>
+    <tr><td class="cmd">ADC</td><td class="desc"><b>not a credential type at all</b> — just a search convention for <i>finding</i> OAuth credentials (env var → well-known file → metadata server)</td></tr>
+    <tr><td class="cmd">reauth / <code>invalid_rapt</code></td><td class="desc">org session policy <b>freezing your refresh token</b> until you re-authenticate — the token exists but the authorization server refuses to mint from it</td></tr>
+    <tr><td class="cmd">service-account auth</td><td class="desc"><b>signed-JWT-for-token exchange</b> (client-credentials style, RFC 7523): the SA signs a JWT with its private key, the token endpoint returns an access token — no human, no consent screen</td></tr>
+    <tr><td class="cmd">Workload Identity Federation</td><td class="desc"><b>OIDC federation</b>: an external workload (GitHub Actions, AWS, another cloud's CI) presents <i>its own platform's</i> OIDC token as proof of identity, and Google exchanges it for GCP credentials — identity proven by federation, <b>no key file ever downloaded</b></td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>Legacy wrinkle — access scopes vs IAM:</b> VM <b>access scopes</b> (<code>--scopes=cloud-platform</code>) are OAuth <i>scopes</i> baked into the attached SA's tokens — a pre-IAM coarse filter on what the token may touch. Effective access = scopes ∩ IAM roles: a VM scoped to storage-read-only can't write to buckets even if its SA has Editor. Modern guidance: set <code>cloud-platform</code> (widest scope) and do all real access control with IAM roles — one precise system instead of two overlapping ones.
+</div>
+<div class="callout good">
+  <b>Why this mapping is worth owning:</b> once you see that gcloud login = auth-code flow, SA auth = signed-JWT exchange, and ADC = a lookup order, every "weird" GCP auth behavior becomes predictable from OAuth first principles — including why tokens expire hourly, why refresh tokens never hit APIs, and why key files are the outlier that breaks the model.
+</div>
+
 <!-- ============ THREE THINGS ============ -->
-<h2 id="three">5 · API keys vs IAM auth vs API enablement — three different things</h2>
+<h2 id="three">6 · API keys vs IAM auth vs API enablement — three different things</h2>
 <p class="lead">Three mechanisms that beginners blur into one "make the API work" blob. Disambiguate:</p>
 <div class="card">
   <table>
@@ -289,7 +315,7 @@ ERROR: could not find default credentials</code></pre>
 </div>
 
 <!-- ============ COMMANDS ============ -->
-<h2 id="commands">6 · Command quick reference</h2>
+<h2 id="commands">7 · Command quick reference</h2>
 <div class="card">
   <table>
     <tr><th>Command</th><th>Does</th></tr>
@@ -313,7 +339,7 @@ ERROR: could not find default credentials</code></pre>
 </div>
 
 <!-- ============ GLOSSARY ============ -->
-<h2 id="glossary">7 · Glossary recap</h2>
+<h2 id="glossary">8 · Glossary recap</h2>
 <div class="card">
   <table>
     <tr><td class="cmd"><b>IAM</b></td><td class="desc">Identity and Access Management — who can do what on which resource</td></tr>

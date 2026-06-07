@@ -296,6 +296,12 @@ Storing whole files (images, backups, logs)?    → Cloud Storage</code></pre>
       <tr><td class="cmd"><b>Signed URLs</b></td><td class="desc">time-limited tokenized links granting anyone (no Google account) GET/PUT on one object — how apps let users download private files or upload directly to the bucket</td></tr>
       <tr><td class="cmd"><b>Also know</b></td><td class="desc">uniform bucket-level access (IAM only, recommended) vs fine-grained ACLs; object versioning; <code>gsutil</code>/<code>gcloud storage</code> CLI; static-website hosting</td></tr>
     </table>
+    <div class="callout warn">
+      <b>ACLs — the legacy permission system.</b> An <b>ACL</b> (Access Control List) is Cloud Storage's pre-IAM permission model (2010, modeled on Amazon S3): a grant list attached to <i>each bucket and each object</i>, giving entities <code>READER</code>/<code>WRITER</code>/<code>OWNER</code>. Why it's not recommended: ACLs run <b>in parallel</b> with IAM — access is granted if <i>either</i> system allows it — so answering "who can read this object?" means checking every object's ACL on top of the IAM policy. Per-object grants sprawl over time, and an <code>allUsers</code> <code>READER</code> ACL is the classic accidental-public-exposure vector.
+    </div>
+    <div class="callout good">
+      <b>The fix &amp; exam answer: uniform bucket-level access.</b> A bucket setting that <b>disables ACLs</b> entirely, making IAM the single source of truth. Recommended default for new buckets, enforceable org-wide by org policy, and <b>irreversible 90 days after enabling</b>. Exam triggers: "centralize / simplify bucket permissions" → uniform bucket-level access. "Per-object access for individual users" → fine-grained access (ACLs) is the legacy answer, but signed URLs or redesigning the bucket layout is usually better.
+    </div>
     <p class="lead">Docs: <a href="https://cloud.google.com/storage/docs">cloud.google.com/storage/docs</a></p>
   </div>
 </details>

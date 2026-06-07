@@ -32,6 +32,7 @@ LAYOUT = {
         "system_architecture_cheatsheet.html",
         "networking_cheatsheet.html",
         "encryption_cheatsheet.html",
+        "authentication_cheatsheet.html",
         "ssh_cheatsheet.html",
         "cloud_comparison_cheatsheet.html",
         "@gcp",
@@ -67,6 +68,7 @@ GROUPS = {
             "gcp_compute_cheatsheet.html",
             "gcp_databases_storage_cheatsheet.html",
             "gcp_data_analytics_cheatsheet.html",
+            "gcp_networking_cheatsheet.html",
         ],
     },
 }
@@ -78,6 +80,7 @@ BLURBS = {
     "system_architecture_cheatsheet.html": "Everything between the silicon and your script: languages, kernels, containers.",
     "networking_cheatsheet.html": "How the internet works, packet by packet.",
     "encryption_cheatsheet.html": "When will your personal data be public?",
+    "authentication_cheatsheet.html": "OAuth, tokens, and why apps stopped asking for your password.",
     "ssh_cheatsheet.html": "A terminal on someone else's computer, safely.",
     "cloud_comparison_cheatsheet.html": "Same Lego bricks, three sticker sheets.",
     "azure_cheatsheet.html": "Microsoft's cloud — and the corporate data maze (SharePoint, Dataverse, Fabric).",
@@ -103,6 +106,7 @@ BLURBS = {
     "gcp_compute_cheatsheet.html": "VMs to serverless: the managed-vs-control spectrum.",
     "gcp_databases_storage_cheatsheet.html": "Which data goes in which box (and what it costs).",
     "gcp_data_analytics_cheatsheet.html": "Big data: from MapReduce lore to BigQuery bills.",
+    "gcp_networking_cheatsheet.html": "VPCs, subnets, firewall rules — the private roads between your machines.",
 }
 
 CARD = """      <a class="card" href="{href}" data-search="{search}" data-key="{key}">

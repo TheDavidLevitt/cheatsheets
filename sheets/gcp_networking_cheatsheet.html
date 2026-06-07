@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP VPC Networking Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+  .doclink{font-size:12px;color:var(--muted);margin:4px 0 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GCP VPC Networking Cheat Sheet</h1>
+<p class="sub">VPCs and subnets, CIDR decoded, internal vs external vs static IPs, firewall rules, the no-external-IP pattern (Cloud NAT + IAP), peering &amp; Shared VPC — at GCP Associate Cloud Engineer depth.</p>
+
+<nav class="mini">
+  <a href="#vpc">VPC</a>
+  <a href="#subnets">Subnets &amp; CIDR</a>
+  <a href="#ips">IP addresses</a>
+  <a href="#stacks">IPv4 / IPv6</a>
+  <a href="#firewall">Firewall rules</a>
+  <a href="#nat">Routes &amp; NAT</a>
+  <a href="#connect">Peering &amp; Shared VPC</a>
+  <a href="#commands">Commands</a>
+  <a href="#glossary">Glossary</a>
+</nav>
+
+<!-- ============ VPC ============ -->
+<h2 id="vpc">1 · VPC — your software-defined private network</h2>
+<p class="lead">A <b>VPC</b> (Virtual Private Cloud) is your own private network drawn in software on top of Google's physical one: a named container in which your VMs get private IP (Internet Protocol) addresses, talk to each other, and are walled off from every other customer. Every VM lives in exactly one VPC; firewall rules and routes are properties of the VPC, not of individual machines.</p>
+
+<div class="callout good">
+  <b>THE GCP quirk to hammer: VPCs are GLOBAL, subnets are REGIONAL.</b> One VPC spans every Google Cloud region on Earth; you carve regional subnets out of it where you need them. Two VMs in Tokyo and Belgium on the same VPC reach each other over private IPs on Google's backbone — no VPN (Virtual Private Network), no public internet. This <i>differs from AWS and Azure</i>, where a VPC/VNet is locked to one region and cross-region needs explicit peering. Exam questions love this asymmetry.
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Three subnet modes</h3>
+    <table>
+      <tr><th>Mode</th><th>What you get</th></tr>
+      <tr><td class="cmd"><b>Auto mode</b></td><td class="desc">GCP pre-creates one subnet in <i>every</i> region (out of <code>10.128.0.0/9</code>), and adds more as new regions launch. Convenient, wasteful, and its fixed ranges can collide with networks you later want to connect.</td></tr>
+      <tr><td class="cmd"><b>Custom mode</b></td><td class="desc">starts empty; you create only the subnets you need, with ranges you choose. <b>Best practice and the exam answer for production.</b> Auto → custom conversion is one-way (you can convert auto to custom, never back).</td></tr>
+      <tr><td class="cmd"><b>The <code>default</code> network</b></td><td class="desc">every new project ships with an auto-mode VPC named <code>default</code>, plus permissive starter firewall rules (allow SSH/RDP/ICMP from anywhere). Fine for labs; delete or replace it for anything real.</td></tr>
+    </table>
+    <p class="doclink"><a href="https://cloud.google.com/vpc/docs/vpc">docs: VPC overview</a></p>
+  </div>
+  <div class="card">
+    <h3>What lives at which scope</h3>
+    <table>
+      <tr><th>Global (per VPC)</th><th>Regional</th></tr>
+      <tr>
+        <td class="desc">the VPC itself · firewall rules · routes · VPC peering · internal DNS (Domain Name System) names</td>
+        <td class="desc">subnets · Cloud Routers · Cloud NAT gateways · regional static IPs</td>
+      </tr>
+    </table>
+    <p class="lead" style="margin-top:8px;"><b>Memory hook:</b> the VPC is the <i>country</i> (one set of laws = firewall rules everywhere); subnets are <i>cities</i> (each has a street plan = an IP range, and a location = a region). You pass laws once; you build streets city by city.</p>
+  </div>
+</div>
+
+<!-- ============ SUBNETS ============ -->
+<h2 id="subnets">2 · Subnets &amp; CIDR — slicing the address space</h2>
+<p class="lead">A <b>subnet</b> (subnetwork) is a regional slice of private IP space, defined by a <b>CIDR</b> (Classless Inter-Domain Routing) range. A VM's internal IP comes from the subnet it's attached to.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Decoding CIDR: <code>10.0.1.0/24</code></h3>
+    <p class="lead">An IPv4 address is 32 bits, written as four 8-bit decimal numbers (octets). The <code>/N</code> suffix says: <b>the first N bits are fixed</b> (the network part); the remaining <code>32−N</code> bits vary (the host part).</p>
+    <pre><code>10.0.1.0/24
+└──────┘ └┘
+network  24 bits fixed → 32−24 = 8 bits free
+         → 2⁸ = 256 addresses: 10.0.1.0 … 10.0.1.255
+
+smaller /N  = bigger block   (/16 → 65,536 addresses)
+bigger  /N  = smaller block  (/29 → 8 addresses, GCP's minimum)</code></pre>
+    <p class="lead"><b>GCP reserves 4 addresses per subnet:</b> the first two (network address + gateway) and the last two (second-to-last reserved, last = broadcast). A <code>/24</code> really gives you 252 usable VM addresses. <i>History hook:</i> "classless" replaced the rigid 1980s class A/B/C system (/8, /16, /24 only) in 1993 — CIDR lets you cut blocks at any bit boundary.</p>
+    <p class="doclink"><a href="https://cloud.google.com/vpc/docs/subnets">docs: subnets &amp; reserved addresses</a></p>
+  </div>
+  <div class="card">
+    <h3>RFC 1918 — the private ranges</h3>
+    <p class="lead"><b>RFC 1918</b> (Request for Comments 1918, the 1996 internet standard) sets aside three IPv4 blocks that are never routed on the public internet — everyone reuses them privately, which is why your home router and your VPC can both be <code>192.168.x.x</code> without conflict:</p>
+    <table>
+      <tr><td class="cmd"><code>10.0.0.0/8</code></td><td class="desc">~16.7M addresses — the usual choice for cloud VPCs</td></tr>
+      <tr><td class="cmd"><code>172.16.0.0/12</code></td><td class="desc">~1M addresses</td></tr>
+      <tr><td class="cmd"><code>192.168.0.0/16</code></td><td class="desc">~65k addresses — home-router territory</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;">Subnet ranges in one VPC must not overlap each other — and <i>plan ahead</i>: they also must not overlap any network you'll later peer or VPN to. Renumbering a live subnet is painful; a spreadsheet of allocated ranges is cheap.</p>
+  </div>
+  <div class="card">
+    <h3>Why multiple subnets at all?</h3>
+    <table>
+      <tr><td class="cmd"><b>Per-region presence</b></td><td class="desc">a VM must sit in a subnet in its own region — serving Europe and Asia means a subnet in each</td></tr>
+      <tr><td class="cmd"><b>Tier segmentation</b></td><td class="desc">separate web / app / database subnets so firewall rules can say "only the web subnet's range may reach the db subnet on tcp:5432"</td></tr>
+      <tr><td class="cmd"><b>IP-range planning</b></td><td class="desc">deliberate, non-overlapping blocks keep future peering, VPN, and hybrid connectivity possible</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;">Subnets can be <b>expanded</b> in place (<code>/24</code> → <code>/23</code>) without downtime — but never shrunk. Start modest.</p>
+  </div>
+</div>
+
+<!-- ============ IPS ============ -->
+<h2 id="ips">3 · IP addresses — internal, external, ephemeral, static</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Internal vs external</h3>
+    <table>
+      <tr><th>Internal IP</th><th>External IP</th></tr>
+      <tr>
+        <td class="desc">private (RFC 1918) address from the subnet's range; every VM has one; how VMs talk to each other inside the VPC; free</td>
+        <td class="desc">public, internet-routable address; <b>optional</b>; how the internet reaches the VM (and, without NAT, how the VM reaches the internet); billed</td>
+      </tr>
+    </table>
+    <p class="lead" style="margin-top:8px;">The VM itself only ever sees its internal IP (check <code>ip addr</code> inside — no public address there). The external IP is a <b>1-to-1 NAT</b> (Network Address Translation) mapping that Google's fabric performs at the edge.</p>
+  </div>
+  <div class="card">
+    <h3>Ephemeral vs static external IPs</h3>
+    <table>
+      <tr><td class="cmd"><b>Ephemeral</b> (default)</td><td class="desc">borrowed from Google's pool; <b>released when the VM stops</b> — restart and you get a <i>different</i> address. Greek <i>ephēmeros</i>, "lasting a day."</td></tr>
+      <tr><td class="cmd"><b>Static</b> (reserved)</td><td class="desc">an address you <i>reserve</i> by name; it stays yours across stops, restarts, even reattachment to a different VM — until you explicitly release it</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;"><b>When static matters:</b> a DNS A record pointing at the VM, a third-party webhook configured to call your endpoint, a partner's firewall allowlist with your address in it. Anything where someone <i>else</i> wrote your IP down. You can also <b>promote</b> a VM's current ephemeral IP to static in place (<code>addresses create --addresses=&lt;current-ip&gt;</code>).</p>
+    <p class="doclink"><a href="https://cloud.google.com/compute/docs/ip-addresses">docs: IP addresses</a></p>
+  </div>
+  <div class="card">
+    <h3>Wallet hooks</h3>
+    <table>
+      <tr><td class="cmd">External IPv4, in use</td><td class="desc">now billed (~$0.005/hr ≈ $3.6/month per address) — external IPs stopped being free in 2024</td></tr>
+      <tr><td class="cmd">Static IP, reserved but <b>unattached</b></td><td class="desc">bills <i>more</i> than one in use — the idle-reservation penalty. Release what you don't use.</td></tr>
+      <tr><td class="cmd">Internal IPs</td><td class="desc">free</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;"><b>The cheapest external IP is no external IP:</b> private VM + Cloud NAT for outbound + IAP (Identity-Aware Proxy) for admin SSH — the pattern diagrammed in §6.</p>
+  </div>
+</div>
+
+<!-- ============ STACKS ============ -->
+<h2 id="stacks">4 · Single-stack vs dual-stack — IPv4 and IPv6</h2>
+<div class="card">
+  <p class="lead"><b>Why two protocols exist:</b> IPv4 addresses are 32-bit → only ~4.3 billion of them, and the pool is exhausted (the last free blocks were handed out in 2011–2019). NAT everywhere is the workaround: thousands of private devices hide behind one public IPv4. <b>IPv6</b> uses 128-bit addresses (written hex, e.g. <code>2600:1900:4000::1</code>) → ~3.4×10³⁸ of them, effectively unlimited — every device can have a globally unique address and NAT becomes unnecessary. Adoption is the slow part, hence the transition strategy: <b>dual-stack</b>, where a machine speaks both protocols at once.</p>
+  <table>
+    <tr><td class="cmd"><b>Single-stack</b> (GCP default)</td><td class="desc">IPv4 only — the default for every subnet and VM</td></tr>
+    <tr><td class="cmd"><b>Dual-stack</b></td><td class="desc">IPv4 + IPv6, opted into <i>per subnet</i> (<code>--stack-type=IPV4_IPV6</code>) and then per VM; the VM gets a <code>/96</code> IPv6 range alongside its IPv4 address</td></tr>
+  </table>
+  <p class="lead" style="margin-top:8px;"><b>ACE depth:</b> recognize that the option exists, know the default is single-stack IPv4, and know dual-stack is enabled at the subnet level. Don't memorize IPv6 internals for this exam.</p>
+  <p class="doclink"><a href="https://cloud.google.com/vpc/docs/ipv6-support">docs: IPv6 support</a></p>
+</div>
+
+<!-- ============ FIREWALL ============ -->
+<h2 id="firewall">5 · Firewall rules — the VPC's bouncer</h2>
+<p class="lead">GCP firewall rules are defined <b>at the VPC level</b> and enforced at every VM — there's no separate appliance to install. They are <b>stateful</b>: if a connection is allowed in, its reply traffic is automatically allowed back out (and vice versa). You never write a "reply" rule.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Anatomy of a rule</h3>
+    <table>
+      <tr><td class="cmd"><b>Direction</b></td><td class="desc"><code>INGRESS</code> (incoming, the default) or <code>EGRESS</code> (outgoing)</td></tr>
+      <tr><td class="cmd"><b>Action</b></td><td class="desc"><code>allow</code> or <code>deny</code></td></tr>
+      <tr><td class="cmd"><b>Targets</b></td><td class="desc">which VMs the rule applies to: all instances, <b>network tags</b> (labels like <code>web-server</code> you stick on VMs), or <b>service accounts</b> (sturdier — tags can be edited by anyone with VM access; SA targeting follows identity)</td></tr>
+      <tr><td class="cmd"><b>Source / destination</b></td><td class="desc">CIDR ranges, tags, or service accounts (e.g. ingress <i>from</i> <code>203.0.113.7/32</code>)</td></tr>
+      <tr><td class="cmd"><b>Protocol : port</b></td><td class="desc"><code>tcp:22</code>, <code>tcp:80,443</code>, <code>icmp</code>, <code>all</code></td></tr>
+      <tr><td class="cmd"><b>Priority</b></td><td class="desc">integer 0–65535; <b>lower number = stronger</b> (evaluated first; first match wins). Default 1000.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>The two implied rules (priority 65535)</h3>
+    <table>
+      <tr><td class="cmd"><b>Implied deny all ingress</b></td><td class="desc">nothing gets in unless a rule allows it — a brand-new custom VPC is closed to the world</td></tr>
+      <tr><td class="cmd"><b>Implied allow all egress</b></td><td class="desc">everything may leave unless a rule denies it</td></tr>
+    </table>
+    <p class="lead" style="margin-top:8px;"><b>Memory hook:</b> the default posture is a one-way mirror — VMs can look out, nobody can look in. Sitting at the weakest possible priority (65535), the implied rules lose to any rule you write.</p>
+    <p class="lead">"My VM is unreachable" debugging order: is there an <i>allow ingress</i> rule for that port, with a target (tag/SA) the VM actually has, from a source range that includes the caller?</p>
+  </div>
+  <div class="card">
+    <h3>The three classic rules</h3>
+    <pre><code># SSH, but only from your own address
+gcloud compute firewall-rules create allow-ssh-admin \
+  --network=prod-vpc --direction=INGRESS --action=ALLOW \
+  --rules=tcp:22 --source-ranges=203.0.113.7/32 \
+  --target-tags=ssh-allowed
+
+# web traffic from anywhere
+gcloud compute firewall-rules create allow-http \
+  --network=prod-vpc --allow=tcp:80,tcp:443 \
+  --source-ranges=0.0.0.0/0 --target-tags=web-server
+
+# IAP's fixed source range (the no-external-IP pattern, §6)
+gcloud compute firewall-rules create allow-iap-ssh \
+  --network=prod-vpc --allow=tcp:22 \
+  --source-ranges=35.235.240.0/20</code></pre>
+    <p class="lead"><code>0.0.0.0/0</code> = "every IPv4 address" (0 fixed bits); <code>/32</code> = exactly one address. <code>35.235.240.0/20</code> is Google's fixed IAP range — the one CIDR worth memorizing.</p>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Exam trap:</b> firewall rules don't conflict by order written — only by <b>priority number</b>. A <code>deny tcp:22</code> at priority 900 beats an <code>allow tcp:22</code> at priority 1000, regardless of creation order. Equal priority: deny wins.
+</div>
+<p class="doclink"><a href="https://cloud.google.com/firewall/docs/firewalls">docs: VPC firewall rules</a></p>
+
+<!-- ============ NAT ============ -->
+<h2 id="nat">6 · Routes &amp; Cloud NAT — the no-external-IP pattern</h2>
+<p class="lead"><b>Routes</b> tell packets leaving a VM where to go next. Every VPC auto-creates a route per subnet (keeps internal traffic internal) plus a <b>default route</b> to <code>0.0.0.0/0</code> via the internet gateway. But the internet gateway only carries traffic for VMs that <i>have an external IP</i> — a private-only VM hits the default route and goes nowhere. Enter Cloud NAT.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Cloud NAT — outbound-only internet</h3>
+    <p class="lead"><b>Cloud NAT</b> is a regional, fully managed NAT service: it lets private VMs initiate outbound connections (pull OS updates, call external APIs) by translating their private source addresses to a pool of public IPs it manages. Crucially it is <b>outbound-only</b> — it never accepts inbound connections, so the VMs remain unreachable from the internet. It rides on a <b>Cloud Router</b> (the regional control-plane resource that hosts it; no VM to manage, no single point of failure).</p>
+    <table>
+      <tr><td class="cmd">Outbound (VM → internet)</td><td class="desc">✔ allowed, source-translated by NAT</td></tr>
+      <tr><td class="cmd">Inbound (internet → VM)</td><td class="desc">✘ impossible — no listening address exists</td></tr>
+      <tr><td class="cmd">Admin SSH</td><td class="desc">via IAP tunnel — Google's proxy checks your identity, then forwards to the <i>internal</i> IP</td></tr>
+    </table>
+    <p class="doclink"><a href="https://cloud.google.com/nat/docs/overview">docs: Cloud NAT</a> · <a href="https://cloud.google.com/iap/docs/using-tcp-forwarding">IAP TCP forwarding</a></p>
+  </div>
+  <div class="card">
+    <h3>The architecture, drawn</h3>
+    <pre><code>            INTERNET
+          ▲          │
+ outbound │          │ admin SSH
+   only   │          ▼
+ ┌────────┴───┐  ┌─────────────┐
+ │ Cloud NAT  │  │ IAP proxy   │ ← checks Google
+ │ (on Cloud  │  │ 35.235.240. │   identity + IAM
+ │  Router)   │  │ 0/20        │
+ └────────▲───┘  └──────┬──────┘
+          │             │ tcp:22 (firewall
+┌─────────┼─────────────┼─────────────────┐
+│ VPC     │             ▼     allows IAP) │
+│  ┌──────┴──────────────────────┐        │
+│  │ subnet 10.0.1.0/24          │        │
+│  │  ┌───────────────────────┐  │        │
+│  │  │ my-vm-01              │  │        │
+│  │  │ internal 10.0.1.5     │  │        │
+│  │  │ external IP: NONE     │  │        │
+│  │  └───────────────────────┘  │        │
+│  └─────────────────────────────┘        │
+└──────────────────────────────────────────┘</code></pre>
+  </div>
+</div>
+<div class="callout good">
+  <b>Why this is the answer:</b> zero internet-facing attack surface (no port 22 exposed, no port anything), zero external-IP cost, full outbound connectivity, and SSH gated by IAM (Identity and Access Management) instead of by whoever finds the address. "Most secure way to give private VMs internet access / SSH" on the exam → Cloud NAT + IAP.
+</div>
+
+<!-- ============ CONNECT ============ -->
+<h2 id="connect">7 · Connecting VPCs — peering &amp; Shared VPC (recognition level)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>VPC Network Peering</h3>
+    <p class="lead">Connects <b>two VPCs</b> (same or different projects, even different organizations) so they exchange traffic over private internal IPs — no public internet, no VPN, no gateway hardware. Both sides must configure the peering; each keeps its own firewall rules and administration. <b>Not transitive:</b> A↔B and B↔C does <i>not</i> give A↔C. And it only works if the CIDR ranges <b>don't overlap</b> — the payoff of the range planning in §2.</p>
+    <p class="doclink"><a href="https://cloud.google.com/vpc/docs/vpc-peering">docs: VPC peering</a></p>
+  </div>
+  <div class="card">
+    <h3>Shared VPC</h3>
+    <p class="lead">One <b>host project</b> in an organization owns the VPC; multiple <b>service projects</b> attach to it and create their resources (VMs, etc.) directly in the host's subnets. One network team administers subnets, firewall rules, and routes centrally; application teams keep separate projects (and separate billing/IAM) without each building a network. Exam cue: <i>"central network administration across many projects in an org"</i> → Shared VPC; <i>"connect two existing networks privately"</i> → peering.</p>
+    <p class="doclink"><a href="https://cloud.google.com/vpc/docs/shared-vpc">docs: Shared VPC</a></p>
+  </div>
+</div>
+
+<!-- ============ COMMANDS ============ -->
+<h2 id="commands">8 · Command quick reference</h2>
+<p class="lead">Grammar reminder: <code>gcloud compute &lt;resource&gt; &lt;verb&gt; [name] [--flags]</code>. Networks are global (no flag); subnets, addresses, routers, and NAT take <code>--region</code>.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><code>gcloud compute networks create prod-vpc --subnet-mode=custom</code></td><td class="desc">new empty custom-mode VPC (vs <code>--subnet-mode=auto</code>)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute networks list</code> / <code>describe prod-vpc</code></td><td class="desc">inventory / details of VPCs</td></tr>
+    <tr><td class="cmd"><code>gcloud compute networks subnets create web-subnet --network=prod-vpc --region=europe-west1 --range=10.0.1.0/24</code></td><td class="desc">carve a regional subnet out of the VPC</td></tr>
+    <tr><td class="cmd"><code>gcloud compute networks subnets expand-ip-range web-subnet --region=europe-west1 --prefix-length=23</code></td><td class="desc">grow a subnet in place (/24 → /23); never shrinks</td></tr>
+    <tr><td class="cmd"><code>gcloud compute addresses create web-static-ip --region=europe-west1</code></td><td class="desc">reserve a regional static external IP (add <code>--addresses=&lt;ip&gt;</code> to promote a VM's current ephemeral one)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute addresses list</code></td><td class="desc">all reserved IPs + status — <code>RESERVED</code> means unattached and billing extra</td></tr>
+    <tr><td class="cmd"><code>gcloud compute addresses delete web-static-ip --region=europe-west1</code></td><td class="desc">release a static IP (stops the idle billing)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute firewall-rules create allow-http --network=prod-vpc --allow=tcp:80 --source-ranges=0.0.0.0/0 --target-tags=web-server</code></td><td class="desc">allow ingress web traffic to tagged VMs</td></tr>
+    <tr><td class="cmd"><code>gcloud compute firewall-rules list --filter="network=prod-vpc"</code></td><td class="desc">audit a VPC's rules</td></tr>
+    <tr><td class="cmd"><code>gcloud compute routers create prod-router --network=prod-vpc --region=europe-west1</code></td><td class="desc">the Cloud Router that will host NAT</td></tr>
+    <tr><td class="cmd"><code>gcloud compute routers nats create prod-nat --router=prod-router --region=europe-west1 --auto-allocate-nat-external-ips --nat-all-subnet-ip-ranges</code></td><td class="desc">Cloud NAT for every subnet in the region — outbound internet for private VMs</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances create my-vm-01 --subnet=web-subnet --no-address --zone=europe-west1-b</code></td><td class="desc"><code>--no-address</code> = no external IP — the §6 pattern's VM</td></tr>
+    <tr><td class="cmd"><code>gcloud compute ssh my-vm-01 --zone=europe-west1-b --tunnel-through-iap</code></td><td class="desc">SSH into that private VM via IAP</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>VPC</b></td><td class="desc">Virtual Private Cloud — your software-defined private network; <b>global</b> in GCP</td></tr>
+    <tr><td class="cmd"><b>Subnet</b></td><td class="desc"><b>regional</b> slice of private IP space, defined by a CIDR range; 4 addresses reserved</td></tr>
+    <tr><td class="cmd"><b>CIDR</b></td><td class="desc">Classless Inter-Domain Routing — <code>a.b.c.d/N</code>; N fixed bits, 2^(32−N) addresses</td></tr>
+    <tr><td class="cmd"><b>RFC 1918</b></td><td class="desc">the three never-public IPv4 ranges: <code>10/8</code>, <code>172.16/12</code>, <code>192.168/16</code></td></tr>
+    <tr><td class="cmd"><b>Ephemeral IP</b></td><td class="desc">pool-borrowed external IP, released on VM stop — new address on restart</td></tr>
+    <tr><td class="cmd"><b>Static IP</b></td><td class="desc">reserved external IP, yours until released; unattached ones bill extra</td></tr>
+    <tr><td class="cmd"><b>NAT</b></td><td class="desc">Network Address Translation — private addresses share/translate to public ones</td></tr>
+    <tr><td class="cmd"><b>Cloud NAT</b></td><td class="desc">managed, regional, <b>outbound-only</b> NAT for private VMs; rides on a Cloud Router</td></tr>
+    <tr><td class="cmd"><b>IAP</b></td><td class="desc">Identity-Aware Proxy — IAM-checked tunnel to internal IPs; source range <code>35.235.240.0/20</code></td></tr>
+    <tr><td class="cmd"><b>Stateful firewall</b></td><td class="desc">allowed connections automatically allow their reply traffic</td></tr>
+    <tr><td class="cmd"><b>Implied rules</b></td><td class="desc">deny-all-ingress + allow-all-egress, both at weakest priority 65535</td></tr>
+    <tr><td class="cmd"><b>Network tag</b></td><td class="desc">label on a VM that firewall rules target (e.g. <code>web-server</code>)</td></tr>
+    <tr><td class="cmd"><b>Dual-stack</b></td><td class="desc">subnet/VM speaking IPv4 + IPv6; GCP default is single-stack IPv4</td></tr>
+    <tr><td class="cmd"><b>VPC peering</b></td><td class="desc">private link between two VPCs; non-transitive; ranges must not overlap</td></tr>
+    <tr><td class="cmd"><b>Shared VPC</b></td><td class="desc">host project owns the network; service projects in the org deploy into it</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/vpc/docs/vpc">VPC overview</a> ·
+  <a href="https://cloud.google.com/vpc/docs/subnets">subnets</a> ·
+  <a href="https://cloud.google.com/compute/docs/ip-addresses">IP addresses</a> ·
+  <a href="https://cloud.google.com/vpc/docs/ipv6-support">IPv6 support</a> ·
+  <a href="https://cloud.google.com/firewall/docs/firewalls">firewall rules</a> ·
+  <a href="https://cloud.google.com/vpc/docs/routes">routes</a> ·
+  <a href="https://cloud.google.com/nat/docs/overview">Cloud NAT</a> ·
+  <a href="https://cloud.google.com/iap/docs/using-tcp-forwarding">IAP TCP forwarding</a> ·
+  <a href="https://cloud.google.com/vpc/docs/vpc-peering">VPC peering</a> ·
+  <a href="https://cloud.google.com/vpc/docs/shared-vpc">Shared VPC</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/compute/networks">gcloud networks reference</a>
+</p>
+
+</div>
+</body>
+</html>

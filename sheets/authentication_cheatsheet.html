@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Authentication &amp; OAuth Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+
+  /* sequence diagram */
+  .seq{background:var(--code);border:1px solid var(--border);border-radius:8px;
+    padding:14px 12px;font-size:12.5px;overflow-x:auto;}
+  .seq .lanes{display:grid;grid-template-columns:repeat(4,1fr);gap:0;min-width:560px;}
+  .seq .actor{text-align:center;font-weight:600;color:var(--accent);
+    border-bottom:2px solid var(--border);padding-bottom:6px;margin-bottom:4px;font-size:12px;}
+  .seq .actor small{display:block;font-weight:400;color:var(--muted);font-size:11px;}
+  .seq .step{display:grid;grid-template-columns:repeat(4,1fr);gap:0;min-width:560px;align-items:center;}
+  .seq .msg{position:relative;padding:5px 8px;margin:3px 0;color:var(--ink);
+    border-bottom:1px dashed var(--border);}
+  .seq .msg.r::after{content:"▶";color:var(--accent);position:absolute;right:-6px;bottom:-7px;font-size:10px;}
+  .seq .msg.l::before{content:"◀";color:var(--accent2);position:absolute;left:-6px;bottom:-7px;font-size:10px;}
+  .seq .msg small{color:var(--muted);display:block;font-size:11px;}
+  .seq .num{display:inline-block;background:var(--kbd);border-radius:50%;width:18px;height:18px;
+    text-align:center;line-height:18px;font-size:11px;color:var(--accent);margin-right:5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Authentication &amp; OAuth — how login actually works</h1>
+<p class="sub">From "who are you?" to "Sign in with Google": OAuth 2.0 actors and flows, access / refresh / ID tokens, OIDC, JWT anatomy, scopes — and how every credential you've ever used compares.</p>
+
+<nav class="mini">
+  <a href="#authn">AuthN vs AuthZ</a>
+  <a href="#darkage">Pre-OAuth</a>
+  <a href="#actors">OAuth actors</a>
+  <a href="#flows">Flows</a>
+  <a href="#tokens">Tokens</a>
+  <a href="#oidc">OIDC</a>
+  <a href="#jwt">JWT</a>
+  <a href="#scopes">Scopes</a>
+  <a href="#compare">Credential zoo</a>
+  <a href="#oneliners">One-liners</a>
+  <a href="#glossary">Glossary</a>
+</nav>
+
+<!-- ============ AUTHN VS AUTHZ ============ -->
+<h2 id="authn">0 · Authentication vs authorization — two different questions</h2>
+<div class="callout good">
+  <b>Authentication (AuthN)</b> answers <b>"who are you?"</b> — proving an identity.
+  <b>Authorization (AuthZ)</b> answers <b>"what may you do?"</b> — granting capabilities to that identity.
+  Airport version: showing your passport at the gate is authentication; whether your ticket says <i>economy</i> or <i>cockpit</i> is authorization.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Why the distinction matters</h3>
+    <p class="lead">The two are implemented by <i>different systems</i> that are easy to blur. A login form, a fingerprint reader, and a one-time code are all AuthN. An IAM (Identity and Access Management) policy, a file's permission bits, and an OAuth scope are all AuthZ. Confusing them produces classic bugs: a perfectly authenticated user reaching admin pages (missing AuthZ check), or AuthZ rules keyed to a username nobody verified (missing AuthN).</p>
+  </div>
+  <div class="card">
+    <h3>The twist that powers this whole sheet</h3>
+    <p class="lead"><b>OAuth 2.0 is an <i>authorization</i> protocol</b> — its job is delegating access ("this app may read my calendar"), not proving identity. The identity layer was bolted on later as <b>OIDC</b> (OpenID Connect, §5). Etymology check: the name "OAuth" comes from <i>Open Authorization</i> — the AuthZ half is right there in the name. Keep that in mind and half the confusion in this domain evaporates.</p>
+  </div>
+</div>
+<p class="lead">Docs: <a href="https://auth0.com/docs/get-started/identity-fundamentals/authentication-and-authorization">Auth0 — authentication vs authorization</a></p>
+
+<!-- ============ DARK AGE ============ -->
+<h2 id="darkage">1 · The pre-OAuth dark age — the password anti-pattern</h2>
+<p class="lead">Circa 2006, a new app that wanted to read your Gmail contacts or post to your Twitter had exactly one option: <b>ask for your actual password</b> and log in <i>as you</i>.</p>
+<div class="callout warn">
+  <b>Why password-sharing is catastrophic, point by point:</b>
+  <table>
+    <tr><td class="cmd"><b>Total access</b></td><td class="desc">the app didn't get "read contacts" — it got <i>everything</i>: read mail, send mail, delete the account. No way to scope down.</td></tr>
+    <tr><td class="cmd"><b>No revocation</b></td><td class="desc">the only way to cut one app off was to change your password — which broke <i>every</i> app at once.</td></tr>
+    <tr><td class="cmd"><b>Storage liability</b></td><td class="desc">the app had to store your password (often plaintext) to keep working. Every such app was a breach waiting to happen.</td></tr>
+    <tr><td class="cmd"><b>No attribution</b></td><td class="desc">the provider couldn't tell the app's requests from yours — no per-app audit trail, no per-app rate limits.</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>History hook:</b> OAuth was born in 2006–07 out of exactly this pain — Twitter (Blaine Cook, working on OpenID) and Ma.gnolia needed a way for third-party apps to act on a user's behalf <i>without</i> the password. OAuth 1.0 shipped in 2007 (RFC 5849); the simpler, TLS-reliant <b>OAuth 2.0</b> (RFC 6749, 2012) replaced it and is what everyone means by "OAuth" today. The problem statement was never "how do users log in" — it was <b>"how do we delegate limited access without handing over the keys"</b>.
+</div>
+<p class="lead">Docs: <a href="https://datatracker.ietf.org/doc/html/rfc6749">RFC 6749 — The OAuth 2.0 Authorization Framework</a></p>
+
+<!-- ============ ACTORS ============ -->
+<h2 id="actors">2 · OAuth 2.0 — four actors, one valet key</h2>
+<p class="lead">OAuth 2.0 is a <b>delegation framework</b>: a way for you to grant an app limited, revocable access to your stuff held by a third party. Four roles appear in every flow:</p>
+<div class="card">
+  <table>
+    <tr><th>Actor</th><th>RFC name</th><th>Who it is</th></tr>
+    <tr><td class="cmd"><b>You</b></td><td class="cmd">Resource owner</td><td class="desc">the human who owns the data and can consent to sharing it</td></tr>
+    <tr><td class="cmd"><b>The app</b></td><td class="cmd">Client</td><td class="desc">the application that wants access — a web app, mobile app, or CLI (command-line interface) tool. "Client" here means <i>client of the authorization server</i>, not your browser.</td></tr>
+    <tr><td class="cmd"><b>The ID desk</b></td><td class="cmd">Authorization server</td><td class="desc">where you authenticate and consent; it mints tokens (e.g. <code>accounts.google.com</code>)</td></tr>
+    <tr><td class="cmd"><b>The API</b></td><td class="cmd">Resource server</td><td class="desc">the service holding your data; it accepts tokens instead of passwords (e.g. <code>gmail.googleapis.com</code>)</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>The valet-key analogy (the canonical one):</b> a luxury car's valet key starts the engine but won't open the trunk or glovebox, and you can take it back anytime. An OAuth <b>access token</b> is a valet key for your data: <b>scoped</b> (only what was consented), <b>revocable</b> (cut off one app without touching others), and <b>expiring</b> (useless after ~an hour even if stolen). That triple — scoped, revocable, expiring — is the entire upgrade over password-sharing, and the key insight of this sheet.
+</div>
+<p class="lead">Docs: <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-1.1">RFC 6749 §1.1 — roles</a> · <a href="https://developers.google.com/identity/protocols/oauth2">Google — Using OAuth 2.0</a></p>
+
+<!-- ============ FLOWS ============ -->
+<h2 id="flows">3 · Flows — choreographies for getting a token</h2>
+<p class="lead">A <b>flow</b> (RFC term: <i>grant type</i>) is the choreography by which a client obtains tokens. Pick by what kind of client you are:</p>
+<div class="grid">
+  <div class="card">
+    <h3>Authorization Code + PKCE — today's standard</h3>
+    <p class="lead">For anything with a user and a browser: web apps, mobile apps, CLIs that pop a browser tab. The client never sees your password; it receives a one-time <b>authorization code</b> via browser redirect and swaps it for tokens over a back channel. <b>PKCE</b> (Proof Key for Code Exchange, RFC 7636, pronounced "pixy") adds a per-request secret so a stolen code is worthless — originally for mobile apps that can't keep a client secret, now recommended for <i>every</i> client.</p>
+  </div>
+  <div class="card">
+    <h3>Client Credentials — machine-to-machine</h3>
+    <p class="lead">No human at all: a backend service authenticates <i>as itself</i> (client ID + secret, or a signed assertion) and gets a token for its own access. This is the shape of service-to-service auth everywhere — including GCP service accounts (see the <a href="gcp_iam_auth_cheatsheet.html#oauthmap">GCP IAM sheet</a>).</p>
+  </div>
+  <div class="card">
+    <h3>Device Flow — TVs &amp; keyboards-from-hell</h3>
+    <p class="lead">RFC 8628, for devices where typing a password is misery (TVs, consoles, IoT). The device shows a short code (<code>WDJB-MJHT</code>) and a URL; you finish login on your phone; the device polls until the authorization server says yes. You've done this every time you signed into a streaming app on a TV.</p>
+  </div>
+  <div class="card">
+    <h3>Implicit — deprecated, recognize and avoid</h3>
+    <p class="lead">The old single-page-app shortcut: tokens returned <i>directly in the redirect URL fragment</i>, skipping the code exchange. Tokens leaked via browser history, referrer headers, and JavaScript. OAuth 2.0 Security Best Current Practice (RFC 9700) says: don't. Use Authorization Code + PKCE instead. If a tutorial shows <code>response_type=token</code>, it's a museum piece.</p>
+  </div>
+</div>
+
+<h3 style="font-size:14px;margin:18px 0 8px;">The authorization-code dance, step by step</h3>
+<div class="seq">
+  <div class="lanes">
+    <div class="actor">You + browser<small>resource owner</small></div>
+    <div class="actor">App<small>client</small></div>
+    <div class="actor">Auth server<small>the ID desk</small></div>
+    <div class="actor">API<small>resource server</small></div>
+  </div>
+  <div class="step">
+    <div class="msg r"><span class="num">1</span>click "Connect"<small>app redirects browser →</small></div>
+    <div></div><div></div><div></div>
+  </div>
+  <div class="step">
+    <div></div>
+    <div class="msg r"><span class="num">2</span>redirect to auth server<small>with client_id, scopes, redirect_uri, PKCE challenge</small></div>
+    <div></div><div></div>
+  </div>
+  <div class="step">
+    <div class="msg l"><span class="num">3</span>login + consent screen<small>"App X wants to: read your calendar"</small></div>
+    <div></div><div></div><div></div>
+  </div>
+  <div class="step">
+    <div class="msg r"><span class="num">4</span>approve<small>browser redirected back with one-time <b>code</b></small></div>
+    <div></div><div></div><div></div>
+  </div>
+  <div class="step">
+    <div></div>
+    <div class="msg r"><span class="num">5</span>code + PKCE verifier → tokens<small>back channel, browser not involved</small></div>
+    <div></div><div></div>
+  </div>
+  <div class="step">
+    <div></div>
+    <div class="msg l"><span class="num">6</span>access token (+ refresh token)<small>auth server mints them</small></div>
+    <div></div><div></div>
+  </div>
+  <div class="step">
+    <div></div><div></div>
+    <div class="msg r"><span class="num">7</span><code>Authorization: Bearer &lt;token&gt;</code><small>app calls the API with the token</small></div>
+    <div></div>
+  </div>
+</div>
+<div class="callout">
+  <b>Why the two-channel split?</b> The <b>front channel</b> (browser redirects, steps 2–4) is observable — URLs land in history, logs, referrers — so it only ever carries the short-lived, single-use <i>code</i>. The <b>back channel</b> (server-to-server HTTPS, steps 5–6) carries the actual tokens. PKCE welds the two halves together: the app invents a random secret, sends its hash in step 2, and reveals the secret in step 5 — so an attacker who steals the code from the front channel can't cash it in.
+</div>
+<p class="lead">Docs: <a href="https://datatracker.ietf.org/doc/html/rfc7636">RFC 7636 — PKCE</a> · <a href="https://datatracker.ietf.org/doc/html/rfc8628">RFC 8628 — Device flow</a> · <a href="https://datatracker.ietf.org/doc/html/rfc9700">RFC 9700 — OAuth 2.0 Security BCP</a> · <a href="https://oauth.net/2/grant-types/">oauth.net — grant types</a></p>
+
+<!-- ============ TOKENS ============ -->
+<h2 id="tokens">4 · Tokens — the three you'll meet</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Access token — the concert wristband</h3>
+    <p class="lead">Short-lived (commonly ~1 h), sent on every API call in the <code>Authorization: Bearer …</code> header. A <b>bearer</b> token means exactly what it sounds like: <i>whoever bears it, wins</i> — the API doesn't ask the holder to prove anything else, just like a festival wristband gets anyone wearing it through the gate.</p>
+  </div>
+  <div class="card">
+    <h3>Refresh token — the key to the mint</h3>
+    <p class="lead">Long-lived, stored by the client, <b>never sent to the resource server</b>. Its only job: go back to the authorization server and mint fresh access tokens, so the user isn't re-prompted every hour. Revoking an app = invalidating its refresh token. (This is exactly what <code>gcloud auth login</code> stores on disk.)</p>
+  </div>
+  <div class="card">
+    <h3>ID token — the introduction card</h3>
+    <p class="lead">An OIDC addition (§5): a <b>JWT</b> (§6) <i>about who you are</i> — name, email, issuer — addressed to the client itself, not to any API. Use it to log the user in; use the <i>access</i> token to call APIs. Sending an ID token to an API is the classic token mix-up.</p>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Bearer risk → two mitigations.</b> Since possession is everything, a stolen bearer token is a stolen identity for its lifetime. Defenses: <b>① short lifetimes</b> (an hour of exposure, not a year — the refresh token, which never travels to APIs, absorbs the long-lived role) and <b>② TLS (Transport Layer Security) everywhere</b>, so tokens are never readable in transit. This is also why OAuth 2.0 could drop OAuth 1.0's painful per-request cryptographic signatures: it outsourced confidentiality to HTTPS.
+</div>
+<p class="lead">Docs: <a href="https://datatracker.ietf.org/doc/html/rfc6750">RFC 6750 — Bearer token usage</a> · <a href="https://oauth.net/2/refresh-tokens/">oauth.net — refresh tokens</a></p>
+
+<!-- ============ OIDC ============ -->
+<h2 id="oidc">5 · OIDC — the identity layer on top of OAuth</h2>
+<div class="callout good">
+  <b>OIDC (OpenID Connect, 2014)</b> is a thin layer on OAuth 2.0 that turns a delegation protocol into a login protocol. The slogan worth memorizing:
+  <b>OAuth proves the app MAY access something; OIDC proves WHO you are.</b>
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>What OIDC adds to plain OAuth</h3>
+    <table>
+      <tr><td class="cmd"><b>ID token</b></td><td class="desc">a signed JWT carrying identity claims (who, issued by whom, when, for which app)</td></tr>
+      <tr><td class="cmd"><code>openid</code> scope</td><td class="desc">requesting it is what makes an OAuth flow an OIDC flow; add <code>profile</code>, <code>email</code> for more claims</td></tr>
+      <tr><td class="cmd"><b>UserInfo endpoint</b></td><td class="desc">standard API to fetch the user's profile with the access token</td></tr>
+      <tr><td class="cmd"><b>Discovery</b></td><td class="desc">a well-known URL (<code>/.well-known/openid-configuration</code>) where the provider publishes all its endpoints and keys</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>"Sign in with Google" = OIDC</h3>
+    <p class="lead">Every social-login button — Google, Microsoft, Apple, GitHub — is OIDC (or OIDC-shaped). The flow is the same authorization-code dance from §3; the app just asks for the <code>openid email profile</code> scopes and reads the ID token instead of (or in addition to) calling APIs. The provider is called an <b>IdP</b> (Identity Provider); the app is the <b>RP</b> (Relying Party). History hook: "OpenID" (2005) was a separate login protocol that lost; OIDC kept the brand and rebuilt the idea on OAuth 2.0's rails.</p>
+  </div>
+</div>
+<p class="lead">Docs: <a href="https://openid.net/specs/openid-connect-core-1_0.html">OIDC Core spec</a> · <a href="https://developers.google.com/identity/openid-connect/openid-connect">Google — OpenID Connect</a></p>
+
+<!-- ============ JWT ============ -->
+<h2 id="jwt">6 · JWT anatomy — header.payload.signature</h2>
+<p class="lead">A <b>JWT</b> (JSON Web Token, RFC 7519, pronounced "jot") is a self-contained token: three base64url-encoded segments joined by dots. Decode one at <a href="https://jwt.io">jwt.io</a> — it's just JSON.</p>
+<div class="callout">
+<pre><code>eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9 . eyJpc3MiOiJodHRwczovL2FjY291bnRzLi4uIn0 . SflKxwRJSMeKKF2QT4f…
+└────────── header ──────────┘  └───────── payload ─────────┘  └──── signature ────┘
+
+header   = {"alg": "RS256", "typ": "JWT"}          which signature algorithm
+payload  = {"iss": "https://accounts.google.com",   the CLAIMS (see below)
+            "sub": "10769150350006150715113082367",
+            "aud": "example-client-id-123.apps.googleusercontent.com",
+            "exp": 1767139200, "iat": 1767135600,
+            "email": "alex@example.com"}
+signature = RS256(header + "." + payload, issuer's private key)</code></pre>
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>The four claims to know</h3>
+    <table>
+      <tr><td class="cmd"><code>iss</code> issuer</td><td class="desc">who minted the token — verify it's the IdP you expect</td></tr>
+      <tr><td class="cmd"><code>sub</code> subject</td><td class="desc">stable unique ID of the user (use this, not email, as the primary key — emails change)</td></tr>
+      <tr><td class="cmd"><code>aud</code> audience</td><td class="desc">who the token is <i>for</i> — reject tokens addressed to another app (the "confused deputy" check)</td></tr>
+      <tr><td class="cmd"><code>exp</code> expiry</td><td class="desc">Unix timestamp after which the token is dead; <code>iat</code> = issued-at</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Why JWTs at all?</h3>
+    <p class="lead"><b>Stateless verification.</b> The resource server validates the signature against the issuer's published public keys (fetched once from the discovery URL) — no database lookup, no call back to the auth server, scales horizontally for free. Trade-off: a JWT can't be un-issued before <code>exp</code>, which is another reason lifetimes stay short.</p>
+  </div>
+</div>
+<div class="callout warn">
+  <b>Signed ≠ encrypted.</b> A standard JWT is only base64-<i>encoded</i> — anyone who obtains it can read every claim with one decode call. The signature guarantees <i>integrity</i> (nobody altered it) and <i>authenticity</i> (the issuer really minted it), <b>not confidentiality</b>. Never put secrets in JWT claims, and never confuse "it's a JWT" with "it's safe to leak".
+</div>
+<p class="lead">Docs: <a href="https://datatracker.ietf.org/doc/html/rfc7519">RFC 7519 — JWT</a> · <a href="https://jwt.io/introduction">jwt.io — introduction</a></p>
+
+<!-- ============ SCOPES ============ -->
+<h2 id="scopes">7 · Scopes &amp; consent screens</h2>
+<p class="lead">A <b>scope</b> is a named slice of access the client requests — the unit of "how much valet key". Space-separated strings in the auth request:</p>
+<div class="callout">
+<pre><code>scope=openid email https://www.googleapis.com/auth/calendar.readonly</code></pre>
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>How scopes behave</h3>
+    <table>
+      <tr><td class="cmd"><b>Requested</b></td><td class="desc">by the client in step 2 of the dance — ask for the minimum (least privilege applies to apps too)</td></tr>
+      <tr><td class="cmd"><b>Consented</b></td><td class="desc">by the user on the consent screen; the user (or provider) may grant fewer than asked</td></tr>
+      <tr><td class="cmd"><b>Baked in</b></td><td class="desc">to the access token; the resource server enforces them on every call</td></tr>
+      <tr><td class="cmd"><b>Not roles</b></td><td class="desc">scopes cap what the <i>app</i> may do on your behalf; they never expand beyond what <i>you</i> can do. App's power = your power ∩ granted scopes.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>The consent screen is the UI of OAuth</h3>
+    <p class="lead">That "App X wants to: see your email address, view your calendar" dialog is the resource owner's one moment of agency — it lists requested scopes in human words. Provider tip: scopes touching sensitive data (full Gmail, Drive) trigger heavier app-verification requirements from Google, which is why well-behaved apps ask for <code>*.readonly</code> slices. Review and revoke past grants at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+  </div>
+</div>
+<p class="lead">Docs: <a href="https://developers.google.com/identity/protocols/oauth2/scopes">Google — OAuth 2.0 scopes</a> · <a href="https://oauth.net/2/scope/">oauth.net — scope</a></p>
+
+<!-- ============ COMPARISON ============ -->
+<h2 id="compare">8 · The credential zoo — side by side</h2>
+<p class="lead">Five things that all "log you in" but work on different principles:</p>
+<div class="card">
+  <table style="font-size:12.8px;">
+    <tr><th></th><th>API key</th><th>OAuth access token</th><th>Session cookie</th><th>SSH key</th><th>Service-account auth</th></tr>
+    <tr>
+      <td class="cmd"><b>What it is</b></td>
+      <td class="desc">static opaque string</td>
+      <td class="desc">short-lived bearer credential</td>
+      <td class="desc">browser-held pointer to server-side session</td>
+      <td class="desc">asymmetric keypair; private key never travels</td>
+      <td class="desc">signed-JWT exchange minting OAuth tokens</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Identifies</b></td>
+      <td class="desc">a project/app (for quota &amp; billing) — <i>not a person</i></td>
+      <td class="desc">a user×app×scope grant</td>
+      <td class="desc">one logged-in browser session</td>
+      <td class="desc">whoever holds the private key</td>
+      <td class="desc">a workload (code), not a human</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Lifetime</b></td>
+      <td class="desc">until manually rotated (∞ by default)</td>
+      <td class="desc">minutes–hours</td>
+      <td class="desc">hours–weeks (idle/absolute timeouts)</td>
+      <td class="desc">until removed from <code>authorized_keys</code></td>
+      <td class="desc">tokens ~1 h; downloaded key files ∞ (the anti-pattern)</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Revocation</b></td>
+      <td class="desc">delete/rotate the key</td>
+      <td class="desc">revoke the refresh token; access token dies at <code>exp</code></td>
+      <td class="desc">server deletes the session row — instant</td>
+      <td class="desc">remove the public key from the server</td>
+      <td class="desc">disable the SA or delete the key</td>
+    </tr>
+    <tr>
+      <td class="cmd"><b>Secret travels?</b></td>
+      <td class="desc">yes, on every request</td>
+      <td class="desc">yes (bearer) — hence TLS + short life</td>
+      <td class="desc">yes, on every request (<code>HttpOnly</code>, <code>Secure</code> flags)</td>
+      <td class="desc"><b>no</b> — only signatures travel (challenge–response)</td>
+      <td class="desc">no for attached/federated identities; yes if a key file leaks</td>
+    </tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Pattern to notice:</b> the security ladder runs <i>static shared secret</i> (API key) → <i>expiring bearer</i> (OAuth) → <i>proof-of-possession, secret never travels</i> (SSH keys, passkeys). Each rung removes a way to steal. GCP's push from SA key files toward attached identities and federation is a climb up this exact ladder — see the <a href="gcp_iam_auth_cheatsheet.html#oauthmap">GCP mapping section</a>.
+</div>
+
+<!-- ============ ONE-LINERS ============ -->
+<h2 id="oneliners">9 · One-liners — terms you'll meet next</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>MFA</b></td><td class="desc">Multi-Factor Authentication — require ≥2 of <i>know</i> (password) / <i>have</i> (phone, security key) / <i>are</i> (fingerprint); turns a stolen password into a non-event</td></tr>
+    <tr><td class="cmd"><b>Passkeys / WebAuthn</b></td><td class="desc">passwordless login standard (W3C WebAuthn + FIDO2): your device holds a per-site private keypair and signs a challenge — nothing shared to steal, nothing to phish, the SSH-key idea brought to the web</td></tr>
+    <tr><td class="cmd"><b>SAML vs OIDC</b></td><td class="desc">SAML (Security Assertion Markup Language, 2005) = XML-based enterprise SSO (Single Sign-On), still everywhere in corporate IT; OIDC = the JSON/REST-native successor — same job ("the IdP vouches for you"), newer rails. Rule of thumb: legacy enterprise apps speak SAML, modern apps and mobile speak OIDC.</td></tr>
+  </table>
+</div>
+<p class="lead">Docs: <a href="https://www.w3.org/TR/webauthn-2/">W3C WebAuthn</a> · <a href="https://auth0.com/docs/authenticate/protocols/saml">Auth0 — SAML</a></p>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">10 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Authentication (AuthN)</b></td><td class="desc">proving who you are</td></tr>
+    <tr><td class="cmd"><b>Authorization (AuthZ)</b></td><td class="desc">deciding what you may do</td></tr>
+    <tr><td class="cmd"><b>OAuth 2.0</b></td><td class="desc">delegation framework: scoped, revocable, expiring tokens instead of shared passwords (RFC 6749)</td></tr>
+    <tr><td class="cmd"><b>Resource owner / client / authorization server / resource server</b></td><td class="desc">you / the app / the ID desk that mints tokens / the API that accepts them</td></tr>
+    <tr><td class="cmd"><b>Flow (grant type)</b></td><td class="desc">choreography for obtaining tokens: auth code + PKCE (humans), client credentials (machines), device (TVs), implicit (deprecated)</td></tr>
+    <tr><td class="cmd"><b>PKCE</b></td><td class="desc">Proof Key for Code Exchange — hash-now-reveal-later secret that makes a stolen authorization code worthless</td></tr>
+    <tr><td class="cmd"><b>Access token</b></td><td class="desc">short-lived bearer credential sent on every API call</td></tr>
+    <tr><td class="cmd"><b>Refresh token</b></td><td class="desc">long-lived, client-held; only mints new access tokens, never hits APIs</td></tr>
+    <tr><td class="cmd"><b>ID token</b></td><td class="desc">OIDC's signed JWT stating who you are, addressed to the client</td></tr>
+    <tr><td class="cmd"><b>Bearer</b></td><td class="desc">whoever holds it can use it — mitigated by short lifetimes + TLS</td></tr>
+    <tr><td class="cmd"><b>OIDC</b></td><td class="desc">OpenID Connect — identity layer on OAuth 2.0; powers "Sign in with Google"</td></tr>
+    <tr><td class="cmd"><b>IdP / RP</b></td><td class="desc">Identity Provider (vouches for you) / Relying Party (the app that trusts it)</td></tr>
+    <tr><td class="cmd"><b>JWT</b></td><td class="desc">JSON Web Token — header.payload.signature; signed, not encrypted</td></tr>
+    <tr><td class="cmd"><b>Claims (iss/sub/aud/exp)</b></td><td class="desc">issuer / subject (stable user ID) / audience / expiry</td></tr>
+    <tr><td class="cmd"><b>Scope</b></td><td class="desc">named slice of delegated access; requested by app, consented by user, enforced by API</td></tr>
+    <tr><td class="cmd"><b>Consent screen</b></td><td class="desc">the "App X wants to…" dialog — scopes rendered for humans</td></tr>
+    <tr><td class="cmd"><b>MFA</b></td><td class="desc">multi-factor authentication — know / have / are</td></tr>
+    <tr><td class="cmd"><b>Passkey / WebAuthn</b></td><td class="desc">passwordless, phishing-resistant keypair login</td></tr>
+    <tr><td class="cmd"><b>SAML</b></td><td class="desc">XML-era enterprise SSO protocol; OIDC is the modern equivalent</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://datatracker.ietf.org/doc/html/rfc6749">RFC 6749 — OAuth 2.0</a> ·
+  <a href="https://datatracker.ietf.org/doc/html/rfc6750">RFC 6750 — Bearer tokens</a> ·
+  <a href="https://datatracker.ietf.org/doc/html/rfc7636">RFC 7636 — PKCE</a> ·
+  <a href="https://datatracker.ietf.org/doc/html/rfc8628">RFC 8628 — Device flow</a> ·
+  <a href="https://datatracker.ietf.org/doc/html/rfc7519">RFC 7519 — JWT</a> ·
+  <a href="https://datatracker.ietf.org/doc/html/rfc9700">RFC 9700 — OAuth Security BCP</a> ·
+  <a href="https://openid.net/specs/openid-connect-core-1_0.html">OIDC Core</a> ·
+  <a href="https://developers.google.com/identity/protocols/oauth2">Google OAuth 2.0 docs</a> ·
+  <a href="https://oauth.net/2/">oauth.net</a> ·
+  <a href="https://www.w3.org/TR/webauthn-2/">W3C WebAuthn</a> ·
+  See also: <a href="gcp_iam_auth_cheatsheet.html">GCP IAM &amp; Authentication</a>
+</p>
+
+</div>
+</body>
+</html>
