@@ -244,6 +244,22 @@ L1 Physical     ┘────────►  LINK                 →  Ethern
     </table>
   </div>
 </div>
+<div class="card">
+  <h3>Public DNS resolvers — and why you'd swap off your ISP's</h3>
+  <p class="lead">Your device normally uses whatever resolver DHCP handed it (router → ISP). Pointing it at a public one is the standard "is DNS the problem?" test, and changes who sees your lookups. Pretty IPs are deliberate — easy to recall and type.</p>
+  <table>
+    <tr><th>Resolver</th><th>Primary / secondary</th><th>Notable</th></tr>
+    <tr><td class="cmd"><b>Cloudflare</b></td><td><code>1.1.1.1</code> / <code>1.0.0.1</code></td><td class="desc">usually fastest; strong privacy (no PII logging). <code>1.1.1.2</code> blocks malware, <code>1.1.1.3</code> + adult content</td></tr>
+    <tr><td class="cmd"><b>Google</b></td><td><code>8.8.8.8</code> / <code>8.8.4.4</code></td><td class="desc">ubiquitous + reliable; the default "is it my ISP?" test. Unfiltered. Logs some data</td></tr>
+    <tr><td class="cmd"><b>Quad9</b></td><td><code>9.9.9.9</code> / <code>149.112.112.112</code></td><td class="desc">blocks known-malicious domains (threat feeds); Swiss non-profit, no logging. <code>9.9.9.10</code> = unfiltered</td></tr>
+    <tr><td class="cmd"><b>OpenDNS</b> (Cisco)</td><td><code>208.67.222.222</code> / <code>.220.220</code></td><td class="desc">optional content filtering via free account; <code>208.67.222.123</code> = FamilyShield (adult-block, no signup)</td></tr>
+    <tr><td class="cmd"><b>AdGuard</b></td><td><code>94.140.14.14</code> / <code>94.140.15.15</code></td><td class="desc">network-wide ad + tracker blocking; <code>94.140.14.140</code> = non-filtering</td></tr>
+    <tr><td class="cmd"><b>Mullvad</b></td><td><code>194.242.2.2</code></td><td class="desc">privacy-maximalist, no logs, encrypted-only; from the VPN company</td></tr>
+    <tr><td class="cmd"><b>NextDNS / Control D</b></td><td>per-account IPs</td><td class="desc">fully customizable block/allow lists + logging via dashboard — the "roll your own" option</td></tr>
+  </table>
+  <div class="callout"><b>Encrypted DNS</b> — <b>DoH</b> (DNS over HTTPS) and <b>DoT</b> (DNS over TLS) hide your lookups from anyone on the wire, including your ISP — closing the "the resolver sees your whole browsing history" gap. The public resolvers above support it; most ISP resolvers don't. Enable system-wide on macOS/iOS via a configuration profile.</div>
+  <p class="lead"><b>Whoever runs your resolver sees every domain you visit</b> (not page contents, but the names). That's the privacy argument for switching off an ISP default. The flip side: a <i>filtering</i> resolver (Quad9, AdGuard, OpenDNS-Family) blocking a domain looks like "site is down" — which is why the swap-to-<code>8.8.8.8</code> (unfiltered) test isolates it.</p>
+</div>
 
 <!-- ============ URI/URL/URN ============ -->
 <h2>3 · URI vs URL vs URN — and URL anatomy</h2>
