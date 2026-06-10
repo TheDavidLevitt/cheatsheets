@@ -325,11 +325,16 @@ gcloud compute firewall-rules create allow-iap-ssh \
   <table>
     <tr><td class="cmd"><b>VPC</b></td><td class="desc">Virtual Private Cloud — your software-defined private network; <b>global</b> in GCP</td></tr>
     <tr><td class="cmd"><b>Subnet</b></td><td class="desc"><b>regional</b> slice of private IP space, defined by a CIDR range; 4 addresses reserved</td></tr>
+    <tr><td class="cmd"><b>IP</b></td><td class="desc">Internet Protocol (address) — the numeric address of a machine; IPv4 = 32-bit, IPv6 = 128-bit</td></tr>
     <tr><td class="cmd"><b>CIDR</b></td><td class="desc">Classless Inter-Domain Routing — <code>a.b.c.d/N</code>; N fixed bits, 2^(32−N) addresses</td></tr>
+    <tr><td class="cmd"><b>DNS</b></td><td class="desc">Domain Name System — translates names to IPs; Cloud DNS holds internal &amp; external zones</td></tr>
     <tr><td class="cmd"><b>RFC 1918</b></td><td class="desc">the three never-public IPv4 ranges: <code>10/8</code>, <code>172.16/12</code>, <code>192.168/16</code></td></tr>
     <tr><td class="cmd"><b>Ephemeral IP</b></td><td class="desc">pool-borrowed external IP, released on VM stop — new address on restart</td></tr>
     <tr><td class="cmd"><b>Static IP</b></td><td class="desc">reserved external IP, yours until released; unattached ones bill extra</td></tr>
     <tr><td class="cmd"><b>NAT</b></td><td class="desc">Network Address Translation — private addresses share/translate to public ones</td></tr>
+    <tr><td class="cmd"><b>VPN</b></td><td class="desc">Virtual Private Network — encrypted tunnel; Cloud VPN links a VPC to on-prem over the internet</td></tr>
+    <tr><td class="cmd"><b>ICMP</b></td><td class="desc">Internet Control Message Protocol — the protocol behind <code>ping</code>; a firewall protocol option</td></tr>
+    <tr><td class="cmd"><b>SSH / RDP</b></td><td class="desc">Secure Shell (Linux remote login, tcp:22) / Remote Desktop Protocol (Windows, tcp:3389) — the admin ports the default network opens</td></tr>
     <tr><td class="cmd"><b>Cloud NAT</b></td><td class="desc">managed, regional, <b>outbound-only</b> NAT for private VMs; rides on a Cloud Router</td></tr>
     <tr><td class="cmd"><b>IAP</b></td><td class="desc">Identity-Aware Proxy — IAM-checked tunnel to internal IPs; source range <code>35.235.240.0/20</code></td></tr>
     <tr><td class="cmd"><b>Stateful firewall</b></td><td class="desc">allowed connections automatically allow their reply traffic</td></tr>

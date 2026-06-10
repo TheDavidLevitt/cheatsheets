@@ -351,6 +351,11 @@ scheme   user       host      port      path        query     fragment</code></p
     <tr><td class="cmd"><b>AS / ASN</b></td><td class="desc">Autonomous System (one network under one policy: ISP, cloud, CDN) / its AS Number. The internet ≈ 100k+ ASes glued by BGP</td></tr>
     <tr><td class="cmd"><b>Anycast</b></td><td class="desc">same IP prefix advertised from many locations via BGP; each router picks the nearest, so one address (<code>1.1.1.1</code>, <code>8.8.8.8</code>) serves the closest data centre. Powers CDNs and public DNS</td></tr>
     <tr><td class="cmd"><b>DNS</b></td><td class="desc">name → IP lookup (resolver → root → TLD → authoritative)</td></tr>
+    <tr><td class="cmd"><b>A / AAAA / CNAME / MX / TXT / NS</b></td><td class="desc">DNS record types: IPv4 / IPv6 / alias / mail server / free-text / authoritative name servers</td></tr>
+    <tr><td class="cmd"><b>SPF / DKIM</b></td><td class="desc">email anti-spoofing via TXT records: Sender Policy Framework (who may send as you) / DomainKeys Identified Mail (signing key proving no forgery)</td></tr>
+    <tr><td class="cmd"><b>ICMP</b></td><td class="desc">Internet Control Message Protocol — the diagnostic/error layer <code>ping</code> and <code>traceroute</code> ride on</td></tr>
+    <tr><td class="cmd"><b>ARP</b></td><td class="desc">Address Resolution Protocol — maps an IP to a MAC address on the local link</td></tr>
+    <tr><td class="cmd"><b>RDP</b></td><td class="desc">Remote Desktop Protocol — Microsoft's remote-GUI protocol (port 3389), the Windows counterpart to SSH</td></tr>
     <tr><td class="cmd"><b>TTL</b></td><td class="desc">how long a DNS answer may be cached</td></tr>
     <tr><td class="cmd"><b>URI / URL / URN</b></td><td class="desc">identifier umbrella / locator / pure name</td></tr>
     <tr><td class="cmd"><b>TLS</b></td><td class="desc">encryption + authentication layer under HTTPS (ex-SSL)</td></tr>

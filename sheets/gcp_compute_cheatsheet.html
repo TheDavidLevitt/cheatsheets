@@ -392,6 +392,9 @@ gcloud compute instances create my-instance-01 \
     <tr><td class="cmd"><b>Serverless</b></td><td class="desc">servers exist, you don't manage them: scale-to-zero, pay-per-use</td></tr>
     <tr><td class="cmd"><b>GKE / K8s</b></td><td class="desc">Google Kubernetes Engine; Kubernetes = container orchestrator ("helmsman")</td></tr>
     <tr><td class="cmd"><b>Machine type</b></td><td class="desc"><code>family-shape-vCPUs</code>; E=economy, N=normal, C=compute, M=memory, A=accelerator</td></tr>
+    <tr><td class="cmd"><b>vCPU</b></td><td class="desc">virtual CPU — one hardware hyperthread presented to the VM; the unit machine sizes count</td></tr>
+    <tr><td class="cmd"><b>GPU / HPC</b></td><td class="desc">Graphics Processing Unit (ML training/inference) / High-Performance Computing (compute-heavy parallel jobs)</td></tr>
+    <tr><td class="cmd"><b>BYOL</b></td><td class="desc">Bring Your Own License — reuse software licensed per physical core/socket on a sole-tenant node</td></tr>
     <tr><td class="cmd"><b>Image family</b></td><td class="desc">moving pointer to the newest image in an OS line (e.g. <code>debian-12</code>)</td></tr>
     <tr><td class="cmd"><b>Spot / preemptible VM</b></td><td class="desc">deep-discount spare capacity, reclaimable with 30s notice</td></tr>
     <tr><td class="cmd"><b>Instance template</b></td><td class="desc">config-only VM recipe; free, immutable, feeds MIGs; carries no data</td></tr>
@@ -399,7 +402,9 @@ gcloud compute instances create my-instance-01 \
     <tr><td class="cmd"><b>MIG</b></td><td class="desc">Managed Instance Group: template + autoscaling + autohealing</td></tr>
     <tr><td class="cmd"><b>Sole-tenant node</b></td><td class="desc">dedicated physical host — compliance and per-core licensing</td></tr>
     <tr><td class="cmd"><b>Metadata server</b></td><td class="desc">in-VM HTTP endpoint for config, SSH keys, and service-account tokens</td></tr>
+    <tr><td class="cmd"><b>SSH</b></td><td class="desc">Secure Shell — the encrypted protocol for remote command-line login to a VM (TCP port 22)</td></tr>
     <tr><td class="cmd"><b>IAP</b></td><td class="desc">Identity-Aware Proxy — identity-checked tunnel to internal IPs; range <code>35.235.240.0/20</code></td></tr>
+    <tr><td class="cmd"><b>CIDR</b></td><td class="desc">Classless Inter-Domain Routing — IP-range notation like <code>35.235.240.0/20</code> (N fixed bits)</td></tr>
     <tr><td class="cmd"><b>OS Login</b></td><td class="desc">IAM-governed SSH access tied to Google identities, replacing metadata keys</td></tr>
     <tr><td class="cmd"><b>Service account</b></td><td class="desc">robot identity a VM runs as; replace the over-privileged default with least-privilege</td></tr>
   </table>

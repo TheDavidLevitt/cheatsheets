@@ -399,8 +399,11 @@ signature = RS256(header + "." + payload, issuer's private key)</code></pre>
     <tr><td class="cmd"><b>Scope</b></td><td class="desc">named slice of delegated access; requested by app, consented by user, enforced by API</td></tr>
     <tr><td class="cmd"><b>Consent screen</b></td><td class="desc">the "App X wants to…" dialog — scopes rendered for humans</td></tr>
     <tr><td class="cmd"><b>MFA</b></td><td class="desc">multi-factor authentication — know / have / are</td></tr>
-    <tr><td class="cmd"><b>Passkey / WebAuthn</b></td><td class="desc">passwordless, phishing-resistant keypair login</td></tr>
-    <tr><td class="cmd"><b>SAML</b></td><td class="desc">XML-era enterprise SSO protocol; OIDC is the modern equivalent</td></tr>
+    <tr><td class="cmd"><b>Passkey / WebAuthn / FIDO2</b></td><td class="desc">passwordless, phishing-resistant keypair login (W3C WebAuthn API + FIDO Alliance's FIDO2)</td></tr>
+    <tr><td class="cmd"><b>SAML / SSO</b></td><td class="desc">Security Assertion Markup Language — XML-era enterprise Single Sign-On protocol; OIDC is the modern equivalent</td></tr>
+    <tr><td class="cmd"><b>TLS</b></td><td class="desc">Transport Layer Security — the HTTPS encryption OAuth 2.0 relies on so bearer tokens are safe in transit (ex-SSL)</td></tr>
+    <tr><td class="cmd"><b>IAM</b></td><td class="desc">Identity and Access Management — the systems that enforce authorization (who may do what)</td></tr>
+    <tr><td class="cmd"><b>CLI</b></td><td class="desc">Command-Line Interface — a terminal tool; one kind of OAuth "client"</td></tr>
   </table>
 </div>
 

@@ -377,6 +377,9 @@ for f in *.txt; do echo "processing $f"; done
 <h2>13 · Glossary recap</h2>
 <div class="card">
   <table>
+    <tr><td class="cmd"><b>CLI</b></td><td class="desc">Command-Line Interface; text-in/text-out control of a program (opposite of a GUI)</td></tr>
+    <tr><td class="cmd"><b>GUI</b></td><td class="desc">Graphical User Interface; windows/icons/mouse, the opposite of a CLI</td></tr>
+    <tr><td class="cmd"><b>GNU</b></td><td class="desc">"GNU's Not Unix" (recursive acronym); the free-software project whose tools (incl. bash) reimplement Unix</td></tr>
     <tr><td class="cmd"><b>Shell</b></td><td class="desc">command interpreter wrapping the kernel (bash, zsh, sh)</td></tr>
     <tr><td class="cmd"><b>Terminal</b></td><td class="desc">the window program hosting a shell; emulates old hardware terminals</td></tr>
     <tr><td class="cmd"><b>Kernel</b></td><td class="desc">OS core that talks to hardware; the shell is its user-facing layer</td></tr>
@@ -390,8 +393,9 @@ for f in *.txt; do echo "processing $f"; done
     <tr><td class="cmd"><b>Environment variable</b></td><td class="desc">an exported variable, inherited by child processes</td></tr>
     <tr><td class="cmd"><b>rc file</b></td><td class="desc">"run commands" startup script (<code>.zshrc</code>, <code>.bashrc</code>)</td></tr>
     <tr><td class="cmd"><b>Shebang <code>#!</code></b></td><td class="desc">line-1 marker naming a script's interpreter</td></tr>
-    <tr><td class="cmd"><b>PID</b></td><td class="desc">process ID; <code>$$</code> = the shell's own</td></tr>
-    <tr><td class="cmd"><b>Signal</b></td><td class="desc">async note to a process: SIGINT (ctrl-c), SIGTSTP (ctrl-z), SIGTERM/SIGKILL (<code>kill</code>)</td></tr>
+    <tr><td class="cmd"><b>PID</b></td><td class="desc">Process ID; the kernel's number for a running process (<code>$$</code> = the shell's own)</td></tr>
+    <tr><td class="cmd"><b>EOF</b></td><td class="desc">End Of File; the "no more input" marker on a stream (<code>ctrl-d</code> sends it on stdin)</td></tr>
+    <tr><td class="cmd"><b>Signal</b></td><td class="desc">async note to a process: SIGINT (ctrl-c, "interrupt"), SIGTSTP (ctrl-z, "terminal stop"), SIGTERM (<code>kill</code>, polite "terminate"), SIGKILL (<code>kill -9</code>, uncatchable), SIGHUP ("hang-up", sent when the terminal closes)</td></tr>
   </table>
 </div>
 

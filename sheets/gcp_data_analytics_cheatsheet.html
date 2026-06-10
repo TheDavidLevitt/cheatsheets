@@ -304,6 +304,9 @@ REDUCE   one worker per key sums its list
     <tr><td class="cmd"><b>Slot</b></td><td class="desc">BigQuery's unit of query compute (~1 vCPU + memory), allocated per query from a pool</td></tr>
     <tr><td class="cmd"><b>Pub/Sub</b></td><td class="desc">serverless messaging: publisher → topic → subscription(s) → subscriber; feeds Dataflow for streaming</td></tr>
     <tr><td class="cmd"><b>Federated query</b></td><td class="desc">BigQuery querying data it doesn't store (Cloud Storage, Bigtable, Cloud SQL) in place</td></tr>
+    <tr><td class="cmd"><b>ETL</b></td><td class="desc">Extract, Transform, Load — pull data from sources, reshape it, land it in a warehouse (Dataflow's job)</td></tr>
+    <tr><td class="cmd"><b>SQL</b></td><td class="desc">Structured Query Language — the query language BigQuery (and Hive) exposes over big data</td></tr>
+    <tr><td class="cmd"><b>GCS connector</b></td><td class="desc">Hadoop/Spark plugin that swaps <code>hdfs://</code> paths for Cloud Storage <code>gs://</code> — lets Dataproc clusters stay ephemeral</td></tr>
   </table>
 </div>
 

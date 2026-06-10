@@ -479,6 +479,11 @@ gcloud compute instances list \
 <h2 id="glossary">9 · Glossary recap</h2>
 <div class="card">
   <table>
+    <tr><td class="cmd"><b>CLI</b></td><td class="desc">Command-Line Interface — driving GCP by typed commands; <code>gcloud</code> is the CLI, part of the SDK</td></tr>
+    <tr><td class="cmd"><b>SDK</b></td><td class="desc">Software Development Kit — the Google Cloud SDK bundle that ships <code>gcloud</code>, <code>gsutil</code>, <code>bq</code></td></tr>
+    <tr><td class="cmd"><b>REST</b></td><td class="desc">Representational State Transfer — the HTTP-API style the grammar mirrors (collection URL + verb)</td></tr>
+    <tr><td class="cmd"><b>GA</b></td><td class="desc">Generally Available — the stable release track (no <code>alpha</code>/<code>beta</code> prefix)</td></tr>
+    <tr><td class="cmd"><b>IAM</b></td><td class="desc">Identity and Access Management — roles &amp; service accounts live under <code>gcloud iam</code>; grants under <code>gcloud projects</code></td></tr>
     <tr><td class="cmd"><b>Service group</b></td><td class="desc">the product namespace right after <code>gcloud</code> (compute, iam, storage, projects…)</td></tr>
     <tr><td class="cmd"><b>Resource</b></td><td class="desc">the noun the command acts on, usually <b>plural</b> (instances, buckets, roles); can nest (networks subnets)</td></tr>
     <tr><td class="cmd"><b>Verb</b></td><td class="desc">the action; recurring set = create / list / describe / update / delete (+ add-iam-policy-binding)</td></tr>

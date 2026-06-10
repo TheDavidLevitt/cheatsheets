@@ -353,11 +353,17 @@ gcloud compute instances create my-private-app \
     <tr><td class="cmd"><b>Topic</b></td><td class="desc">named channel publishers send messages to</td></tr>
     <tr><td class="cmd"><b>Subscription</b></td><td class="desc">named stream attached to a topic; holds unacked messages for subscribers (pull or push)</td></tr>
     <tr><td class="cmd"><b>Ordering key</b></td><td class="desc">tag that forces in-order delivery <i>per key</i> (not global FIFO)</td></tr>
+    <tr><td class="cmd"><b>FIFO</b></td><td class="desc">First-In-First-Out — strict ordered-queue delivery; plain Pub/Sub is <i>not</i> FIFO (ordering keys give per-key order only)</td></tr>
     <tr><td class="cmd"><b>Fan-out</b></td><td class="desc">one topic, many subscriptions — each gets every message</td></tr>
     <tr><td class="cmd"><b>Idempotent</b></td><td class="desc">safe to process the same message twice (required under at-least-once)</td></tr>
     <tr><td class="cmd"><b>Service (K8s)</b></td><td class="desc">stable virtual IP + DNS name fronting a label-selected, changing set of pods; load-balances across live ones</td></tr>
     <tr><td class="cmd"><b>ClusterIP</b></td><td class="desc">default Service type — internal-only stable virtual IP</td></tr>
+    <tr><td class="cmd"><b>K8s / GKE</b></td><td class="desc">Kubernetes (the container orchestrator) / Google Kubernetes Engine (its managed GCP service)</td></tr>
     <tr><td class="cmd"><b>Pod</b></td><td class="desc">smallest K8s deployable unit; ephemeral — new IP on every restart</td></tr>
+    <tr><td class="cmd"><b>MIG</b></td><td class="desc">Managed Instance Group — a pool of identical autoscaling VMs from one template; the canonical "changing backends"</td></tr>
+    <tr><td class="cmd"><b>DNS</b></td><td class="desc">Domain Name System — translates names to IP addresses; Cloud DNS is GCP's managed service</td></tr>
+    <tr><td class="cmd"><b>IP</b></td><td class="desc">Internet Protocol (address) — a machine's numeric address (IPv4/IPv6)</td></tr>
+    <tr><td class="cmd"><b>VPC</b></td><td class="desc">Virtual Private Cloud — your software-defined private GCP network; private zones resolve only inside it</td></tr>
     <tr><td class="cmd"><b>Zone (DNS)</b></td><td class="desc">the records for one domain; public (internet) or private (VPC-only)</td></tr>
     <tr><td class="cmd"><b>A / AAAA record</b></td><td class="desc">name → IPv4 / IPv6 address</td></tr>
     <tr><td class="cmd"><b>CNAME / MX</b></td><td class="desc">alias to another name / mail-server record</td></tr>

@@ -315,12 +315,16 @@ result = func(**tool_use.input)
 <div class="card">
   <table>
     <tr><td class="cmd"><b>API</b></td><td class="desc">Application Programming Interface — the HTTP contract at <code>api.anthropic.com</code></td></tr>
+    <tr><td class="cmd"><b>HTTP</b></td><td class="desc">HyperText Transfer Protocol — the request/response protocol the web and this API run on</td></tr>
+    <tr><td class="cmd"><b>REST</b></td><td class="desc">Representational State Transfer — the web-API style: resources at URLs + HTTP verbs</td></tr>
     <tr><td class="cmd"><b>SDK</b></td><td class="desc">Software Development Kit — the <code>anthropic</code> client library</td></tr>
+    <tr><td class="cmd"><b>JSON</b></td><td class="desc">JavaScript Object Notation — the <code>{"key": value}</code> data format requests/responses use</td></tr>
     <tr><td class="cmd"><b>Stateless</b></td><td class="desc">server keeps no memory; client resends full history each call</td></tr>
     <tr><td class="cmd"><b>Content block</b></td><td class="desc">typed unit inside <code>content</code> (<code>text</code>, <code>tool_use</code>, <code>thinking</code>, <code>image</code>, …)</td></tr>
     <tr><td class="cmd"><b>System prompt</b></td><td class="desc">standing instructions; top-level field, not a message role</td></tr>
     <tr><td class="cmd"><b>Tool use</b></td><td class="desc">Claude requests a function call; you execute &amp; return a <code>tool_result</code></td></tr>
     <tr><td class="cmd"><b>JSON Schema</b></td><td class="desc">vocabulary that tool <code>input_schema</code>s are written in</td></tr>
+    <tr><td class="cmd"><b>XML</b></td><td class="desc">eXtensible Markup Language — the <code>&lt;tag&gt;…&lt;/tag&gt;</code> syntax used as prompt delimiters</td></tr>
     <tr><td class="cmd"><b>Prompt caching</b></td><td class="desc">reuse of a stable prompt prefix (<code>cache_control</code>, 5-min TTL)</td></tr>
     <tr><td class="cmd"><b>TTL</b></td><td class="desc">Time To Live — how long a cache entry survives without a hit</td></tr>
     <tr><td class="cmd"><b>Stop reason</b></td><td class="desc">why generation ended (<code>end_turn</code>, <code>max_tokens</code>, <code>tool_use</code>, …)</td></tr>

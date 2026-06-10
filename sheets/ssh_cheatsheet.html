@@ -225,6 +225,10 @@ Host myserver                       # the alias you'll type
     <tr><td class="cmd"><b>OpenSSH</b></td><td class="desc">the standard implementation (OpenBSD project)</td></tr>
     <tr><td class="cmd"><b>Keypair</b></td><td class="desc">public key (shareable padlock) + private key (never leaves your machine)</td></tr>
     <tr><td class="cmd"><b>Ed25519 / RSA</b></td><td class="desc">key algorithms; prefer Ed25519, RSA-4096 for legacy</td></tr>
+    <tr><td class="cmd"><b>EdDSA</b></td><td class="desc">Edwards-curve Digital Signature Algorithm — the family Ed25519 belongs to (over the 2²⁵⁵−19 prime)</td></tr>
+    <tr><td class="cmd"><b>SCP / SFTP</b></td><td class="desc">Secure Copy (one-shot, <code>cp</code>-like) / SSH File Transfer Protocol (interactive browse-and-transfer) — both ride the SSH pipe</td></tr>
+    <tr><td class="cmd"><b>rsync</b></td><td class="desc">delta-syncing file copier over SSH — transfers only what changed (deploys, backups)</td></tr>
+    <tr><td class="cmd"><b>telnet / rlogin</b></td><td class="desc">the pre-SSH plaintext remote-login tools SSH replaced (passwords sent in the clear)</td></tr>
     <tr><td class="cmd"><b>authorized_keys</b></td><td class="desc">server-side list of accepted public keys</td></tr>
     <tr><td class="cmd"><b>known_hosts</b></td><td class="desc">client-side cache of server host keys (the TOFU record)</td></tr>
     <tr><td class="cmd"><b>ssh-agent</b></td><td class="desc">session daemon holding decrypted keys — passphrase once</td></tr>

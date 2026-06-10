@@ -379,12 +379,18 @@ Storing whole files (images, backups, logs)?    → Cloud Storage</code></pre>
     <tr><td class="cmd"><b>OLTP</b></td><td class="desc">Online Transaction Processing — many small fast reads/writes (a live app)</td></tr>
     <tr><td class="cmd"><b>OLAP</b></td><td class="desc">Online Analytical Processing — few huge scans for analysis (a warehouse)</td></tr>
     <tr><td class="cmd"><b>HTAP</b></td><td class="desc">Hybrid Transactional/Analytical Processing — one engine doing both (AlloyDB)</td></tr>
-    <tr><td class="cmd"><b>ACID</b></td><td class="desc">Atomicity, Consistency, Isolation, Durability — transaction guarantees</td></tr>
+    <tr><td class="cmd"><b>ACID</b></td><td class="desc">Atomicity, Consistency, Isolation, Durability — transaction guarantees (term coined by Härder &amp; Reuter, 1983)</td></tr>
+    <tr><td class="cmd"><b>SQL / NoSQL</b></td><td class="desc">Structured Query Language (relational tables) vs "Not only SQL" — non-relational stores (document, wide-column, key-value)</td></tr>
     <tr><td class="cmd"><b>IOPS</b></td><td class="desc">Input/Output Operations Per Second — random-access rate; databases care</td></tr>
+    <tr><td class="cmd"><b>HDD / SSD</b></td><td class="desc">Hard Disk Drive (spinning, cheap, slow) vs Solid-State Drive (flash, fast) — the two disk media tiers</td></tr>
     <tr><td class="cmd"><b>Throughput</b></td><td class="desc">MiB/s of bulk sequential data; analytics and big files care</td></tr>
     <tr><td class="cmd"><b>Serverless</b></td><td class="desc">no servers to manage, autoscaling, pay-per-use — still servers underneath, like "wireless" still has wires</td></tr>
     <tr><td class="cmd"><b>HA / SLA</b></td><td class="desc">High Availability / Service Level Agreement (the uptime promise, e.g. 99.999%)</td></tr>
     <tr><td class="cmd"><b>PITR</b></td><td class="desc">Point-In-Time Recovery — restore a DB to any moment, via replayed logs</td></tr>
+    <tr><td class="cmd"><b>PD</b></td><td class="desc">Persistent Disk — network-attached durable block storage for VMs; performance scales with size</td></tr>
+    <tr><td class="cmd"><b>GCS</b></td><td class="desc">Google Cloud Storage — the object-storage service (buckets of files)</td></tr>
+    <tr><td class="cmd"><b>ACL</b></td><td class="desc">Access Control List — Cloud Storage's legacy per-object/bucket permission model; prefer uniform bucket-level access (IAM only)</td></tr>
+    <tr><td class="cmd"><b>DR</b></td><td class="desc">Disaster Recovery — backup copies kept for restoring after a regional failure (Coldline-tier use case)</td></tr>
     <tr><td class="cmd"><b>External consistency</b></td><td class="desc">Spanner's guarantee: global transactions appear in true commit order</td></tr>
     <tr><td class="cmd"><b>Hotspotting</b></td><td class="desc">a key design that funnels traffic to one node (e.g. timestamp-prefixed Bigtable row keys)</td></tr>
     <tr><td class="cmd"><b>Federation / external table</b></td><td class="desc">querying data where it lives instead of loading it (BigQuery over GCS/Bigtable)</td></tr>

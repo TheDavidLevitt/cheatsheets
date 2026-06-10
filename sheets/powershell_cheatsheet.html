@@ -279,6 +279,10 @@ Get-Process firefox | Get-Member             # 7. "what IS this object?" — bui
     <tr><td class="cmd"><b>Execution policy</b></td><td class="desc">gate on running <code>.ps1</code> files; seatbelt, not security boundary</td></tr>
     <tr><td class="cmd"><b>$PROFILE</b></td><td class="desc">path to the per-user startup script (PowerShell's <code>.bashrc</code>)</td></tr>
     <tr><td class="cmd"><b>Constrained Language Mode</b></td><td class="desc">lockdown blocking .NET escape hatches; cmdlets keep working</td></tr>
+    <tr><td class="cmd"><b>WDAC</b></td><td class="desc">Windows Defender Application Control; the OS feature (with AppLocker) that enforces Constrained Language Mode</td></tr>
+    <tr><td class="cmd"><b>COM</b></td><td class="desc">Component Object Model; Windows' legacy binary interface for one program to drive another (blocked in constrained mode)</td></tr>
+    <tr><td class="cmd"><b>HKCU / HKLM</b></td><td class="desc">registry roots: HKEY_CURRENT_USER (your settings) / HKEY_LOCAL_MACHINE (machine-wide, needs admin)</td></tr>
+    <tr><td class="cmd"><b>PID</b></td><td class="desc">Process ID; the OS number for a running process, e.g. <code>Stop-Process -Id 1234</code></td></tr>
     <tr><td class="cmd"><b>pwsh</b></td><td class="desc">PowerShell 7+ executable vs <code>powershell.exe</code> (legacy 5.1)</td></tr>
   </table>
 </div>

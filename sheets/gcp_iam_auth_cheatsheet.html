@@ -347,12 +347,18 @@ ERROR: could not find default credentials</code></pre>
     <tr><td class="cmd"><b>Role</b></td><td class="desc">named bundle of permissions; basic (blunt) / predefined (precise) / custom (crafted)</td></tr>
     <tr><td class="cmd"><b>Principal</b></td><td class="desc">an identity a binding can name: user, group, serviceAccount, domain, allUsers, allAuthenticatedUsers</td></tr>
     <tr><td class="cmd"><b>Binding</b></td><td class="desc">one role ↔ list of principals (+ optional CEL condition)</td></tr>
+    <tr><td class="cmd"><b>CEL</b></td><td class="desc">Common Expression Language — the mini-language for IAM condition tests (time windows, name prefixes)</td></tr>
     <tr><td class="cmd"><b>Allow policy</b></td><td class="desc">the set of bindings attached to one resource; inherited down org → folder → project → resource</td></tr>
     <tr><td class="cmd"><b>Service account (SA)</b></td><td class="desc">non-human identity for code; both a principal and a resource</td></tr>
     <tr><td class="cmd"><b>Attach vs impersonate</b></td><td class="desc">resource wears the SA (metadata server; gate <code>actAs</code>/ServiceAccountUser) vs principal borrows it via short-lived tokens (gate TokenCreator)</td></tr>
     <tr><td class="cmd"><b>Metadata server</b></td><td class="desc">link-local endpoint on GCP compute that hands the attached SA's tokens to local code</td></tr>
     <tr><td class="cmd"><b>ADC</b></td><td class="desc">Application Default Credentials — client-library search order: env var → well-known file → metadata server</td></tr>
     <tr><td class="cmd"><b>Refresh / access token</b></td><td class="desc">long-lived minter on disk vs short-lived bearer token sent to APIs</td></tr>
+    <tr><td class="cmd"><b>OAuth 2.0</b></td><td class="desc">the open delegation standard underlying all GCP auth — auth-code flow, refresh/access tokens, scopes</td></tr>
+    <tr><td class="cmd"><b>OIDC</b></td><td class="desc">OpenID Connect — the identity layer on top of OAuth; Workload Identity Federation trusts an external platform's OIDC tokens</td></tr>
+    <tr><td class="cmd"><b>JWT</b></td><td class="desc">JSON Web Token ("jot") — a signed token; a service account signs one with its private key to get an access token (RFC 7523)</td></tr>
+    <tr><td class="cmd"><b>WIF</b></td><td class="desc">Workload Identity Federation — exchanges an external workload's OIDC token for GCP credentials; no key file downloaded</td></tr>
+    <tr><td class="cmd"><b>API</b></td><td class="desc">Application Programming Interface — the request endpoints IAM permissions guard (one permission ≈ one API method)</td></tr>
     <tr><td class="cmd"><b>invalid_rapt</b></td><td class="desc">ReAuth Proof Token expired under managed-account session control; fix = log in again</td></tr>
     <tr><td class="cmd"><b>API key</b></td><td class="desc">project-identifying string for quota/billing on a few public APIs; carries no identity</td></tr>
     <tr><td class="cmd"><b>API enablement</b></td><td class="desc">per-project on/off switch for a service; off → 403 regardless of IAM</td></tr>
