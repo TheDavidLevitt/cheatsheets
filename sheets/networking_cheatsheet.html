@@ -69,28 +69,34 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
   <b>Packet</b> = one postcard (chunk of data + addressing). <b>Router</b> = postal sorting office: reads the destination, forwards one hop closer. Your message crosses ~10–20 routers it never sees.
 </div>
 <div class="card">
-  <h3>The layer stack — simplified 4-layer TCP/IP model (envelopes inside envelopes)</h3>
+  <h3>The layer stack — one model, two ways of counting (OSI 7 ↔ TCP/IP 4)</h3>
+  <p class="lead">There is <b>one</b> layered model; people just count it two ways. The textbook <b>OSI model</b> (Open Systems Interconnection — ISO standard, 1984) has 7 layers and <b>won the vocabulary war</b> ("layer 7", "L4" are OSI numbers). The 4-layer <b>TCP/IP model</b> is what's actually deployed — it just <i>groups</i> several OSI layers together. Each layer wraps the one above it, like envelopes inside envelopes. The bracket diagram shows how the 7 collapse into the 4:</p>
+  <pre><code>OSI (7 layers)              TCP/IP (4 layers)        Protocols here
+─────────────────          ───────────────────      ──────────────────────────
+L7 Application  ┐
+L6 Presentation ├────────►  APPLICATION          →  HTTP, SMTP, DNS, SSH, FTP
+L5 Session      ┘
+L4 Transport    ─────────►  TRANSPORT            →  TCP, UDP  (also SCTP, QUIC)
+L3 Network      ─────────►  INTERNET             →  IP, ICMP
+L2 Data Link    ┐
+L1 Physical     ┘────────►  LINK                 →  Ethernet, Wi-Fi, ARP, MAC</code></pre>
   <table>
-    <tr><td class="cmd"><b>Application</b> — HTTP, DNS, SSH, SMTP</td><td class="desc">the actual message: "GET this page", "what's this name's IP?"</td></tr>
-    <tr><td class="cmd"><b>Transport</b> — TCP, UDP</td><td class="desc">port numbers + (TCP) ordering, resends, the "connection" illusion</td></tr>
-    <tr><td class="cmd"><b>Internet</b> — IP</td><td class="desc">source + destination IP addresses; routing across networks</td></tr>
-    <tr><td class="cmd"><b>Link</b> — Ethernet, Wi-Fi</td><td class="desc">MAC addresses; crossing ONE physical hop</td></tr>
+    <tr><td class="cmd"><b>L7</b> Application <span class="lead">→ Application</span></td><td class="desc">HTTP, DNS, SSH, SMTP — the content. "L7 load balancer" routes on URLs/headers (e.g. GCP HTTP(S) LB)</td></tr>
+    <tr><td class="cmd"><b>L6</b> Presentation <span class="lead">→ (Application)</span></td><td class="desc">encoding/encryption (TLS, roughly) — rarely named in practice</td></tr>
+    <tr><td class="cmd"><b>L5</b> Session <span class="lead">→ (Application)</span></td><td class="desc">connection management — rarely named in practice</td></tr>
+    <tr><td class="cmd"><b>L4</b> Transport <span class="lead">→ Transport</span></td><td class="desc">TCP/UDP + ports. "L4 load balancer" routes on IP:port, blind to content</td></tr>
+    <tr><td class="cmd"><b>L3</b> Network <span class="lead">→ Internet</span></td><td class="desc">IP, ICMP, routing. "L3 switch" = a switch that also routes</td></tr>
+    <tr><td class="cmd"><b>L2</b> Data link <span class="lead">→ Link</span></td><td class="desc">Ethernet/Wi-Fi, ARP, MAC. "L2 segment" = one local network</td></tr>
+    <tr><td class="cmd"><b>L1</b> Physical <span class="lead">→ Link</span></td><td class="desc">cables, radio, light pulses</td></tr>
   </table>
-  <p class="lead"><b>TCP</b> (Transmission Control Protocol) = registered mail: numbered, acknowledged, resent, in order (HTTP, SSH, email). <b>UDP</b> (User Datagram Protocol) = plain postcard: fire-and-forget, low overhead (DNS, video calls, games). The textbook 7-layer <b>OSI model</b> (Open Systems Interconnection) splits the same idea more finely; this 4-layer view is what's actually deployed.</p>
+  <p class="lead"><b>TCP</b> (Transmission Control Protocol) = registered mail: numbered, acknowledged, resent, in order (HTTP, SSH, email). <b>UDP</b> (User Datagram Protocol) = plain postcard: fire-and-forget, low overhead (DNS, video calls, games). The numbers you'll actually hear: <b>L2, L3, L4, L7</b> — L5/L6 mostly exist in textbooks, folded into the application. (Office joke: "layer 8" = the user.) Universal shorthand across networking, cloud platforms, and certifications.</p>
 </div>
-<div class="card">
-  <h3>The OSI model — where the "layer" numbers come from</h3>
-  <p class="lead">The <b>OSI model</b> (Open Systems Interconnection — ISO standard, 1984) is a 7-layer reference model that lost the deployment war to TCP/IP but <b>won the vocabulary war</b>: when cloud docs or network engineers say "layer 7" or "L4", they're counting OSI layers. Universal shorthand across networking, cloud platforms, and certifications.</p>
+<div class="callout warn">
+  <b>A protocol's layer ≠ which transport it rides.</b> An application-layer (L7) protocol like <b>SMTP, HTTP, or SSH is NOT "a kind of TCP"</b> — it <i>runs on top of</i> a transport (usually TCP). Two independent questions: <b>(1) which layer is this protocol?</b> (SMTP = L7 application) and <b>(2) which transport does it ride at L4?</b> (SMTP rides TCP). So "SMTP uses TCP" and "SMTP is an L7 protocol" are <i>both</i> true and describe <i>different</i> layers — they don't compete. Canonical mapping:
   <table>
-    <tr><td class="cmd"><b>L7</b> Application</td><td class="desc">HTTP, DNS, SSH — the content. "L7 load balancer" routes on URLs/headers (e.g. GCP's HTTP(S) LB)</td></tr>
-    <tr><td class="cmd"><b>L6</b> Presentation</td><td class="desc">encoding/encryption (TLS, roughly) — rarely named in practice</td></tr>
-    <tr><td class="cmd"><b>L5</b> Session</td><td class="desc">connection management — rarely named in practice</td></tr>
-    <tr><td class="cmd"><b>L4</b> Transport</td><td class="desc">TCP/UDP + ports. "L4 load balancer" routes on IP:port, blind to content</td></tr>
-    <tr><td class="cmd"><b>L3</b> Network</td><td class="desc">IP, routing. "L3 switch" = a switch that also routes</td></tr>
-    <tr><td class="cmd"><b>L2</b> Data link</td><td class="desc">Ethernet/Wi-Fi, MAC addresses. "L2 segment" = one local network</td></tr>
-    <tr><td class="cmd"><b>L1</b> Physical</td><td class="desc">cables, radio, light pulses</td></tr>
+    <tr><td class="cmd">HTTP, HTTPS, SMTP, IMAP, POP3, SSH, FTP</td><td class="desc"><b>over TCP</b> — every byte must arrive in order</td></tr>
+    <tr><td class="cmd">DNS, DHCP, NTP, QUIC / HTTP-3</td><td class="desc"><b>over UDP</b> — speed over guaranteed delivery</td></tr>
   </table>
-  <p class="lead">Mapping to the 4-layer view above: L7(+6+5) = Application, L4 = Transport, L3 = Internet, L2+L1 = Link. L5/L6 mostly exist in textbooks — real protocols fold them into the application. The numbers you'll actually hear: <b>L2, L3, L4, L7</b>. (Office joke: "layer 8" = the user.)</p>
 </div>
 <div class="card">
   <h3>TCP vs UDP — the decision rule</h3>
@@ -170,6 +176,38 @@ lost — FINE, because the receiver reorders &amp; asks for resends (TCP)</code>
 <div class="callout good">
   <b>IPv6</b> (Internet Protocol version 6) = the 128-bit successor (eight colon-separated hex groups, e.g. <code>2001:db8::1</code>; <code>::</code> compresses zeros). Enough addresses that every device can be public — no NAT needed; adoption is gradual.
   <br><b>MAC</b> (Media Access Control) <b>address</b> = hardware serial number of your network card (<code>aa:bb:cc:dd:ee:ff</code>) — used only for the final local-network hop; never travels across the internet.
+</div>
+
+<!-- ============ BGP ============ -->
+<h2>1b · BGP — how the whole internet learns the way</h2>
+<p class="lead">NAT and CIDR cover addressing <i>inside</i> and <i>at the edge</i> of a network. <b>BGP</b> answers the bigger question: once a packet leaves your ISP, how does every router on Earth know which way to send it? BGP is the protocol that <i>glues the independent networks of the internet into one routable whole</i>.</p>
+<div class="grid">
+  <div class="card">
+    <h3>The internet = ~100,000 Autonomous Systems</h3>
+    <p class="lead">The internet is not one network — it's <b>~100,000+ Autonomous Systems (AS)</b> stitched together. An <b>AS</b> = one network under a single administrative policy: an ISP, a cloud provider, a big university, a CDN. Each has an <b>ASN</b> (AS Number), e.g. AS15169, AS64500 — its identity on the global map. (ASNs in the 64496–64511 / 65536+ ranges are <i>reserved for documentation/private use</i> — the ASN equivalent of <code>203.0.113.0/24</code>.)</p>
+    <table>
+      <tr><td class="cmd"><b>BGP</b> = Border Gateway Protocol</td><td class="desc">the routing protocol that ties the internet together — runs at the <i>borders between ASes</i></td></tr>
+      <tr><td class="cmd"><b>advertise</b> a prefix</td><td class="desc">each AS announces which <b>IP prefixes</b> (CIDR blocks like <code>203.0.113.0/24</code>) it can reach; neighbours re-advertise onward</td></tr>
+      <tr><td class="cmd"><b>route gossip</b></td><td class="desc">routers worldwide gradually <b>learn paths</b>: "I can reach <code>203.0.113.0/24</code> — and so can whoever forwards to me"; each picks the <b>best path</b> and forwards one AS closer</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>eBGP vs iBGP — two flavours, one protocol</h3>
+    <table>
+      <tr><td class="cmd"><b>eBGP</b> (external)</td><td class="desc">runs <i>between</i> different ASes — exchanges routes across the internet (the borders)</td></tr>
+      <tr><td class="cmd"><b>iBGP</b> (internal)</td><td class="desc">runs <i>within</i> one AS — distributes those learned routes to all the AS's own routers</td></tr>
+    </table>
+    <p class="lead"><i>Memory hook:</i> <b>B</b>order <b>G</b>ateway <b>P</b>rotocol = the <b>B</b>ig <b>G</b>ossip <b>P</b>rotocol — every AS whispering "here's what I can reach" until the whole world has a map.</p>
+  </div>
+</div>
+<div class="callout good">
+  <b>Why it matters — Anycast.</b> <b>Anycast</b> = advertise the <i>same</i> IP prefix from <i>many</i> locations at once; each router, learning multiple BGP paths to that prefix, simply picks the <b>nearest</b>. Result: <code>1.1.1.1</code> or <code>8.8.8.8</code> resolves to whichever data centre is closest to <i>you</i>, with no special client logic. CDNs and public DNS resolvers live on this trick.
+</div>
+<div class="callout warn">
+  <b>It runs on trust, so it leaks.</b> BGP largely <i>believes</i> what neighbours advertise. A misconfigured or malicious AS announcing a prefix it doesn't own causes a <b>route leak</b> or <b>BGP hijack</b> — traffic floods the wrong way, taking down chunks of the internet (real outages where large clouds and social platforms went dark for hours have traced back to bad BGP). Mitigation: <b>RPKI</b> (Resource Public Key Infrastructure) cryptographically signs "this AS may originate this prefix" — slowly being adopted.
+</div>
+<div class="callout">
+  <b>Bridge to cloud:</b> in GCP a <b>Cloud Router</b> speaks BGP to dynamically exchange routes with your on-prem network over <b>Cloud VPN</b> or <b>Cloud Interconnect</b> — new subnets on either side are learned automatically, no static routes to maintain. Details in the <a href="gcp_networking_cheatsheet.html">GCP networking sheet</a>, not here.
 </div>
 
 <!-- ============ DNS ============ -->
@@ -309,6 +347,9 @@ scheme   user       host      port      path        query     fragment</code></p
     <tr><td class="cmd"><b>Ephemeral port</b></td><td class="desc">random high source port a client uses as its return address for one conversation</td></tr>
     <tr><td class="cmd"><b>QUIC</b></td><td class="desc">TCP-style reliability rebuilt over UDP; the transport of HTTP/3</td></tr>
     <tr><td class="cmd"><b>MAC address</b></td><td class="desc">hardware ID for the local-network hop only</td></tr>
+    <tr><td class="cmd"><b>BGP</b></td><td class="desc">Border Gateway Protocol: ASes advertise reachable IP prefixes so routers worldwide learn paths; eBGP between ASes, iBGP within one. The internet's trust-based "route gossip"</td></tr>
+    <tr><td class="cmd"><b>AS / ASN</b></td><td class="desc">Autonomous System (one network under one policy: ISP, cloud, CDN) / its AS Number. The internet ≈ 100k+ ASes glued by BGP</td></tr>
+    <tr><td class="cmd"><b>Anycast</b></td><td class="desc">same IP prefix advertised from many locations via BGP; each router picks the nearest, so one address (<code>1.1.1.1</code>, <code>8.8.8.8</code>) serves the closest data centre. Powers CDNs and public DNS</td></tr>
     <tr><td class="cmd"><b>DNS</b></td><td class="desc">name → IP lookup (resolver → root → TLD → authoritative)</td></tr>
     <tr><td class="cmd"><b>TTL</b></td><td class="desc">how long a DNS answer may be cached</td></tr>
     <tr><td class="cmd"><b>URI / URL / URN</b></td><td class="desc">identifier umbrella / locator / pure name</td></tr>

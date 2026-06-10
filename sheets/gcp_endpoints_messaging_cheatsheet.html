@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP Stable Endpoints &amp; Messaging Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+  .doclink{font-size:12px;color:var(--muted);margin:4px 0 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GCP Stable Endpoints &amp; Messaging Cheat Sheet</h1>
+<p class="sub">One meta-pattern, four services: Pub/Sub decoupling, Kubernetes Services, Cloud DNS, and static vs ephemeral IPs — the decision triggers and distractor traps at GCP Associate Cloud Engineer depth.</p>
+
+<nav class="mini">
+  <a href="#meta">The meta-pattern</a>
+  <a href="#pubsub">Pub/Sub</a>
+  <a href="#service">K8s Service</a>
+  <a href="#dns">Cloud DNS</a>
+  <a href="#ips">Static vs ephemeral IPs</a>
+  <a href="#decide">Decision reflex</a>
+  <a href="#glossary">Glossary</a>
+</nav>
+
+<!-- ============ META ============ -->
+<h2 id="meta">0 · The meta-pattern that unifies this whole sheet</h2>
+<div class="callout good">
+  <b>Never pin a fixed address to an ephemeral thing — put a stable abstraction in front.</b> Every section here is the same idea wearing a different hat. The thing that changes (a pod, a replaceable VM, a pool of workers) hides behind a thing that stays put (a Service, a static IP + DNS name, a load balancer). The exam loves the wrong answer where someone hardcodes the ephemeral address directly.
+</div>
+<div class="card">
+  <table>
+    <tr><th style="width:34%">The ephemeral thing</th><th style="width:33%">The stable abstraction in front</th><th style="width:33%">Section</th></tr>
+    <tr><td class="desc">Pods (new IP on every restart)</td><td class="desc">a Kubernetes <b>Service</b> (stable virtual IP + DNS name)</td><td class="desc">§2</td></tr>
+    <tr><td class="desc">A replaceable VM (new ephemeral IP on restart)</td><td class="desc">a <b>static IP</b> + a <b>Cloud DNS</b> A-record</td><td class="desc">§3, §4</td></tr>
+    <tr><td class="desc">Many backends scaling up/down (a MIG)</td><td class="desc">a <b>load balancer</b> (one stable frontend)</td><td class="desc">§1 backends, cross-ref</td></tr>
+    <tr><td class="desc">A fast/slow producer vs consumer</td><td class="desc">a <b>Pub/Sub topic</b> (a buffer that decouples them)</td><td class="desc">§1</td></tr>
+  </table>
+  <p class="lead" style="margin-top:10px;"><b>MIG</b> = Managed Instance Group: a pool of identical, autoscaling VMs created from one template (covered in the Compute sheet). It is the canonical "changing set of backends" that both load balancers and Pub/Sub worker-pools sit in front of.</p>
+</div>
+
+<!-- ============ PUBSUB ============ -->
+<h2 id="pubsub">1 · Pub/Sub — managed async messaging that decouples</h2>
+<p class="lead"><b>Pub/Sub</b> = "Publish / Subscribe": a fully managed, global message bus. Its whole reason to exist is <b>decoupling</b> — the thing producing messages never has to know who (or how many things) will consume them, and the two sides can run at different speeds.</p>
+<div class="grid">
+  <div class="card">
+    <h3>The model — four nouns</h3>
+    <pre><code>Publisher ──► Topic ──► Subscription ──► Subscriber
+ (sends)     (named    (a queue of      (pull or
+            channel)  unread msgs)      push)</code></pre>
+    <table>
+      <tr><td class="cmd"><b>Publisher</b></td><td class="desc">any code that sends a message to a topic</td></tr>
+      <tr><td class="cmd"><b>Topic</b></td><td class="desc">a named channel messages are published to</td></tr>
+      <tr><td class="cmd"><b>Subscription</b></td><td class="desc">a named stream attached to a topic; holds unacked messages until a subscriber acks them</td></tr>
+      <tr><td class="cmd"><b>Subscriber</b></td><td class="desc">consumes from a subscription — <b>pull</b> (subscriber asks) or <b>push</b> (Pub/Sub POSTs to an HTTPS endpoint)</td></tr>
+    </table>
+    <p class="lead"><b>Fan-out</b> = one topic, <i>many</i> subscriptions: each subscription gets its own independent copy of every message. <b>Work distribution</b> = one subscription, <i>many</i> subscriber instances: messages are spread across the workers (each message goes to one worker).</p>
+  </div>
+  <div class="card">
+    <h3>Two jobs it does on the exam</h3>
+    <p class="lead"><b>1 · Buffer spikes (ingest).</b> A flood of events arrives faster than workers can process. Pub/Sub absorbs the burst into the topic; workers drain it at their own pace. Nothing is dropped, nothing falls over.</p>
+    <p class="lead"><b>2 · Fan work out to a worker pool.</b> "Spread these transactions across a MIG of workers" → publish each transaction; the MIG's instances pull and process in parallel; autoscale the MIG on the subscription's backlog.</p>
+    <div class="callout warn" style="margin:8px 0 0;">
+      <b>Distractor trap:</b> "spread/distribute transactions across a MIG" is a <i>messaging</i> problem → <b>Pub/Sub</b>. <b>Bigtable</b> is a wrong answer here — Bigtable is a database (storage), not a way to <i>distribute work</i>. Storage ≠ delivery.
+    </div>
+  </div>
+</div>
+<div class="card">
+  <h3>Delivery semantics — the part people get wrong</h3>
+  <table>
+    <tr><th style="width:34%">Property</th><th style="width:66%">Reality</th></tr>
+    <tr><td class="desc"><b>Delivery guarantee</b></td><td class="desc"><b>At-least-once</b> by default — a message may be delivered <i>more than once</i>, so subscribers must be <b>idempotent</b> (safe to process the same message twice). (Exactly-once is an opt-in mode on pull subscriptions.)</td></tr>
+    <tr><td class="desc"><b>Ordering</b></td><td class="desc"><b>Not FIFO by default</b> — messages are generally <i>unordered</i>. It is <b>not</b> a strict first-in-first-out queue out of the box.</td></tr>
+    <tr><td class="desc"><b>Ordering keys</b></td><td class="desc">attach an <b>ordering key</b> to messages → Pub/Sub delivers messages <i>with the same key</i> in publish order. FIFO <i>within a key</i>, not globally. Use when per-entity order matters (e.g. all events for one user-id).</td></tr>
+  </table>
+  <div class="callout warn" style="margin:8px 0 0;">
+    <b>Trap:</b> "guaranteed strict ordering of all messages" is <i>not</i> plain Pub/Sub. If a question demands global FIFO, the honest answer is ordering keys (per-key only) or a different design — don't assume the queue is ordered.
+  </div>
+</div>
+<div class="callout good">
+  <b>Memory hook — "Pub/Sub is a post office, not a phone call."</b> You drop a letter (publish) and walk away; you never wait for the recipient. Letters may arrive out of order, and the post office might even deliver a duplicate. Decoupled, async, at-least-once. (A phone call would be synchronous and coupled — that's a direct API request, not Pub/Sub.)
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>The canonical streaming pipeline</h3>
+    <pre><code>Pub/Sub  ──►  Dataflow  ──►  BigQuery
+(ingest)    (transform,    (analyze,
+            stream proc)    SQL warehouse)</code></pre>
+    <p class="lead">Memorize this trio. <b>Pub/Sub</b> ingests/buffers the event stream; <b>Dataflow</b> (managed Apache Beam) does the streaming transform/enrichment; <b>BigQuery</b> is the analytics warehouse it lands in. "Ingest streaming events for real-time analytics" almost always wants this shape.</p>
+  </div>
+  <div class="card">
+    <h3>Pub/Sub vs Cloud Tasks (one line)</h3>
+    <p class="lead"><b>Pub/Sub</b> = high-throughput event <i>broadcast/fan-out</i>, many subscribers, you don't control per-message timing. <b>Cloud Tasks</b> = a managed task <i>queue</i> where you dispatch individual tasks to a specific handler with explicit per-task control (rate limits, scheduling, retries). Rule of thumb: <i>events to many listeners</i> → Pub/Sub; <i>commands to one worker, with fine control</i> → Cloud Tasks.</p>
+    <p class="doclink"><a href="https://cloud.google.com/pubsub/docs/overview">docs: cloud.google.com/pubsub</a></p>
+  </div>
+</div>
+<div class="card">
+  <h3>Minimal Pub/Sub, end to end</h3>
+  <pre><code># a topic (the named channel)
+gcloud pubsub topics create orders-topic
+
+# a subscription on it (pull by default)
+gcloud pubsub subscriptions create orders-sub --topic=orders-topic
+
+# publish a message
+gcloud pubsub topics publish orders-topic --message="order-42"
+
+# pull and acknowledge it
+gcloud pubsub subscriptions pull orders-sub --auto-ack
+
+# enable per-key ordering when you create the subscription:
+gcloud pubsub subscriptions create ordered-sub \
+  --topic=orders-topic --enable-message-ordering</code></pre>
+</div>
+<p class="doclink"><a href="https://cloud.google.com/pubsub/docs/overview">docs: Pub/Sub overview</a> · <a href="https://cloud.google.com/pubsub/docs/ordering">message ordering</a></p>
+
+<!-- ============ SERVICE ============ -->
+<h2 id="service">2 · Kubernetes Service — a stable front for ephemeral pods</h2>
+<p class="lead">A <b>pod</b> is the smallest deployable unit in <b>Kubernetes</b> (K8s — the container orchestrator GKE runs; <a href="https://cloud.google.com/kubernetes-engine/docs">GKE</a> = Google Kubernetes Engine). Pods are <b>ephemeral</b>: when one dies, restarts, scales, or gets rescheduled, it comes back with a <b>brand-new IP address</b>.</p>
+<div class="callout warn">
+  <b>The classic wrong answer:</b> "hardcode the pod's IP so other pods can reach it." Never do this — the IP changes the moment the pod restarts, and the connection breaks. Pod IPs are not addresses you pin anything to. This is the §0 meta-pattern in its purest form.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>What a Service is</h3>
+    <p class="lead">A <b>Service</b> is a stable abstraction in front of a <i>changing</i> set of pods. It gives you:</p>
+    <table>
+      <tr><td class="cmd"><b>A stable virtual IP</b></td><td class="desc">the "ClusterIP" — fixed for the Service's lifetime, regardless of pod churn</td></tr>
+      <tr><td class="cmd"><b>A stable DNS name</b></td><td class="desc">in-cluster name like <code>my-app.default.svc.cluster.local</code> — call it by name, never by pod IP</td></tr>
+      <tr><td class="cmd"><b>Label selection</b></td><td class="desc">picks its target pods by <b>label</b> (e.g. <code>app=my-app</code>), not by IP — as pods come and go, the live set updates automatically</td></tr>
+      <tr><td class="cmd"><b>Load balancing</b></td><td class="desc">spreads requests across the currently-healthy matching pods</td></tr>
+    </table>
+    <p class="lead"><b>Trigger:</b> "uninterrupted pod-to-pod communication despite scaling and rolling updates" → put a <b>Service</b> in front. Callers hit the Service's stable name; the Service tracks whichever pods are alive.</p>
+  </div>
+  <div class="card">
+    <h3>Service types (recognition)</h3>
+    <table>
+      <tr><td class="cmd"><b>ClusterIP</b></td><td class="desc"><i>default.</i> Internal-only virtual IP, reachable from inside the cluster. The answer for pod-to-pod / internal traffic.</td></tr>
+      <tr><td class="cmd"><b>NodePort</b></td><td class="desc">opens the same port on every node's IP — a low-level building block, rarely the direct answer.</td></tr>
+      <tr><td class="cmd"><b>LoadBalancer</b></td><td class="desc">provisions an external (cloud) load balancer with a public IP — the answer for exposing a Service to the internet.</td></tr>
+    </table>
+    <div class="callout" style="margin:8px 0 0;">
+      <b>The in-cluster twin of a load balancer.</b> A Service is "stable frontend → changing backends" living <i>inside</i> the cluster — exactly what an external load balancer does for VMs, scaled down to pods.
+    </div>
+  </div>
+</div>
+<div class="card">
+  <h3>Scope note — this is a Kubernetes-only concept</h3>
+  <table>
+    <tr><th style="width:30%">Platform</th><th style="width:70%">How you get a stable endpoint</th></tr>
+    <tr><td class="desc"><b>GKE / Kubernetes</b></td><td class="desc">create a <b>Service</b> (this section) — the stable IP/DNS abstraction</td></tr>
+    <tr><td class="desc"><b>Cloud Run</b></td><td class="desc">you get an <b>automatic stable HTTPS URL</b> per service out of the box — no Service object to manage</td></tr>
+    <tr><td class="desc"><b>Plain Docker on a VM</b></td><td class="desc"><b>neither</b> — no Service, no auto-URL; you wire up your own IP/DNS/LB by hand</td></tr>
+  </table>
+  <div class="callout warn" style="margin:8px 0 0;">
+    <b>Trap:</b> "Kubernetes Service" as an answer only makes sense when the workload is on <b>GKE/K8s</b>. If the scenario is Cloud Run, the stable endpoint is its built-in URL; if it's a lone VM, it's a static IP. Don't reach for "Service" on a non-Kubernetes scenario.
+  </div>
+</div>
+<pre><code># expose a Deployment's pods behind a stable internal Service
+kubectl expose deployment my-app --port=80 --target-port=8080 \
+  --name=my-app-svc            # ClusterIP by default
+
+# or declaratively (service.yaml)
+apiVersion: v1
+kind: Service
+metadata: { name: my-app-svc }
+spec:
+  selector: { app: my-app }    # picks pods by LABEL, not IP
+  ports: [{ port: 80, targetPort: 8080 }]
+  type: ClusterIP              # ClusterIP | NodePort | LoadBalancer</code></pre>
+<p class="doclink"><a href="https://kubernetes.io/docs/concepts/services-networking/service/">docs: Kubernetes Services</a> · <a href="https://cloud.google.com/kubernetes-engine/docs/concepts/service">GKE Services</a></p>
+
+<!-- ============ DNS ============ -->
+<h2 id="dns">3 · Cloud DNS — names instead of numbers</h2>
+<p class="lead"><b>DNS</b> = Domain Name System: the internet's phone book, translating human names (<code>www.example.com</code>) into IP addresses. <b>Cloud DNS</b> is GCP's managed, highly-available DNS service. You organize records into <b>zones</b> (a zone = the records for one domain you control).</p>
+<div class="grid">
+  <div class="card">
+    <h3>Public vs private zones — the key split</h3>
+    <table>
+      <tr><th style="width:26%">Zone type</th><th style="width:74%">Resolvable from where / used for</th></tr>
+      <tr><td class="desc"><b>Public zone</b></td><td class="desc">resolvable from the <b>whole internet</b>. Use to publish a public website or API under your domain — point names at internet-reachable IPs.</td></tr>
+      <tr><td class="desc"><b>Private zone</b></td><td class="desc">resolvable <b>only inside your VPC</b> (Virtual Private Cloud — your private GCP network). Use to give internal services friendly names <i>without</i> exposing them publicly.</td></tr>
+    </table>
+    <div class="callout" style="margin:8px 0 0;">
+      <b>Private zones are useful, not cosmetic.</b> They let you name internal services (<code>db.internal.example.com</code> → a private IP) so apps reference stable names, while nothing is reachable from the internet. The stable-name benefit of DNS without the exposure.
+    </div>
+  </div>
+  <div class="card">
+    <h3>Record types you must recognize</h3>
+    <table>
+      <tr><td class="cmd"><b>A</b></td><td class="desc">name → <b>IPv4</b> address (the workhorse: point a hostname at a server's IP)</td></tr>
+      <tr><td class="cmd"><b>AAAA</b></td><td class="desc">name → <b>IPv6</b> address ("quad-A" — four times the A, for the longer IPv6)</td></tr>
+      <tr><td class="cmd"><b>CNAME</b></td><td class="desc">name → <b>another name</b> (an alias; <i>Canonical Name</i>)</td></tr>
+      <tr><td class="cmd"><b>MX</b></td><td class="desc">name → <b>mail server</b> (Mail eXchange; where email for the domain goes)</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout good">
+  <b>To expose VMs by name to the public:</b> create a <b>public zone</b> + <b>A records</b> pointing at the VMs' <b>stable (static) IPs</b> (§4). Name + stable address = the meta-pattern again. Point the A record at a static IP so replacing the VM never breaks the name.
+</div>
+<div class="callout warn">
+  <b>Distractor — internal DNS can't serve external users.</b> Compute Engine gives every VM an automatic <b>internal DNS name</b> (e.g. <code>my-vm.zone.c.project.internal</code>), but it resolves <i>only inside the VPC</i>. If a question asks how <b>external</b> users reach your VMs by name, internal DNS is the wrong answer — you need a <b>public Cloud DNS zone</b> with A records.
+</div>
+<pre><code># a public managed zone for your domain
+gcloud dns managed-zones create my-zone \
+  --dns-name="example.com." --description="public" --visibility=public
+
+# add an A record pointing the name at a static IP
+gcloud dns record-sets create app.example.com. \
+  --zone=my-zone --type=A --ttl=300 --rrdatas=203.0.113.10
+
+# a PRIVATE zone, bound to one VPC, resolvable only inside it
+gcloud dns managed-zones create internal-zone \
+  --dns-name="internal.example.com." --visibility=private \
+  --networks=my-vpc</code></pre>
+<p class="doclink"><a href="https://cloud.google.com/dns/docs/overview">docs: Cloud DNS overview</a> · <a href="https://cloud.google.com/compute/docs/internal-dns">internal DNS</a></p>
+
+<!-- ============ IPS ============ -->
+<h2 id="ips">4 · Static vs ephemeral external IPs</h2>
+<p class="lead">An IP address attached to a VM can be <b>ephemeral</b> (temporary) or <b>static</b> (reserved). The difference is what happens when the VM stops — and it's the crux of "why did DNS break after we rebooted the server?"</p>
+<div class="card">
+  <table>
+    <tr><th style="width:22%">Type</th><th style="width:42%">Behaviour</th><th style="width:36%">When it's the answer</th></tr>
+    <tr>
+      <td><b>Ephemeral external IP</b></td>
+      <td class="desc">assigned automatically; <b>released when the VM stops</b>; the VM gets a <i>different</i> IP on next start</td>
+      <td class="desc">throwaway / dev VMs where nothing outside depends on a fixed address</td>
+    </tr>
+    <tr>
+      <td><b>Static (reserved) external IP</b></td>
+      <td class="desc">you reserve it; it <b>persists</b> across stops, restarts, and even VM <i>replacement</i> (you re-attach the same IP)</td>
+      <td class="desc">anything external must reliably find you: a DNS A-record target, a webhook URL, an allowlisted source</td>
+    </tr>
+    <tr>
+      <td><b>Internal static IP</b></td>
+      <td class="desc">a reserved <i>private</i> address inside the VPC; stable across restarts</td>
+      <td class="desc">stable private endpoint for an internal service other VMs depend on</td>
+    </tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>The whole point of static IPs:</b> point a DNS <b>A record</b> at a <b>static</b> external IP, and replacing or restarting the server never breaks the name — the address stays put behind the name. Pin the name to the <i>reserved</i> IP, not to the box. (§0 again: stable abstraction in front of a replaceable thing.)
+</div>
+<div class="card">
+  <h3>Cost &amp; security — the counter-intuitive billing</h3>
+  <table>
+    <tr><td class="cmd">External IPv4, in use</td><td class="desc">bills <b>hourly</b> — external IPv4 is a charged, scarce resource</td></tr>
+    <tr><td class="cmd">Reserved but <b>unattached</b></td><td class="desc">bills <b>MORE</b> than an attached one — a deliberate <b>anti-hoarding</b> charge so people release IPs they aren't using</td></tr>
+    <tr><td class="cmd">Cheapest <i>and</i> safest</td><td class="desc"><b>no external IP at all</b>: a private VM + <b>Cloud NAT</b> for outbound egress + <b>IAP</b> for admin access</td></tr>
+  </table>
+  <p class="lead"><b>Cloud NAT</b> (Network Address Translation) lets no-external-IP VMs reach the internet <i>outbound</i> (updates, API calls) without being reachable <i>inbound</i>. <b>IAP</b> (Identity-Aware Proxy) gives you SSH/RDP admin access to those VMs through an identity-checked tunnel — no public port 22. Together they remove the external IP entirely.</p>
+</div>
+<div class="callout warn">
+  <b>BYOIP trap.</b> <b>BYOIP</b> = Bring Your Own IP: import your own public IP block into GCP. It's for large orgs with IP reputation/allowlist commitments — <i>not</i> the cost-effective answer for "we need a stable IP." If the scenario is just "keep a fixed address," reserve a <b>static IP</b>; BYOIP is a distractor unless the question explicitly involves owning/migrating an existing IP range.
+</div>
+<div class="callout">
+  <b>Anycast note.</b> Global resources (e.g. global external load balancers) use <b>anycast</b>: one IP advertised from many locations, so users hit the nearest edge. You don't manage anycast directly on a VM — recognize the word as "one IP, many places," the global-LB flavor of a stable frontend.
+</div>
+<pre><code># reserve a static external IP (regional)
+gcloud compute addresses create app-ip \
+  --region=europe-west1
+
+# attach it when creating the VM
+gcloud compute instances create my-app \
+  --zone=europe-west1-b --address=app-ip
+
+# create a VM with NO external IP (private + cheapest/safest)
+gcloud compute instances create my-private-app \
+  --zone=europe-west1-b --no-address</code></pre>
+<p class="doclink"><a href="https://cloud.google.com/compute/docs/ip-addresses">docs: IP addresses</a> · <a href="https://cloud.google.com/nat/docs/overview">Cloud NAT</a></p>
+
+<!-- ============ DECIDE ============ -->
+<h2 id="decide">5 · Decision reflex — what the trigger words mean</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Messaging / decoupling</h3>
+    <table>
+      <tr><td class="cmd">"decouple producers from consumers"</td><td class="desc">Pub/Sub</td></tr>
+      <tr><td class="cmd">"buffer spikes", "ingest events"</td><td class="desc">Pub/Sub</td></tr>
+      <tr><td class="cmd">"fan-out", "distribute work to many workers / a MIG"</td><td class="desc">Pub/Sub (not Bigtable)</td></tr>
+      <tr><td class="cmd">"stream events for analytics"</td><td class="desc">Pub/Sub → Dataflow → BigQuery</td></tr>
+      <tr><td class="cmd">"per-task control, scheduled dispatch to one handler"</td><td class="desc">Cloud Tasks</td></tr>
+      <tr><td class="cmd">"strict FIFO of all messages"</td><td class="desc">NOT plain Pub/Sub (ordering keys = per-key only)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Stable endpoints</h3>
+    <table>
+      <tr><td class="cmd">"uninterrupted pod-to-pod comms despite scaling"</td><td class="desc">Kubernetes Service (ClusterIP)</td></tr>
+      <tr><td class="cmd">"expose a Service to the internet"</td><td class="desc">Service type LoadBalancer</td></tr>
+      <tr><td class="cmd">"hardcode the pod IP"</td><td class="desc">always WRONG</td></tr>
+      <tr><td class="cmd">"external users reach VMs by name"</td><td class="desc">public Cloud DNS zone + A records</td></tr>
+      <tr><td class="cmd">"name internal services, no public exposure"</td><td class="desc">private Cloud DNS zone</td></tr>
+      <tr><td class="cmd">"something OUTSIDE must reliably find you (DNS/webhook/allowlist)"</td><td class="desc">static external IP</td></tr>
+      <tr><td class="cmd">"nothing inbound needed", "cheapest + safest"</td><td class="desc">no external IP (private VM + Cloud NAT + IAP)</td></tr>
+      <tr><td class="cmd">"keep our existing public IP block"</td><td class="desc">BYOIP (else it's a distractor)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">6 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Pub/Sub</b></td><td class="desc">managed async message bus; decouples producers from consumers; at-least-once, generally unordered</td></tr>
+    <tr><td class="cmd"><b>Topic</b></td><td class="desc">named channel publishers send messages to</td></tr>
+    <tr><td class="cmd"><b>Subscription</b></td><td class="desc">named stream attached to a topic; holds unacked messages for subscribers (pull or push)</td></tr>
+    <tr><td class="cmd"><b>Ordering key</b></td><td class="desc">tag that forces in-order delivery <i>per key</i> (not global FIFO)</td></tr>
+    <tr><td class="cmd"><b>Fan-out</b></td><td class="desc">one topic, many subscriptions — each gets every message</td></tr>
+    <tr><td class="cmd"><b>Idempotent</b></td><td class="desc">safe to process the same message twice (required under at-least-once)</td></tr>
+    <tr><td class="cmd"><b>Service (K8s)</b></td><td class="desc">stable virtual IP + DNS name fronting a label-selected, changing set of pods; load-balances across live ones</td></tr>
+    <tr><td class="cmd"><b>ClusterIP</b></td><td class="desc">default Service type — internal-only stable virtual IP</td></tr>
+    <tr><td class="cmd"><b>Pod</b></td><td class="desc">smallest K8s deployable unit; ephemeral — new IP on every restart</td></tr>
+    <tr><td class="cmd"><b>Zone (DNS)</b></td><td class="desc">the records for one domain; public (internet) or private (VPC-only)</td></tr>
+    <tr><td class="cmd"><b>A / AAAA record</b></td><td class="desc">name → IPv4 / IPv6 address</td></tr>
+    <tr><td class="cmd"><b>CNAME / MX</b></td><td class="desc">alias to another name / mail-server record</td></tr>
+    <tr><td class="cmd"><b>Ephemeral IP</b></td><td class="desc">temporary external IP; released when the VM stops</td></tr>
+    <tr><td class="cmd"><b>Static IP</b></td><td class="desc">reserved external (or internal) IP; persists across restarts and replacement</td></tr>
+    <tr><td class="cmd"><b>Cloud NAT</b></td><td class="desc">outbound-only internet for no-external-IP VMs</td></tr>
+    <tr><td class="cmd"><b>IAP</b></td><td class="desc">Identity-Aware Proxy — identity-checked admin tunnel, no public port 22</td></tr>
+    <tr><td class="cmd"><b>BYOIP</b></td><td class="desc">Bring Your Own IP block; large-org only, usually a distractor for cost questions</td></tr>
+    <tr><td class="cmd"><b>Anycast</b></td><td class="desc">one IP advertised from many locations; users hit the nearest — the global-LB flavor of a stable frontend</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/pubsub/docs/overview">Pub/Sub docs</a> ·
+  <a href="https://cloud.google.com/pubsub/docs/ordering">Pub/Sub ordering</a> ·
+  <a href="https://kubernetes.io/docs/concepts/services-networking/service/">Kubernetes Services</a> ·
+  <a href="https://cloud.google.com/kubernetes-engine/docs/concepts/service">GKE Services</a> ·
+  <a href="https://cloud.google.com/dns/docs/overview">Cloud DNS docs</a> ·
+  <a href="https://cloud.google.com/compute/docs/internal-dns">internal DNS</a> ·
+  <a href="https://cloud.google.com/compute/docs/ip-addresses">IP addresses</a> ·
+  <a href="https://cloud.google.com/nat/docs/overview">Cloud NAT</a> ·
+  <a href="https://cloud.google.com/iap/docs/using-tcp-forwarding">IAP TCP forwarding</a>
+</p>
+
+</div>
+</body>
+</html>

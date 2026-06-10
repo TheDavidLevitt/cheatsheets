@@ -69,6 +69,8 @@ GROUPS = {
             "gcp_databases_storage_cheatsheet.html",
             "gcp_data_analytics_cheatsheet.html",
             "gcp_networking_cheatsheet.html",
+            "gcloud_command_grammar_cheatsheet.html",
+            "gcp_endpoints_messaging_cheatsheet.html",
         ],
     },
 }
@@ -107,6 +109,8 @@ BLURBS = {
     "gcp_databases_storage_cheatsheet.html": "Which data goes in which box (and what it costs).",
     "gcp_data_analytics_cheatsheet.html": "Big data: from MapReduce lore to BigQuery bills.",
     "gcp_networking_cheatsheet.html": "VPCs, subnets, firewall rules — the private roads between your machines.",
+    "gcloud_command_grammar_cheatsheet.html": "Reading and writing gcloud commands without guessing.",
+    "gcp_endpoints_messaging_cheatsheet.html": "Pub/Sub, endpoints, and how GCP services talk to each other.",
 }
 
 CARD = """      <a class="card" href="{href}" data-search="{search}" data-key="{key}">

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gcloud Command Grammar Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040; --bad:#f7768e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .ok{color:var(--accent2);font-weight:600;}
+  .no{color:var(--bad);font-weight:600;}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+
+  .biggram{background:var(--code);border:1px solid var(--accent);border-radius:10px;
+    padding:18px 16px;margin:8px 0 4px;text-align:center;font-family:ui-monospace,monospace;
+    font-size:15px;line-height:2.2;}
+  .biggram .g{color:var(--accent);font-weight:700;}
+  .biggram .r{color:var(--accent2);font-weight:700;}
+  .biggram .v{color:var(--warn);font-weight:700;}
+  .biggram .f{color:var(--muted);}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;font-size:12px;color:var(--muted);margin-top:6px;}
+  .legend span b{font-family:ui-monospace,monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>gcloud Command Grammar Cheat Sheet</h1>
+<p class="sub">The predictable shape of every <code>gcloud</code> command — service group → resource → verb → flags — so you can recognize the right one on sight. Pure CLI syntax, ACE-exam depth.</p>
+
+<nav class="mini">
+  <a href="#rule">The grammar rule</a>
+  <a href="#gotcha">The big gotcha</a>
+  <a href="#trees">Service trees</a>
+  <a href="#listvsdesc">list vs describe</a>
+  <a href="#flags">Common flags</a>
+  <a href="#scope">Zonal/regional/global</a>
+  <a href="#canon">Canonical commands</a>
+  <a href="#traps">Traps</a>
+  <a href="#glossary">Glossary</a>
+</nav>
+
+<!-- ============ THE RULE ============ -->
+<h2 id="rule">1 · The grammar rule (read once, recognize forever)</h2>
+<p class="lead">Almost every <code>gcloud</code> command is the same sentence with the words swapped. Learn the slots, not the commands:</p>
+<div class="biggram">
+  <span class="g">gcloud</span>&nbsp; <span class="g">&lt;SERVICE-GROUP&gt;</span>&nbsp; <span class="r">&lt;RESOURCE&gt;</span>&nbsp; <span class="v">&lt;VERB&gt;</span>&nbsp; <span class="f">[POSITIONAL]</span>&nbsp; <span class="f">[--FLAGS]</span>
+</div>
+<div class="legend">
+  <span><b class="g">service-group</b> = the product (compute, iam, storage…)</span>
+  <span><b class="r">resource</b> = the noun, usually <b>plural</b> (instances, buckets, roles…)</span>
+  <span><b class="v">verb</b> = the action (create, list, describe…)</span>
+</div>
+<div class="grid" style="margin-top:14px;">
+  <div class="card">
+    <h3>Worked example, slot by slot</h3>
+    <pre><code>gcloud compute instances create my-instance --zone=us-central1-a
+   │      │        │        │        │           │
+   │      │        │        │        │           └ --FLAG (scope)
+   │      │        │        │        └ POSITIONAL (the name)
+   │      │        │        └ VERB    (create)
+   │      │        └ RESOURCE (instances — plural!)
+   │      └ SERVICE-GROUP (compute)
+   └ the binary</code></pre>
+    <p class="lead">Read it as a sentence: "In <b>compute</b>, take the <b>instances</b> collection and <b>create</b> one called <i>my-instance</i> in this zone." Every command parses the same way.</p>
+  </div>
+  <div class="card">
+    <h3>Etymology: it mirrors REST</h3>
+    <p class="lead">The grammar isn't arbitrary — it's a REST (Representational State Transfer) URL turned inside out:</p>
+    <table>
+      <tr><th>REST</th><th>gcloud</th></tr>
+      <tr><td class="cmd"><code>/compute/.../instances</code></td><td class="desc">service → resource <b>collection</b> (plural)</td></tr>
+      <tr><td class="cmd"><code>POST</code> / <code>GET</code> / <code>DELETE</code></td><td class="desc">the verb: create / describe / delete</td></tr>
+      <tr><td class="cmd">path parameter</td><td class="desc">the positional name argument</td></tr>
+    </table>
+    <p class="lead">That's why resources are plural: you're naming a <i>collection</i> and then acting on it, exactly like an API endpoint.</p>
+  </div>
+</div>
+<div class="callout">
+  <b>The full global structure</b> (release track is optional and goes <i>before</i> the service group):
+  <pre><code>gcloud [alpha|beta] &lt;service-group&gt; &lt;resource&gt; &lt;verb&gt; [POSITIONAL] [--FLAGS]
+        └─ release track │
+           omit = GA (stable)         everything to the right = the sentence above</code></pre>
+  <span class="pill">gcloud compute …</span> stable &nbsp; <span class="pill">gcloud beta compute …</span> pre-release surface &nbsp; <span class="pill">gcloud alpha …</span> earliest, may break.
+  Service groups can nest one level deeper for sub-collections: <code>gcloud compute <b>networks subnets</b> create …</code> (resource = <code>networks subnets</code>).
+</div>
+<div class="callout good">
+  <b>Discovery trio</b> — when you forget a command, the CLI tells you. Append nothing and read the help: <code>gcloud compute</code> lists its resources; <code>gcloud compute instances</code> lists its verbs; <code>gcloud compute instances create --help</code> lists the flags. The grammar makes the help <i>browsable</i>.
+</div>
+
+<!-- ============ THE BIG GOTCHA ============ -->
+<h2 id="gotcha">2 · The big gotcha — almost all infrastructure lives under <code>gcloud compute</code></h2>
+<div class="callout warn">
+  <b>The single most common wrong answer on the exam:</b> reaching for <code>gcloud networks …</code> or <code>gcloud storage …</code> for networking infrastructure. <b>There is no top-level <code>gcloud networks</code> group.</b> VPC networks, subnets, firewall rules, routers, static IPs, disks, snapshots, load-balancer pieces — <b>all of it hangs off <code>gcloud compute</code></b>, because Compute Engine is where the underlying network and disk primitives live.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Under <code>gcloud compute</code> (the surprise residents)</h3>
+    <table>
+      <tr><td class="cmd"><code>compute networks</code></td><td class="desc">VPC networks — <span class="no">not</span> <code>gcloud networks</code></td></tr>
+      <tr><td class="cmd"><code>compute networks subnets</code></td><td class="desc">subnets (a sub-collection of networks)</td></tr>
+      <tr><td class="cmd"><code>compute firewall-rules</code></td><td class="desc">firewall rules</td></tr>
+      <tr><td class="cmd"><code>compute routers</code></td><td class="desc">Cloud Router (BGP, Cloud NAT)</td></tr>
+      <tr><td class="cmd"><code>compute addresses</code></td><td class="desc">reserved static IP addresses</td></tr>
+      <tr><td class="cmd"><code>compute disks</code> / <code>snapshots</code> / <code>images</code></td><td class="desc">persistent disks &amp; their copies</td></tr>
+      <tr><td class="cmd"><code>compute instances</code></td><td class="desc">VMs</td></tr>
+      <tr><td class="cmd"><code>compute instance-templates</code></td><td class="desc">VM blueprints for MIGs</td></tr>
+      <tr><td class="cmd"><code>compute instance-groups managed</code></td><td class="desc">managed instance groups (MIGs)</td></tr>
+      <tr><td class="cmd"><code>compute forwarding-rules</code> / <code>target-pools</code> / <code>url-maps</code></td><td class="desc">load-balancer building blocks</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>What is <i>not</i> under compute</h3>
+    <table>
+      <tr><td class="cmd"><code>gcloud storage</code></td><td class="desc">buckets &amp; objects (the GCS surface): <code>buckets</code>, <code>cp</code>, <code>ls</code>, <code>rm</code>, <code>rsync</code></td></tr>
+      <tr><td class="cmd"><code>gcloud iam</code></td><td class="desc">roles, service accounts, workload-identity pools</td></tr>
+      <tr><td class="cmd"><code>gcloud projects</code></td><td class="desc">the project resource itself + its IAM policy bindings</td></tr>
+      <tr><td class="cmd"><code>gcloud dns</code></td><td class="desc">Cloud DNS managed zones &amp; record sets</td></tr>
+      <tr><td class="cmd"><code>gcloud container</code></td><td class="desc">GKE clusters &amp; node pools</td></tr>
+    </table>
+    <p class="lead"><b>Mental rule:</b> if it's a low-level <i>plumbing</i> primitive (a wire, an IP, a disk, a VM), look under <code>compute</code> first. If it's a <i>managed product</i> with its own name (Storage, DNS, SQL, Pub/Sub, GKE), it has its own group.</p>
+  </div>
+</div>
+<div class="callout good">
+  <b>IAM grants are split on purpose:</b> role <i>definitions</i> and <i>identities</i> live under <code>gcloud iam</code>, but <i>granting</i> a role on a project is <code>gcloud projects add-iam-policy-binding</code> — because the policy belongs to the <b>resource</b> (the project), not to IAM. Ask "whose object is this binding attached to?" → projects.
+</div>
+
+<!-- ============ SERVICE TREES ============ -->
+<h2 id="trees">3 · Service trees — service → resource → common verbs</h2>
+<p class="lead">Each group fans out the same way. The verbs in <b class="ok">green</b> recur in almost every group (<code>create · list · describe · update · delete</code>); the rest are resource-specific.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3><code>gcloud compute</code> — the big one</h3>
+    <pre><code>compute
+├─ instances ........ create list describe delete
+│                      start stop reset ssh scp
+├─ disks ............ create resize snapshot delete
+├─ snapshots ........ create list delete
+├─ images .......... create list describe
+├─ networks ........ create list describe delete
+│   └─ subnets ...... create list describe
+│                      expand-ip-range
+├─ firewall-rules .. create list describe delete
+├─ routers ......... create add-bgp-peer
+│                      update-bgp-peer describe
+├─ addresses ....... create list delete   (static IPs)
+├─ instance-templates ......... create list delete
+├─ instance-groups managed .... create list
+│                      resize set-autoscaling
+└─ forwarding-rules / target-pools / url-maps</code></pre>
+  </div>
+  <div class="card">
+    <h3><code>gcloud iam</code></h3>
+    <pre><code>iam
+├─ roles ........... describe create list
+│                     update delete
+│   (NO get-permissions verb — describe
+│    shows the permission list)
+├─ service-accounts  create list describe delete
+│   └─ keys ........ create list delete
+│                     (key files = anti-pattern)
+└─ workload-identity-pools
+                     create describe   (+ providers)</code></pre>
+    <p class="lead"><b>Trap:</b> there is no <code>gcloud iam roles get-permissions</code>. To see a role's permissions you <code>describe</code> it.</p>
+  </div>
+  <div class="card">
+    <h3><code>gcloud projects</code></h3>
+    <pre><code>projects
+├─ create / describe / list / delete
+├─ get-iam-policy                (dump bindings)
+├─ add-iam-policy-binding        (grant a role)
+└─ remove-iam-policy-binding     (revoke a role)</code></pre>
+    <p class="lead">Grants live here because the allow policy is attached to the project resource. Same <code>add/remove-iam-policy-binding</code> verbs appear on buckets, instances, SAs — anywhere a policy can attach.</p>
+  </div>
+  <div class="card">
+    <h3><code>gcloud container</code> — GKE</h3>
+    <pre><code>container
+├─ clusters ........ create describe list delete
+│                     get-credentials   (wire up kubectl)
+│                     upgrade resize
+└─ node-pools ...... create list delete</code></pre>
+    <p class="lead"><b>Memorize:</b> after <code>clusters create</code>, you run <code>clusters get-credentials NAME</code> to point <code>kubectl</code> at it. Without it, <code>kubectl</code> has no context.</p>
+  </div>
+  <div class="card">
+    <h3><code>gcloud storage</code> — GCS</h3>
+    <pre><code>storage
+├─ buckets ......... create describe update
+│                     list delete
+├─ cp     (copy objects, local ↔ gs://)
+├─ ls     (list buckets / objects)
+├─ rm     (delete objects)
+└─ rsync  (sync a tree to/from a bucket)</code></pre>
+    <p class="lead">Modern replacement for <code>gsutil</code>. Note the object verbs (<code>cp</code>, <code>ls</code>, <code>rm</code>, <code>rsync</code>) are filesystem-style, not <code>objects create</code>.</p>
+  </div>
+  <div class="card">
+    <h3><code>gcloud sql</code></h3>
+    <pre><code>sql
+├─ instances ....... create describe list
+│                     patch delete
+├─ databases ....... create list delete
+└─ backups ......... create list describe</code></pre>
+  </div>
+  <div class="card">
+    <h3><code>gcloud pubsub</code></h3>
+    <pre><code>pubsub
+├─ topics .......... create list publish delete
+└─ subscriptions ... create list pull delete</code></pre>
+  </div>
+  <div class="card">
+    <h3><code>gcloud dns</code></h3>
+    <pre><code>dns
+├─ managed-zones ... create list describe delete
+└─ record-sets ..... list create
+                      transaction start/add/execute</code></pre>
+  </div>
+  <div class="card">
+    <h3>Serverless &amp; config</h3>
+    <pre><code>run
+├─ deploy           (deploy a container service)
+└─ services ........ list describe delete
+
+functions
+└─ deploy           (deploy a Cloud Function)
+
+config
+├─ list / set / get-value / unset
+└─ configurations .. create activate list
+
+logging
+├─ read             (query log entries)
+└─ sinks ........... create list describe</code></pre>
+  </div>
+</div>
+
+<!-- ============ LIST VS DESCRIBE ============ -->
+<h2 id="listvsdesc">4 · <code>list</code> vs <code>describe</code> — a heavily-tested split</h2>
+<div class="grid">
+  <div class="card">
+    <h3><code>list</code> — many, shallow</h3>
+    <p class="lead">Enumerates <b>all</b> resources of a type in scope, as a compact table of a few key columns. Takes <b>no name</b> — it's the collection.</p>
+    <pre><code>gcloud compute instances list
+NAME         ZONE           STATUS
+my-instance  us-central1-a  RUNNING
+web-2        us-central1-b  RUNNING</code></pre>
+  </div>
+  <div class="card">
+    <h3><code>describe</code> — one, deep</h3>
+    <p class="lead">Dumps the <b>full configuration</b> of a <b>single named</b> resource (every field, in YAML). Requires the positional name.</p>
+    <pre><code>gcloud compute instances describe my-instance \
+  --zone=us-central1-a
+# → full YAML: disks, networkInterfaces,
+#   serviceAccounts, metadata, scheduling…</code></pre>
+  </div>
+</div>
+<div class="callout good">
+  <b>Recognition rule:</b> question says "see <i>all</i> X" / "which X exist" → <code>list</code> (no name). Question says "the configuration / details / full settings of <i>this</i> X" → <code>describe NAME</code>. If a name appears in the answer, it's almost never <code>list</code>.
+</div>
+
+<!-- ============ FLAGS ============ -->
+<h2 id="flags">5 · Common flags, grouped</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Scope — <code>--project / --zone / --region</code></h3>
+    <table>
+      <tr><td class="cmd"><code>--project=PROJECT_ID</code></td><td class="desc">which project (defaults to <code>config</code> value)</td></tr>
+      <tr><td class="cmd"><code>--zone=us-central1-a</code></td><td class="desc">required for <b>zonal</b> resources (VMs, zonal disks)</td></tr>
+      <tr><td class="cmd"><code>--region=us-central1</code></td><td class="desc">required for <b>regional</b> resources (subnets, regional addresses)</td></tr>
+    </table>
+    <p class="lead">Omit the scope flag and gcloud either uses your <code>config</code> default or prompts you to pick. See §6 for which resources are zonal vs regional vs global.</p>
+  </div>
+  <div class="card">
+    <h3>Output — <code>--format</code></h3>
+    <table>
+      <tr><td class="cmd"><code>--format=json</code></td><td class="desc">machine-readable, full structure</td></tr>
+      <tr><td class="cmd"><code>--format=yaml</code></td><td class="desc">same as <code>describe</code>'s default look</td></tr>
+      <tr><td class="cmd"><code>--format=table(name,status)</code></td><td class="desc">pick exact columns</td></tr>
+      <tr><td class="cmd"><code>--format="value(name)"</code></td><td class="desc">bare values, no header — perfect for scripts/<code>$(…)</code></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Filter — <code>--filter</code></h3>
+    <pre><code>gcloud compute instances list \
+  --filter="status=RUNNING"
+
+gcloud compute instances list \
+  --filter="name~^web"      # ~ = regex match</code></pre>
+    <p class="lead">The <code>~</code> operator is <b>regex match</b> (and <code>!~</code> is "doesn't match"). Combine with <code>AND</code> / <code>OR</code>. Server-side where supported, so it scales.</p>
+  </div>
+  <div class="card">
+    <h3>Identity &amp; behavior</h3>
+    <table>
+      <tr><td class="cmd"><code>--impersonate-service-account=SA_EMAIL</code></td><td class="desc">run this one command as an SA (needs TokenCreator)</td></tr>
+      <tr><td class="cmd"><code>--account=alex@example.com</code></td><td class="desc">use a specific logged-in account for this command</td></tr>
+      <tr><td class="cmd"><code>--quiet</code> / <code>-q</code></td><td class="desc">skip all confirmation prompts (scripting; dangerous with <code>delete</code>)</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout">
+  <b>Resource-specific flags worth memorizing</b> (these are the ones exams hinge on):
+  <table>
+    <tr><td class="cmd"><code>--subnet-mode=custom</code></td><td class="desc">on <code>compute networks create</code> — custom vs <code>auto</code> subnets. <b>This lives on <i>networks</i> create, not subnets.</b></td></tr>
+    <tr><td class="cmd"><code>--range=10.0.0.0/24</code></td><td class="desc">on <code>compute networks subnets create</code> — the subnet's CIDR</td></tr>
+    <tr><td class="cmd"><code>--machine-type=e2-medium</code></td><td class="desc">on <code>instances create</code> — VM size</td></tr>
+    <tr><td class="cmd"><code>--image-family=debian-12</code> <code>--image-project=debian-cloud</code></td><td class="desc">on <code>instances create</code> — boot image (latest in a family)</td></tr>
+    <tr><td class="cmd"><code>--boot-disk-size=50GB</code></td><td class="desc">on <code>instances create</code> — boot disk size</td></tr>
+    <tr><td class="cmd"><code>--allow=tcp:22,tcp:443</code> <code>--source-ranges=0.0.0.0/0</code></td><td class="desc">on <code>firewall-rules create</code> — what + from where</td></tr>
+    <tr><td class="cmd"><code>--size=200GB</code></td><td class="desc">on <code>disks resize</code> — grow a persistent disk (can't shrink)</td></tr>
+  </table>
+</div>
+
+<!-- ============ SCOPE ============ -->
+<h2 id="scope">6 · Zonal vs regional vs global — which flag the resource demands</h2>
+<p class="lead">Pick the wrong scope flag and the command errors or finds nothing. The scope is a property of the resource <i>type</i>:</p>
+<div class="grid">
+  <div class="card">
+    <h3><span class="pill">--zone</span> Zonal</h3>
+    <p class="lead">Lives in one zone; needs <code>--zone</code>.</p>
+    <table>
+      <tr><td class="desc">VM instances</td></tr>
+      <tr><td class="desc">Standard persistent disks (zonal)</td></tr>
+      <tr><td class="desc">Zonal MIGs</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3><span class="pill">--region</span> Regional</h3>
+    <p class="lead">Spans zones in a region; needs <code>--region</code>.</p>
+    <table>
+      <tr><td class="desc">Subnets</td></tr>
+      <tr><td class="desc">Regional static addresses</td></tr>
+      <tr><td class="desc">Regional MIGs, Cloud Router, Cloud NAT</td></tr>
+      <tr><td class="desc">Cloud SQL (regional service)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3><span class="pill">global</span> Global</h3>
+    <p class="lead">No location flag — the resource is project-wide.</p>
+    <table>
+      <tr><td class="desc">VPC <b>networks</b> (the network is global; its subnets are regional)</td></tr>
+      <tr><td class="desc">Firewall rules</td></tr>
+      <tr><td class="desc">Images, global addresses, URL maps</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout good">
+  <b>The classic question:</b> "A subnet is created with which scope flag?" → <code>--region</code>. "A VM?" → <code>--zone</code>. "The VPC network itself?" → neither, it's global. Remember the nesting: <b>global network ⊃ regional subnet ⊃ zonal VM.</b>
+</div>
+
+<!-- ============ CANONICAL ============ -->
+<h2 id="canon">7 · Canonical commands to memorize</h2>
+<p class="lead">High-frequency exam commands. Read for the <i>shape</i>, not the literal values.</p>
+<div class="card">
+  <table>
+    <tr><th>Command</th><th>Purpose</th></tr>
+    <tr><td class="cmd"><code>gcloud compute networks create MY_VPC --subnet-mode=custom</code></td><td class="desc">create a custom-subnet VPC network</td></tr>
+    <tr><td class="cmd"><code>gcloud compute networks subnets create MY_SUBNET --network=MY_VPC --region=us-central1 --range=10.0.0.0/24</code></td><td class="desc">add a subnet with its CIDR range</td></tr>
+    <tr><td class="cmd"><code>gcloud compute firewall-rules create allow-ssh --network=MY_VPC --allow=tcp:22 --source-ranges=0.0.0.0/0</code></td><td class="desc">open a port on the VPC</td></tr>
+    <tr><td class="cmd"><code>gcloud compute addresses create MY_IP --region=us-central1</code></td><td class="desc">reserve a regional static IP</td></tr>
+    <tr><td class="cmd"><code>gcloud compute routers add-bgp-peer MY_ROUTER --peer-name=peer1 --peer-asn=65001 --region=us-central1</code></td><td class="desc">add a BGP peer to a Cloud Router</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances create my-instance --machine-type=e2-medium --zone=us-central1-a</code></td><td class="desc">create a VM</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances list</code></td><td class="desc">list all VMs (no name, shallow table)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances describe my-instance --zone=us-central1-a</code></td><td class="desc">full config of one VM</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instances ssh my-instance --zone=us-central1-a</code></td><td class="desc">SSH in (gcloud manages the keys)</td></tr>
+    <tr><td class="cmd"><code>gcloud compute disks resize MY_DISK --size=200GB --zone=us-central1-a</code></td><td class="desc">grow a persistent disk</td></tr>
+    <tr><td class="cmd"><code>gcloud compute snapshots list</code></td><td class="desc">list disk snapshots</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instance-templates create MY_TMPL --machine-type=e2-medium</code></td><td class="desc">create a VM blueprint for a MIG</td></tr>
+    <tr><td class="cmd"><code>gcloud compute instance-groups managed create MY_MIG --template=MY_TMPL --size=3 --zone=us-central1-a</code></td><td class="desc">create a managed instance group</td></tr>
+    <tr><td class="cmd"><code>gcloud iam roles describe roles/compute.viewer</code></td><td class="desc">show a role's exact permissions</td></tr>
+    <tr><td class="cmd"><code>gcloud iam service-accounts create my-sa --display-name="My SA"</code></td><td class="desc">create a service account</td></tr>
+    <tr><td class="cmd"><code>gcloud projects add-iam-policy-binding PROJECT_ID --member="user:alex@example.com" --role="roles/compute.viewer"</code></td><td class="desc">grant a role to a principal</td></tr>
+    <tr><td class="cmd"><code>gcloud projects get-iam-policy PROJECT_ID</code></td><td class="desc">dump the project's IAM bindings</td></tr>
+    <tr><td class="cmd"><code>gcloud container clusters create MY_CLUSTER --num-nodes=3 --zone=us-central1-a</code></td><td class="desc">create a GKE cluster</td></tr>
+    <tr><td class="cmd"><code>gcloud container clusters get-credentials MY_CLUSTER --zone=us-central1-a</code></td><td class="desc">point <code>kubectl</code> at the cluster</td></tr>
+    <tr><td class="cmd"><code>gcloud storage buckets describe gs://my-bucket</code></td><td class="desc">show a bucket's config</td></tr>
+    <tr><td class="cmd"><code>gcloud storage cp file.txt gs://my-bucket/</code></td><td class="desc">upload an object</td></tr>
+    <tr><td class="cmd"><code>gcloud sql instances create my-db --database-version=POSTGRES_15 --region=us-central1</code></td><td class="desc">create a Cloud SQL instance</td></tr>
+    <tr><td class="cmd"><code>gcloud pubsub topics create my-topic</code></td><td class="desc">create a Pub/Sub topic</td></tr>
+    <tr><td class="cmd"><code>gcloud run deploy my-service --image=us-docker.pkg.dev/PROJECT_ID/repo/img --region=us-central1</code></td><td class="desc">deploy a Cloud Run service</td></tr>
+    <tr><td class="cmd"><code>gcloud config list</code></td><td class="desc">show active project / account / region / zone</td></tr>
+    <tr><td class="cmd"><code>gcloud config set project PROJECT_ID</code></td><td class="desc">set the default project for all later commands</td></tr>
+    <tr><td class="cmd"><code>gcloud config set compute/zone us-central1-a</code></td><td class="desc">set a default zone (so you can drop <code>--zone</code>)</td></tr>
+  </table>
+</div>
+
+<!-- ============ TRAPS ============ -->
+<h2 id="traps">8 · Traps — wrong → right</h2>
+<div class="card">
+  <table>
+    <tr><th>✗ Wrong (looks plausible)</th><th>✓ Right</th></tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud iam roles get-permissions roles/compute.viewer</code></td>
+      <td class="desc"><span class="ok">✓</span> <code>gcloud iam roles describe roles/compute.viewer</code> — there is no <code>get-permissions</code> verb; <code>describe</code> shows the permission list.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud networks create MY_VPC</code></td>
+      <td class="desc"><span class="ok">✓</span> <code>gcloud compute networks create MY_VPC</code> — there is no top-level <code>gcloud networks</code>; networks live under <code>compute</code>.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud compute networks create MY_VPC --type=custom</code><br><span class="no">✗</span> <code>gcloud compute subnets create … --type=custom</code></td>
+      <td class="desc"><span class="ok">✓</span> <code>gcloud compute networks create MY_VPC --subnet-mode=custom</code> — the flag is <code>--subnet-mode</code> (values <code>auto</code>/<code>custom</code>) and it lives on <b>networks create</b>, not subnets.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud storage buckets update gs://my-disk --capacity=200GB</code></td>
+      <td class="desc"><span class="ok">✓</span> <code>gcloud compute disks resize MY_DISK --size=200GB --zone=us-central1-a</code> — a <i>disk</i> is a compute resource, not a storage bucket.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud compute subnets create … (no --region)</code></td>
+      <td class="desc"><span class="ok">✓</span> add <code>--region=us-central1</code> — subnets are <b>regional</b>; without the flag the command errors or prompts.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud iam add-iam-policy-binding PROJECT_ID …</code></td>
+      <td class="desc"><span class="ok">✓</span> <code>gcloud projects add-iam-policy-binding PROJECT_ID …</code> — the binding attaches to the <b>project</b>, so the verb lives under <code>projects</code>.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud projects add-iam-policy-binding PROJECT_ID --member="alex@example.com" --role="compute.viewer"</code></td>
+      <td class="desc"><span class="ok">✓</span> <code>--member="user:alex@example.com" --role="roles/compute.viewer"</code> — member needs a <b>typed prefix</b> (<code>user:</code>), role needs the <b>full <code>roles/</code> name</b>.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud container clusters create … </code> then expecting <code>kubectl</code> to work</td>
+      <td class="desc"><span class="ok">✓</span> run <code>gcloud container clusters get-credentials MY_CLUSTER --zone=…</code> first — that writes the kubeconfig context.</td>
+    </tr>
+    <tr>
+      <td class="cmd"><span class="no">✗</span> <code>gcloud storage objects create gs://my-bucket/file.txt</code></td>
+      <td class="desc"><span class="ok">✓</span> <code>gcloud storage cp file.txt gs://my-bucket/</code> — object I/O uses filesystem-style verbs (<code>cp/ls/rm/rsync</code>), not <code>objects create</code>.</td>
+    </tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>One rule rescues most of these:</b> when unsure, parse the answer as <code>gcloud SERVICE RESOURCE VERB</code> and ask (a) is the service really where this resource lives? (compute owns the plumbing), (b) is the resource plural?, (c) does that verb actually exist for it? Mismatched slots are how distractor answers are built.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 id="glossary">9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Service group</b></td><td class="desc">the product namespace right after <code>gcloud</code> (compute, iam, storage, projects…)</td></tr>
+    <tr><td class="cmd"><b>Resource</b></td><td class="desc">the noun the command acts on, usually <b>plural</b> (instances, buckets, roles); can nest (networks subnets)</td></tr>
+    <tr><td class="cmd"><b>Verb</b></td><td class="desc">the action; recurring set = create / list / describe / update / delete (+ add-iam-policy-binding)</td></tr>
+    <tr><td class="cmd"><b>Positional</b></td><td class="desc">the unflagged name argument naming a specific resource</td></tr>
+    <tr><td class="cmd"><b>Flag</b></td><td class="desc"><code>--key=value</code> modifier — scope, format, filter, or resource-specific options</td></tr>
+    <tr><td class="cmd"><b>Release track</b></td><td class="desc">optional <code>alpha</code>/<code>beta</code> before the service group; omit for GA (stable)</td></tr>
+    <tr><td class="cmd"><b>list vs describe</b></td><td class="desc">many+shallow (no name) vs one+deep (named, full YAML)</td></tr>
+    <tr><td class="cmd"><b>Zonal / regional / global</b></td><td class="desc">resource location scope → which flag it needs (<code>--zone</code> / <code>--region</code> / none)</td></tr>
+    <tr><td class="cmd"><b>MIG</b></td><td class="desc">Managed Instance Group — <code>compute instance-groups managed</code></td></tr>
+    <tr><td class="cmd"><b>get-credentials</b></td><td class="desc">the <code>container clusters</code> verb that wires <code>kubectl</code> to a GKE cluster</td></tr>
+    <tr><td class="cmd"><b>--subnet-mode</b></td><td class="desc"><code>auto</code>/<code>custom</code> flag on <code>compute networks create</code> (not on subnets)</td></tr>
+    <tr><td class="cmd"><b>~ operator</b></td><td class="desc">regex match in <code>--filter</code> (e.g. <code>name~^web</code>)</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://cloud.google.com/sdk/gcloud/reference">gcloud reference (top level)</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/compute">gcloud compute</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/iam">gcloud iam</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/projects/add-iam-policy-binding">projects add-iam-policy-binding</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/container">gcloud container</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/storage">gcloud storage</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/topic/filters">gcloud topic filters</a> ·
+  <a href="https://cloud.google.com/sdk/gcloud/reference/topic/formats">gcloud topic formats</a>
+</p>
+
+</div>
+</body>
+</html>
