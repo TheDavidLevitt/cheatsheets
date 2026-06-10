@@ -211,7 +211,7 @@ Storing whole files (images, backups, logs)?    → Cloud Storage</code></pre>
     <p class="lead">Relational tables + SQL + ACID transactions, but sharded across machines and continents with <i>horizontal scale-out</i> — add nodes, get more read <b>and write</b> capacity. The trick: <b>TrueTime</b>, Google's GPS-and-atomic-clock API that timestamps transactions globally.</p>
     <table>
       <tr><td class="cmd"><b>External consistency</b></td><td class="desc">the strongest guarantee: globally, transactions appear in the real-time order they committed — like one giant single machine</td></tr>
-      <tr><td class="cmd"><b>SLA</b></td><td class="desc">up to <b>99.999%</b> availability for multi-region configs (~5 min downtime/year)</td></tr>
+      <tr><td class="cmd"><b>SLA</b></td><td class="desc"><b>Service Level Agreement</b> — the provider's contractual uptime promise: up to <b>99.999%</b> for multi-region configs (~5 min downtime/year)</td></tr>
       <tr><td class="cmd"><b>Pick it when</b></td><td class="desc">relational <i>and</i> global <i>and</i> consistent — financial ledgers, global inventory, multiplayer game state</td></tr>
     </table>
     <div class="callout warn"><b>Watch out:</b> expensive (priced per node/processing unit + storage); individual queries can be slower than a local Postgres because consensus spans regions. Overkill unless you genuinely need global writes. Exam rule: see "global + relational + strong consistency" → answer Spanner.</div>

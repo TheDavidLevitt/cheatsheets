@@ -338,29 +338,29 @@ scheme   user       host      port      path        query     fragment</code></p
   <table>
     <tr><td class="cmd"><b>Packet</b></td><td class="desc">one self-addressed chunk of data; the postcard</td></tr>
     <tr><td class="cmd"><b>Router</b></td><td class="desc">forwards packets one hop closer</td></tr>
-    <tr><td class="cmd"><b>TCP / UDP</b></td><td class="desc">reliable ordered delivery vs. fast fire-and-forget</td></tr>
-    <tr><td class="cmd"><b>IP address</b></td><td class="desc">machine's network address (IPv4 dotted quad / IPv6 hex)</td></tr>
-    <tr><td class="cmd"><b>NAT</b></td><td class="desc">router sharing one public IP among many private devices, via a rewrite table of <code>private IP:port ↔ public IP:port</code> rows</td></tr>
-    <tr><td class="cmd"><b>CGNAT</b></td><td class="desc">the same trick at ISP scale: hundreds of homes behind one IP</td></tr>
-    <tr><td class="cmd"><b>CIDR</b></td><td class="desc"><code>/N</code> range notation: /24 = 256 addresses, /32 = one host, /0 = everything</td></tr>
+    <tr><td class="cmd"><b>TCP / UDP</b></td><td class="desc"><b>Transmission Control Protocol</b> / <b>User Datagram Protocol</b> — reliable ordered delivery vs. fast fire-and-forget</td></tr>
+    <tr><td class="cmd"><b>IP address</b></td><td class="desc"><b>Internet Protocol</b> address — machine's network address (IPv4 dotted quad / IPv6 hex)</td></tr>
+    <tr><td class="cmd"><b>NAT</b></td><td class="desc"><b>Network Address Translation</b> — router sharing one public IP among many private devices, via a rewrite table of <code>private IP:port ↔ public IP:port</code> rows</td></tr>
+    <tr><td class="cmd"><b>CGNAT</b></td><td class="desc"><b>Carrier-Grade NAT</b> — the same trick at ISP scale: hundreds of homes behind one IP</td></tr>
+    <tr><td class="cmd"><b>CIDR</b></td><td class="desc"><b>Classless Inter-Domain Routing</b> (say "cider") — the <code>/N</code> range notation: /24 = 256 addresses, /32 = one host, /0 = everything</td></tr>
     <tr><td class="cmd"><b>Port</b></td><td class="desc">number selecting <i>which program</i> (22/53/80/443)</td></tr>
     <tr><td class="cmd"><b>Ephemeral port</b></td><td class="desc">random high source port a client uses as its return address for one conversation</td></tr>
-    <tr><td class="cmd"><b>QUIC</b></td><td class="desc">TCP-style reliability rebuilt over UDP; the transport of HTTP/3</td></tr>
-    <tr><td class="cmd"><b>MAC address</b></td><td class="desc">hardware ID for the local-network hop only</td></tr>
+    <tr><td class="cmd"><b>QUIC</b></td><td class="desc">not an acronym (originally "Quick UDP Internet Connections", now just a name) — TCP-style reliability rebuilt over UDP; the transport of HTTP/3</td></tr>
+    <tr><td class="cmd"><b>MAC address</b></td><td class="desc"><b>Media Access Control</b> address — hardware ID for the local-network hop only (unrelated to the Mac computer)</td></tr>
     <tr><td class="cmd"><b>BGP</b></td><td class="desc">Border Gateway Protocol: ASes advertise reachable IP prefixes so routers worldwide learn paths; eBGP between ASes, iBGP within one. The internet's trust-based "route gossip"</td></tr>
     <tr><td class="cmd"><b>AS / ASN</b></td><td class="desc">Autonomous System (one network under one policy: ISP, cloud, CDN) / its AS Number. The internet ≈ 100k+ ASes glued by BGP</td></tr>
     <tr><td class="cmd"><b>Anycast</b></td><td class="desc">same IP prefix advertised from many locations via BGP; each router picks the nearest, so one address (<code>1.1.1.1</code>, <code>8.8.8.8</code>) serves the closest data centre. Powers CDNs and public DNS</td></tr>
-    <tr><td class="cmd"><b>DNS</b></td><td class="desc">name → IP lookup (resolver → root → TLD → authoritative)</td></tr>
+    <tr><td class="cmd"><b>DNS</b></td><td class="desc"><b>Domain Name System</b> — name → IP lookup (resolver → root → TLD → authoritative). <b>TLD</b> = Top-Level Domain (<code>.com</code>, <code>.org</code>)</td></tr>
     <tr><td class="cmd"><b>A / AAAA / CNAME / MX / TXT / NS</b></td><td class="desc">DNS record types: IPv4 / IPv6 / alias / mail server / free-text / authoritative name servers</td></tr>
     <tr><td class="cmd"><b>SPF / DKIM</b></td><td class="desc">email anti-spoofing via TXT records: Sender Policy Framework (who may send as you) / DomainKeys Identified Mail (signing key proving no forgery)</td></tr>
     <tr><td class="cmd"><b>ICMP</b></td><td class="desc">Internet Control Message Protocol — the diagnostic/error layer <code>ping</code> and <code>traceroute</code> ride on</td></tr>
     <tr><td class="cmd"><b>ARP</b></td><td class="desc">Address Resolution Protocol — maps an IP to a MAC address on the local link</td></tr>
     <tr><td class="cmd"><b>RDP</b></td><td class="desc">Remote Desktop Protocol — Microsoft's remote-GUI protocol (port 3389), the Windows counterpart to SSH</td></tr>
-    <tr><td class="cmd"><b>TTL</b></td><td class="desc">how long a DNS answer may be cached</td></tr>
-    <tr><td class="cmd"><b>URI / URL / URN</b></td><td class="desc">identifier umbrella / locator / pure name</td></tr>
+    <tr><td class="cmd"><b>TTL</b></td><td class="desc"><b>Time To Live</b> — how long a DNS answer may be cached (also the hop-count field in an IP packet)</td></tr>
+    <tr><td class="cmd"><b>URI / URL / URN</b></td><td class="desc"><b>Uniform Resource Identifier / Locator / Name</b> — identifier umbrella / locator (where + how to fetch) / pure name (no location)</td></tr>
     <tr><td class="cmd"><b>TLS</b></td><td class="desc"><b>Transport Layer Security</b> — the encryption + server-authentication layer that turns HTTP into HTTPS (and secures email, etc.). Renamed from <b>SSL</b> (Secure Sockets Layer, Netscape, 1990s) when the IETF took it over in 1999 — which is why people still say "SSL" for what is really TLS.</td></tr>
     <tr><td class="cmd"><b>Certificate / CA</b></td><td class="desc">server's identity proof / the authority vouching for it</td></tr>
-    <tr><td class="cmd"><b>DHCP</b></td><td class="desc">auto-assigns your IP when you join a network</td></tr>
+    <tr><td class="cmd"><b>DHCP</b></td><td class="desc"><b>Dynamic Host Configuration Protocol</b> — auto-assigns your IP (and gateway, DNS) when you join a network</td></tr>
   </table>
 </div>
 
