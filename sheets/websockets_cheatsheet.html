@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebSockets Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:40%;}
+  td.desc{width:60%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>WebSockets Cheat Sheet</h1>
+<p class="sub">The persistent two-way connection behind live apps · started 2026-06-12 · twin of <code>Tools/websockets_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>WebSocket</b> = a protocol (standardized as <b>RFC 6455</b> — Request for Comments 6455, the document defining it) that keeps one connection open so browser and server can send messages to each other anytime, in either direction. <b>Full-duplex</b> = both ends can talk at once, like a phone call, not strict turns.
+</div>
+<div class="callout warn">
+  <b>The problem it solves:</b> <b>HTTP</b> (HyperText Transfer Protocol) is strictly <b>request/response</b> — the client must <i>ask</i> before the server can <i>answer</i>; the server can't push. For chat, dashboards, multiplayer, trading tickers, and collaborative editing, faking server-push with HTTP means ugly <b>polling</b> (asking on a timer).
+</div>
+<div class="callout">
+  <b>A letter vs. a phone call</b> — the core image:
+  <pre><code>HTTP                          WebSocket
+────                          ─────────
+client: "any news?"  ─────►   one handshake, then the line stays open
+server: "here you go" ◄────
+(connection closes)           client ───► server   anytime
+client: "any news now?" ──►   server ───► client   anytime
+server: "here you go" ◄────   (no re-asking, no re-connecting)</code></pre>
+  <b>HTTP is mailing letters</b> — each ask/reply is a fresh envelope; to learn what changed you mail again (polling). <b>WebSocket is a phone call left off the hook</b> — dial once (the handshake), then either side speaks whenever there's news.
+</div>
+<div class="callout good">
+  <b>Two URL schemes:</b>
+  <span class="pill"><code>ws://</code> = plain (like http://)</span>
+  <span class="pill"><code>wss://</code> = over TLS (like https://) — USE THIS</span>
+  <br><b>TLS</b> = Transport Layer Security, the encryption behind HTTPS. <code>wss://</code> is encrypted and far more likely to pass corporate proxies.
+</div>
+
+<!-- ============ HANDSHAKE ============ -->
+<h2>1 · How it starts — the HTTP Upgrade handshake</h2>
+<p class="lead">A WebSocket is <i>born as a normal HTTP request</i>. The client sends a GET with headers asking to switch protocols; if the server agrees it replies <b>101 Switching Protocols</b> and the <i>same</i> connection becomes a WebSocket.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Client asks → server agrees</h3>
+    <pre><code>GET /chat HTTP/1.1
+Host: example.com
+Upgrade: websocket          ← "switch me"
+Connection: Upgrade
+Sec-WebSocket-Key: &lt;random&gt;
+Sec-WebSocket-Version: 13
+
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: &lt;hash&gt;</code></pre>
+  </div>
+  <div class="card">
+    <h3>Why it's clever</h3>
+    <table>
+      <tr><td class="cmd"><b>Upgrade handshake</b></td><td class="desc">a normal HTTP request that converts the connection — reuses existing web infrastructure</td></tr>
+      <tr><td class="cmd"><b>101 Switching Protocols</b></td><td class="desc">HTTP status meaning "agreed — no longer HTTP from here"</td></tr>
+      <tr><td class="cmd"><b>Same TCP connection</b></td><td class="desc">the <i>same</i> <b>TCP</b> (Transmission Control Protocol, the reliable byte-stream layer) socket is reused — nothing reconnects</td></tr>
+      <tr><td class="cmd"><b>Ports 80 / 443</b></td><td class="desc">starts as HTTP, so rides standard web ports (80 plain, 443 TLS) and slips through firewalls</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout good">
+  <b>Why the disguise pays off:</b> firewalls, proxies, and load balancers already handle HTTP on 80/443. Starting as HTTP, a WebSocket inherits that compatibility for free.
+</div>
+
+<!-- ============ FRAMES ============ -->
+<h2>2 · After the handshake — frames &amp; keep-alive</h2>
+<p class="lead">Once upgraded, HTTP is gone. What flows is a <b>thin framing layer over TCP</b> — small headers wrapping each chunk. You rarely touch frames directly (the browser hands you whole messages), but the frame <i>types</i> explain the behavior.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Text</b></td><td class="desc">a UTF-8 string (JSON, plain text) — the common case</td></tr>
+    <tr><td class="cmd"><b>Binary</b></td><td class="desc">raw bytes (images, audio, protobuf)</td></tr>
+    <tr><td class="cmd"><b>Ping / Pong</b></td><td class="desc"><b>keep-alive heartbeat</b>: one side pings, the other must pong — confirms the line is live and stops idle proxies killing it</td></tr>
+    <tr><td class="cmd"><b>Close</b></td><td class="desc">a polite "hanging up" frame that begins the close handshake (§7)</td></tr>
+  </table>
+</div>
+<p class="lead">So a WebSocket is just: <b>handshake once → exchange text/binary frames freely → ping/pong to stay alive → close frame to end.</b></p>
+
+<!-- ============ JS EXAMPLE ============ -->
+<h2>3 · A tiny browser example (JavaScript)</h2>
+<p class="lead">The browser ships a built-in <code>WebSocket</code> object. The four events — <b>open, message, error, close</b> — plus <b>send</b> and <b>close</b> are essentially the whole surface. The magic line is <code>onmessage</code>: it fires whenever the server pushes, which plain HTTP could never do.</p>
+<pre><code>// 1. Dial. Always wss:// (encrypted) in production.
+const socket = new WebSocket('wss://example.com/chat');
+
+// 2. The line is open and ready.
+socket.onopen = () =&gt; {
+  socket.send('hello server');        // send a message anytime
+};
+
+// 3. Server PUSHED us a message — no asking required.
+socket.onmessage = (event) =&gt; {
+  console.log('got:', event.data);    // event.data is the message
+};
+
+// 4. Something broke (network drop, server gone).
+socket.onerror = (err) =&gt; {
+  console.error('socket error', err);
+};
+
+// 5. The line closed. event.code tells you why (see §7).
+socket.onclose = (event) =&gt; {
+  console.log('closed:', event.code, event.reason);
+};
+
+// To hang up deliberately:
+socket.close(1000, 'done');           // 1000 = normal closure</code></pre>
+
+<!-- ============ ALTERNATIVES ============ -->
+<h2>4 · When to use WebSocket vs. the alternatives</h2>
+<p class="lead">Don't default to WebSockets. They win for <i>true two-way, low-latency</i> traffic; lighter options win when you don't need both directions.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>WebSocket</b><br><span class="pill">both ways</span></td><td class="desc">Chat, multiplayer, trading tickers, collaborative editing — both sides talk constantly. Cost: more infra; you handle reconnection. Service-to-service analog: <code>grpc_cheatsheet.md</code>.</td></tr>
+    <tr><td class="cmd"><b>SSE</b> (Server-Sent Events)<br><span class="pill">server → client</span></td><td class="desc">Live feeds, notifications, dashboards where the client only <i>receives</i>. Simpler than WebSockets and <b>auto-reconnects</b>. Browser-native via <code>EventSource</code>. One-way only.</td></tr>
+    <tr><td class="cmd"><b>HTTP polling / long-polling</b><br><span class="pill">client asks</span></td><td class="desc">Fallback when WS/SSE are blocked. Long-polling holds the request open until news. Higher latency — the "ugly" baseline WebSockets replace. See <code>http_cheatsheet.md</code>.</td></tr>
+    <tr><td class="cmd"><b>Webhooks</b><br><span class="pill">server → server</span></td><td class="desc">A backend notifies <i>another backend</i> of an event (payment succeeded). Not for browsers; receiver needs a public URL.</td></tr>
+    <tr><td class="cmd"><b>gRPC streaming</b><br><span class="pill">service ↔ service</span></td><td class="desc">Internal microservices needing typed, high-performance streams. Not natively browser-friendly. See <code>grpc_cheatsheet.md</code>.</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Rule of thumb:</b> need the <i>server to push</i> but the client never replies on the same channel? Reach for <b>SSE</b> first — simpler and auto-reconnects. Need genuine back-and-forth? That's when WebSockets earn their cost.
+</div>
+
+<!-- ============ PRACTICAL ============ -->
+<h2>5 · Practical notes — scaling, auth, libraries</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Scaling &amp; auth</h3>
+    <table>
+      <tr><td class="cmd"><b>Scaling</b></td><td class="desc">a WebSocket is long-lived, pinned to one server. Many servers need <b>sticky sessions</b> (load balancer keeps a client on one server) or a <b>pub/sub backplane</b> — a message bus (e.g. Redis) relaying messages between instances so any can reach any client</td></tr>
+      <tr><td class="cmd"><b>Auth</b></td><td class="desc">happens <i>at the handshake</i> — still an HTTP request, so cookies or a token (query param or <code>Sec-WebSocket-Protocol</code> header) are checked then. After upgrade there are no more HTTP requests to attach credentials to</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Libraries</h3>
+    <p class="lead"><b>Socket.IO</b> = the popular JS library wrapping WebSockets with automatic reconnection, "rooms" (broadcast groups), and a polling fallback. Convenient — but it's its <i>own</i> protocol: a Socket.IO client can't talk to a raw WebSocket server, and vice versa.</p>
+  </div>
+</div>
+
+<!-- ============ LIFECYCLE ============ -->
+<h2>6 · The whole lifecycle in one picture</h2>
+<pre><code>client                                   server
+  │  GET /chat  Upgrade: websocket  ────► │   (handshake = an HTTP request)
+  │  ◄──── 101 Switching Protocols        │   (agreed; same TCP socket reused)
+  │  ──── "hi" (text frame) ────────────► │
+  │  ◄──── "welcome" (text frame) ────────│   (server PUSHES, unprompted)
+  │  ──── ping ────────────────────────►  │
+  │  ◄──── pong ──────────────────────────│   (keep-alive heartbeat)
+  │  ──── close (1000) ─────────────────► │
+  │  ◄──── close (1000) ──────────────────│   (close handshake, both sides ack)</code></pre>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>7 · Teardown — closing &amp; reconnecting</h2>
+<p class="lead">Closing is its own handshake: one side sends a <b>close frame</b> with a status code, the other acks, then TCP ends.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Close codes</h3>
+    <table>
+      <tr><td class="cmd"><code>1000</code></td><td class="desc"><b>Normal closure</b> — a clean, deliberate hang-up (<code>socket.close()</code>)</td></tr>
+      <tr><td class="cmd"><code>1001</code></td><td class="desc">going away — server shutting down or tab navigating off</td></tr>
+      <tr><td class="cmd"><code>1006</code></td><td class="desc"><b>Abnormal closure</b> — connection dropped <i>without</i> a close frame (network died, server crashed). You never send 1006; the browser reports it when the line vanished</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Reconnect with exponential backoff</h3>
+    <p class="lead">Raw WebSockets don't auto-reconnect (a reason to use Socket.IO or SSE). On unexpected close: wait 1s, 2s, 4s, 8s… (capped, often with random "jitter") so a recovering server isn't hammered.</p>
+    <pre><code>let delay = 1000;                     // start at 1s
+function connect() {
+  const s = new WebSocket('wss://example.com/chat');
+  s.onopen  = () =&gt; { delay = 1000; };  // reset on success
+  s.onclose = (e) =&gt; {
+    if (e.code !== 1000) {              // not deliberate → retry
+      setTimeout(connect, delay);
+      delay = Math.min(delay * 2, 30000); // double, cap 30s
+    }
+  };
+}
+connect();</code></pre>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>WebSocket</b></td><td class="desc">protocol (RFC 6455) for a persistent, full-duplex browser↔server connection</td></tr>
+    <tr><td class="cmd"><b>RFC 6455</b></td><td class="desc">Request for Comments 6455 — the spec defining WebSockets</td></tr>
+    <tr><td class="cmd"><b>Full-duplex</b></td><td class="desc">both ends can send at once (phone call), vs. half-duplex's strict turns</td></tr>
+    <tr><td class="cmd"><b>HTTP</b></td><td class="desc">HyperText Transfer Protocol — the request/response web default WebSockets escape</td></tr>
+    <tr><td class="cmd"><b>TCP</b></td><td class="desc">Transmission Control Protocol — the reliable byte-stream layer both ride on</td></tr>
+    <tr><td class="cmd"><b>TLS</b></td><td class="desc">Transport Layer Security — the encryption in <code>https://</code> and <code>wss://</code></td></tr>
+    <tr><td class="cmd"><code>ws://</code> / <code>wss://</code></td><td class="desc">WebSocket plain vs. over TLS (<code>wss://</code> = production choice)</td></tr>
+    <tr><td class="cmd"><b>Upgrade handshake</b></td><td class="desc">the HTTP request (<code>Upgrade: websocket</code>) that converts a connection</td></tr>
+    <tr><td class="cmd"><b>101 Switching Protocols</b></td><td class="desc">HTTP status: "agreed, this is now a WebSocket"</td></tr>
+    <tr><td class="cmd"><b>Frame</b></td><td class="desc">the small wrapped unit data travels in (text, binary, ping/pong, close)</td></tr>
+    <tr><td class="cmd"><b>Ping / Pong</b></td><td class="desc">keep-alive heartbeat frames</td></tr>
+    <tr><td class="cmd"><b>SSE</b></td><td class="desc">Server-Sent Events — one-way (server→client) push, simpler, auto-reconnects</td></tr>
+    <tr><td class="cmd"><b>Webhook</b></td><td class="desc">server-to-server event notification to a public URL</td></tr>
+    <tr><td class="cmd"><b>Sticky sessions</b></td><td class="desc">load-balancer behavior pinning a client to one server instance</td></tr>
+    <tr><td class="cmd"><b>Pub/sub backplane</b></td><td class="desc">a message bus relaying events across server instances so any can reach any client</td></tr>
+    <tr><td class="cmd"><b>Socket.IO</b></td><td class="desc">JS library adding reconnection, rooms, and fallback atop WebSockets (its own protocol)</td></tr>
+    <tr><td class="cmd"><b>Exponential backoff</b></td><td class="desc">reconnect strategy of doubling the wait between retries</td></tr>
+    <tr><td class="cmd"><b>1000 / 1006</b></td><td class="desc">close codes: normal (clean) vs. abnormal (line vanished, no close frame)</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API">MDN — The WebSocket API</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket">MDN — WebSocket interface</a> ·
+  <a href="https://datatracker.ietf.org/doc/html/rfc6455">RFC 6455 — The WebSocket Protocol</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers">MDN — Writing WebSocket servers</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events">MDN — Server-Sent Events</a>
+</p>
+
+</div>
+</body>
+</html>

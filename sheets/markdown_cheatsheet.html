@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Markdown Cheat Sheet</h1>
+<p class="sub">CommonMark · GFM · Obsidian · started 2026-06-12 · twin of <code>Tools/markdown_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>Markdown</b> = a lightweight markup language by John Gruber with Aaron Swartz, 2004. You write plain text with a few punctuation conventions; a <i>renderer</i> converts it to <b>HTML</b> (HyperText Markup Language, what browsers display). The goal: source as readable as the output. The name is a pun on "markup" — markup that gets out of your way.
+</div>
+<div class="callout">
+  <b>Readable plain text → formatted output.</b> You never see tags while writing:
+  <pre><code> you write           renderer           reader sees
+(.md plain text)  →  (Markdown →    →   (formatted HTML
+                      HTML engine)       in a browser)
+
+# Hello           →   &lt;h1&gt;Hello&lt;/h1&gt; →   Hello  (big heading)
+**bold**          →   &lt;b&gt;bold&lt;/b&gt;    →   bold
+- milk            →   &lt;li&gt;milk&lt;/li&gt;  →   • milk</code></pre>
+  <b>Source</b> = a <code>.md</code> plain-text file. <b>Renderer</b> = the converter (GitHub, Obsidian, a site builder) — <i>this is where dialects diverge</i>. <b>Output</b> = usually HTML. Why it won: plain text outlives apps and reads cleanly even unrendered.
+</div>
+<div class="callout good">
+  <b>Three dialects:</b>
+  <span class="pill">CommonMark = the standard baseline</span>
+  <span class="pill">GFM = + tables, tasks, strikethrough</span>
+  <span class="pill">Obsidian = + wikilinks, callouts, frontmatter</span>
+</div>
+
+<!-- ============ DIALECTS ============ -->
+<h2>1 · The three dialects you'll meet</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>CommonMark</b></td><td class="desc">the 2014 standard spec that pinned down Markdown's ambiguities — the baseline everyone agrees on (Reddit, Stack Overflow, most libraries)</td></tr>
+    <tr><td class="cmd"><b>GFM</b> (GitHub-Flavored Markdown)</td><td class="desc">CommonMark <b>+</b> tables, task lists, strikethrough, autolinks, syntax highlighting (GitHub/GitLab READMEs, issues, PRs)</td></tr>
+    <tr><td class="cmd"><b>Obsidian</b></td><td class="desc">CommonMark/GFM <b>+</b> <code>[[wikilinks]]</code>, <code>![[embeds]]</code>, callouts, <code>#tags</code>, YAML frontmatter (the Obsidian app)</td></tr>
+  </table>
+  <p class="lead">Sections 2–3 are core (everywhere). 4 is GFM. 5 is Obsidian.</p>
+</div>
+
+<!-- ============ CORE SYNTAX ============ -->
+<h2>2 · Core syntax (CommonMark — works everywhere)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Text &amp; inline</h3>
+    <table>
+      <tr><td class="cmd"><code># H1</code> … <code>###### H6</code></td><td class="desc">headings, levels 1–6 — space <b>after</b> the <code>#</code></td></tr>
+      <tr><td class="cmd"><code>*italic*</code> / <code>_italic_</code></td><td class="desc">one marker each side</td></tr>
+      <tr><td class="cmd"><code>**bold**</code></td><td class="desc">two markers</td></tr>
+      <tr><td class="cmd"><code>***bold italic***</code></td><td class="desc">three markers</td></tr>
+      <tr><td class="cmd"><code>`code`</code></td><td class="desc">inline code (commands, filenames, identifiers)</td></tr>
+      <tr><td class="cmd"><code>[text](https://url)</code></td><td class="desc">link — text in <code>[]</code>, URL in <code>()</code></td></tr>
+      <tr><td class="cmd"><code>![alt](img.png)</code></td><td class="desc">image — like a link with a leading <code>!</code></td></tr>
+      <tr><td class="cmd"><code>\*literal\*</code></td><td class="desc">backslash escapes a special char (§7)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Blocks</h3>
+    <table>
+      <tr><td class="cmd"><code>&gt; quoted</code></td><td class="desc">blockquote; <code>&gt;&gt;</code> nests</td></tr>
+      <tr><td class="cmd"><code>---</code> / <code>***</code></td><td class="desc">horizontal rule, own line, blank line above</td></tr>
+      <tr><td class="cmd"><code>- item</code> / <code>* item</code></td><td class="desc">unordered list (bullet)</td></tr>
+      <tr><td class="cmd"><code>1. item</code></td><td class="desc">ordered list (numbers can all be <code>1.</code>)</td></tr>
+      <tr><td class="cmd">indent 2–4 spaces</td><td class="desc">nests a sub-list under its parent</td></tr>
+    </table>
+    <p class="lead"><b>Reference link</b> — define once, reuse: <code>[cm]: https://spec.commonmark.org</code> then <code>[text][cm]</code>. Keeps prose readable for long URLs.</p>
+  </div>
+</div>
+<div class="callout warn">
+  <b>CommonMark gotcha — blank line before a list.</b> A list needs a blank line separating it from the paragraph above, or strict renderers glue it into the preceding text.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Fenced code blocks</h3>
+    <p class="lead">Three backticks; add a <b>language hint</b> after the opening fence for syntax highlighting.</p>
+    <pre><code>```python
+def greet(name):
+    return f"hello {name}"
+```</code></pre>
+  </div>
+  <div class="card">
+    <h3>Line breaks — the #1 gotcha</h3>
+    <p class="lead">A single newline does <b>not</b> break the line — the renderer collapses it to a space.</p>
+    <table>
+      <tr><td class="cmd">new paragraph</td><td class="desc">leave a <b>blank line</b></td></tr>
+      <tr><td class="cmd">break within a paragraph</td><td class="desc">end the line with <b>two trailing spaces</b></td></tr>
+    </table>
+    <p class="lead">The two-trailing-spaces rule is invisible and infamous. (GFM/Obsidian also accept a line-end <code>\</code> or honour single newlines — §6.)</p>
+  </div>
+</div>
+
+<!-- ============ HTML INSIDE MD ============ -->
+<h2>3 · Inline HTML is valid Markdown</h2>
+<div class="callout">
+  Drop raw <b>HTML</b> straight into Markdown — most renderers pass it through. The escape hatch for anything Markdown can't express (<code>&lt;kbd&gt;</code> keys, collapsible blocks, fine layout).
+</div>
+<pre><code>Here is a &lt;kbd&gt;Ctrl&lt;/kbd&gt;+&lt;kbd&gt;C&lt;/kbd&gt; hint and a &lt;br&gt; break.
+
+&lt;details&gt;
+&lt;summary&gt;Click to expand&lt;/summary&gt;
+Hidden content here.
+&lt;/details&gt;</code></pre>
+<p class="lead">Caveat: some renderers <b>sanitize</b> or strip HTML for safety (GitHub strips <code>&lt;script&gt;</code>) — see §6. Cross-ref <code>html_cheatsheet.md</code>.</p>
+
+<!-- ============ TABLES + GFM ============ -->
+<h2>4 · Tables &amp; GitHub-Flavored Markdown (GFM)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Tables (GFM, not core)</h3>
+    <p class="lead">Pipes <code>|</code> split columns; a dash row splits header from body. <b>Colons</b> set alignment.</p>
+    <pre><code>| Left | Center | Right |
+|:-----|:------:|------:|
+| a    | b      | c     |</code></pre>
+    <table>
+      <tr><td class="cmd"><code>:---</code></td><td class="desc">left (default)</td></tr>
+      <tr><td class="cmd"><code>:--:</code></td><td class="desc">center</td></tr>
+      <tr><td class="cmd"><code>---:</code></td><td class="desc">right</td></tr>
+    </table>
+    <p class="lead">Source spacing needn't line up — the renderer parses by position, not your whitespace.</p>
+  </div>
+  <div class="card">
+    <h3>GFM extras</h3>
+    <table>
+      <tr><td class="cmd"><code>- [ ]</code> / <code>- [x]</code></td><td class="desc">task list — rendered (and on GitHub, clickable) checkboxes</td></tr>
+      <tr><td class="cmd"><code>~~gone~~</code></td><td class="desc">strikethrough</td></tr>
+      <tr><td class="cmd"><code>https://...</code> (bare)</td><td class="desc">autolink — no <code>[]()</code> needed</td></tr>
+      <tr><td class="cmd">` ```js ` fence</td><td class="desc">syntax-highlighted code block</td></tr>
+      <tr><td class="cmd"><code>text[^1]</code> … <code>[^1]: note</code></td><td class="desc">footnote — superscript ref + note at the bottom</td></tr>
+    </table>
+    <p class="lead"><b>Strikethrough is GFM, not core</b> — <code>~~text~~</code> does nothing in strict CommonMark.</p>
+  </div>
+</div>
+
+<!-- ============ OBSIDIAN ============ -->
+<h2>5 · Obsidian extras (app-specific)</h2>
+<p class="lead">None of these render on plain GitHub — they show as literal text there. See <code>obsidian_cheatsheet.md</code>.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Links, embeds, tags</h3>
+    <table>
+      <tr><td class="cmd"><code>[[Note Name]]</code></td><td class="desc">wikilink — link a note by its title</td></tr>
+      <tr><td class="cmd"><code>[[Note#Heading]]</code></td><td class="desc">jump to a heading in that note</td></tr>
+      <tr><td class="cmd"><code>[[Note#^id]]</code></td><td class="desc">link to one specific block</td></tr>
+      <tr><td class="cmd"><code>[[Note|text]]</code></td><td class="desc">aliased — link shows custom text</td></tr>
+      <tr><td class="cmd"><code>![[Note]]</code> / <code>![[img.png]]</code></td><td class="desc">embed — inline the content of a note/image</td></tr>
+      <tr><td class="cmd"><code>#project</code> <code>#area/finance</code></td><td class="desc">tag — searchable label; <code>/</code> nests</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Callouts &amp; YAML frontmatter</h3>
+    <p class="lead">A <b>callout</b> is a styled blockquote; <code>[!type]</code> picks the style.</p>
+    <pre><code>&gt; [!note] Optional title
+&gt; Body text of the callout.</code></pre>
+    <p class="lead">Types: note, tip, info, warning, danger, quote, example.</p>
+    <p class="lead"><b>Frontmatter</b> = a <b>YAML</b> (YAML Ain't Markup Language) <code>key: value</code> block at the very top, fenced by <code>---</code>. Sets title/tags/date.</p>
+    <pre><code>---
+title: Project Plan
+tags: [project, q3]
+created: 2026-06-12
+---</code></pre>
+  </div>
+</div>
+
+<!-- ============ DIVERGENCE WARNING ============ -->
+<h2>6 · Renders differently everywhere</h2>
+<div class="callout warn">
+  <b>The same Markdown is not guaranteed to look the same in two places.</b> Markdown was under-specified for a decade; CommonMark fixed the core, but dialects diverge on the edges. Test where your readers will actually see it.
+</div>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Line breaks</b></td><td class="desc">strict CommonMark needs two trailing spaces; GitHub comments, Obsidian, chat apps honour a single newline</td></tr>
+    <tr><td class="cmd"><b>Nested lists</b></td><td class="desc">indent width (2 vs 4 spaces) and whether sub-lists "take" varies</td></tr>
+    <tr><td class="cmd"><b>Raw HTML</b></td><td class="desc">allowed (GitHub, static sites), partly sanitized (GitHub strips <code>&lt;script&gt;</code>), or stripped (some chat fields)</td></tr>
+    <tr><td class="cmd"><b>Tables / strikethrough / task lists</b></td><td class="desc">GFM-only — invisible in strict CommonMark</td></tr>
+    <tr><td class="cmd"><b>Wikilinks / embeds / callouts</b></td><td class="desc">Obsidian-only — show as literal <code>[[...]]</code> on GitHub</td></tr>
+  </table>
+</div>
+
+<!-- ============ GOTCHAS ============ -->
+<h2>7 · Gotchas &amp; escaping</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Common bites</h3>
+    <table>
+      <tr><td class="cmd">literal <code>*</code> <code>_</code> <code>#</code> <code>`</code> <code>[</code> eaten as formatting</td><td class="desc">prefix with backslash: <code>\*not italic\*</code></td></tr>
+      <tr><td class="cmd">line break not appearing</td><td class="desc">single newline used — add two trailing spaces or a blank line</td></tr>
+      <tr><td class="cmd">list glued onto the paragraph above</td><td class="desc">insert a blank line before the list</td></tr>
+      <tr><td class="cmd">backticks inside inline code</td><td class="desc">fence with <i>more</i> backticks</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>More bites</h3>
+    <table>
+      <tr><td class="cmd"><code>#tag</code> vs <code>#heading</code></td><td class="desc"><code>#</code> + space = heading; <code>#</code> glued to a word = (Obsidian) tag</td></tr>
+      <tr><td class="cmd">Markdown ignored in a code block</td><td class="desc">by design — fenced/indented code is verbatim</td></tr>
+      <tr><td class="cmd">HTML you wrote shows as text</td><td class="desc">the renderer sanitized it (§6)</td></tr>
+    </table>
+    <p class="lead"><b>Rule of thumb:</b> punctuation being interpreted but you wanted it literal → put a <code>\</code> in front. The backslash only shows when it precedes a Markdown-special character.</p>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Markdown</b></td><td class="desc">lightweight markup language (Gruber + Swartz, 2004); readable plain text → HTML. Name = pun on "markup"</td></tr>
+    <tr><td class="cmd"><b>Markup language</b></td><td class="desc">plain-text annotations telling software how to structure/format a document (HTML, XML, LaTeX)</td></tr>
+    <tr><td class="cmd"><b>CommonMark</b></td><td class="desc">the 2014 standard spec disambiguating Markdown; the baseline dialect</td></tr>
+    <tr><td class="cmd"><b>GFM</b></td><td class="desc"><b>G</b>itHub-<b>F</b>lavored <b>M</b>arkdown; CommonMark + tables, task lists, strikethrough, autolinks, highlighting. Anchor: "GitHub's extras"</td></tr>
+    <tr><td class="cmd"><b>HTML</b></td><td class="desc"><b>H</b>yper<b>T</b>ext <b>M</b>arkup <b>L</b>anguage; what browsers render &amp; what Markdown compiles to</td></tr>
+    <tr><td class="cmd"><b>YAML</b></td><td class="desc"><b>Y</b>AML <b>A</b>in't <b>M</b>arkup <b>L</b>anguage (self-referential); human-readable <code>key: value</code> data used for frontmatter</td></tr>
+    <tr><td class="cmd"><b>Frontmatter</b></td><td class="desc">a YAML metadata block at the top of a <code>.md</code> file, fenced by <code>---</code> (title, tags, date)</td></tr>
+    <tr><td class="cmd"><b>Fence</b></td><td class="desc">a code block delimited by ``` lines, optionally tagged with a language</td></tr>
+    <tr><td class="cmd"><b>Wikilink</b></td><td class="desc">Obsidian's <code>[[Note]]</code> linking by title (vs Markdown's <code>[text](url)</code>)</td></tr>
+    <tr><td class="cmd"><b>Callout</b></td><td class="desc">Obsidian's <code>&gt; [!type]</code> styled blockquote (admonition box)</td></tr>
+    <tr><td class="cmd"><b>Renderer</b></td><td class="desc">the engine converting Markdown → output; where dialects diverge</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://spec.commonmark.org/">CommonMark spec</a> ·
+  <a href="https://spec.commonmark.org/dingus/">CommonMark live tester</a> ·
+  <a href="https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax">GitHub formatting syntax</a> ·
+  <a href="https://github.github.com/gfm/">GFM spec</a> ·
+  <a href="https://help.obsidian.md/syntax">Obsidian formatting</a> ·
+  <a href="https://daringfireball.net/projects/markdown/">Daring Fireball: Markdown</a>
+</p>
+
+</div>
+</body>
+</html>

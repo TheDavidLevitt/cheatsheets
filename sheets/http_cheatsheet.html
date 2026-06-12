@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTTP &amp; REST Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{vertical-align:top;text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);
+     color:var(--accent);font-size:12.5px;letter-spacing:.03em;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  ul,ol{margin:8px 0;padding-left:22px;font-size:13.5px;}
+  li{margin:4px 0;}
+  li b{color:var(--ink);}
+  .muted{color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>HTTP &amp; REST Cheat Sheet</h1>
+<p class="sub">The web's request/response protocol · methods · status codes · REST · started 2026-06-12 · twin of <code>Tools/http_cheatsheet.md</code></p>
+
+<!-- ============ DEFINITIONS ============ -->
+<div class="callout good">
+  <b>HTTP</b> (HyperText Transfer Protocol) = the request/response protocol the web runs on. Tim Berners-Lee sketched the first version at CERN in 1991; HTTP/1.1 (1997) is still the mental model everyone carries. <b>REST</b> (REpresentational State Transfer) = an architectural <i>style</i> for APIs, named in Roy Fielding's 2000 PhD thesis. Fielding co-authored the HTTP spec, so REST is really "HTTP used the way it was designed."
+</div>
+
+<!-- ============ MENTAL MODEL ============ -->
+<h2>0 · The mental model: one round trip</h2>
+<p class="lead">HTTP is strict turn-taking. The <b>client</b> (browser, your code, <code>curl</code>) speaks first with a <b>request</b>; the <b>server</b> answers once with a <b>response</b>. Then it's over.</p>
+<pre><code>  client (you)                                   server
+  ────────────                                   ──────
+  HTTP request  ──────────────────────────────►  matches URL to a resource
+   method  (GET / POST / …)                       does the work
+   URL     https://api.example.com/users/42       │
+   headers (auth, content-type, …)                │
+   body    (JSON, if sending data)                ▼
+                ◄──────────────────────────────  HTTP response
+                                                  status line  (200 / 404 / …)
+                                                  headers
+                                                  body  (usually JSON)</code></pre>
+<div class="callout">
+  <ul style="margin:0;">
+    <li><b>Request/response, one-shot.</b> One request → exactly one response. The client always initiates (the server never spontaneously calls back — see webhooks, §10, for the inversion).</li>
+    <li><b>Stateless.</b> The server keeps no memory between requests. <i>Every</i> request carries everything needed to serve it (auth included) — which lets a load balancer route each request to any of a hundred identical replicas.</li>
+  </ul>
+</div>
+<div class="callout good">
+  HTTP rides on layers you don't see here: <b>TCP</b> (reliable byte stream), <b>TLS</b> (encryption — the <i>S</i> in HTTPS), <b>DNS</b> (hostname → IP). See <code>networking_cheatsheet.md</code> for that plumbing.
+</div>
+
+<!-- ============ VERSIONS ============ -->
+<h2>0b · HTTP versions in one line each</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:16%">Version</th><th style="width:10%">Year</th><th>The change that matters</th></tr>
+    <tr><td><b>HTTP/0.9</b></td><td>1991</td><td class="muted">one line: <code>GET /page</code> — no headers, no status codes</td></tr>
+    <tr><td><b>HTTP/1.0</b></td><td>1996</td><td class="muted">added headers, status codes, content types</td></tr>
+    <tr><td><b>HTTP/1.1</b></td><td>1997</td><td class="muted"><b>keep-alive</b> (reuse one TCP connection for many requests); still the canonical mental model</td></tr>
+    <tr><td><b>HTTP/2</b></td><td>2015</td><td class="muted"><b>multiplexing</b> — many requests in flight on one connection; binary framing; header compression</td></tr>
+    <tr><td><b>HTTP/3</b></td><td>2022</td><td class="muted">runs over <b>QUIC</b> (UDP-based, TLS built in) instead of TCP → faster setup, survives Wi-Fi→cellular switches</td></tr>
+  </table>
+</div>
+<p class="lead">The <i>semantics</i> (methods, codes, headers) are identical across versions — only the wire transport changed. Learn HTTP/1.1's model and you know them all.</p>
+
+<!-- ============ REQUEST / RESPONSE ANATOMY ============ -->
+<h2>1 · Anatomy of a request &nbsp;·&nbsp; 2 · Anatomy of a response</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Request</h3>
+<pre><code>POST /v1/users HTTP/1.1    ← method + path + version
+Host: api.example.com      ← headers: "Key: value"
+Authorization: Bearer eyJ…
+Content-Type: application/json
+Accept: application/json
+                           ← blank line ends headers
+{"name": "Ada"}          ← body (POST/PUT/PATCH)</code></pre>
+    <ol style="margin:8px 0 0;">
+      <li><b>Method</b> (verb) — what you want done (§3)</li>
+      <li><b>URL / path</b> — which resource (§5)</li>
+      <li><b>Headers</b> — <code>Key: value</code> metadata (§7)</li>
+      <li><b>Body</b> — payload, usually JSON</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>Response</h3>
+<pre><code>HTTP/1.1 201 Created       ← version + code + reason
+Content-Type: application/json
+Location: /v1/users/42     ← points at the new thing
+                           ← blank line
+{"id": 42, "name": "Ada"}  ← body</code></pre>
+    <p class="lead" style="margin-top:10px;">Same shape, mirrored: <b>status line</b> (the code is the headline — §4), <b>headers</b>, blank line, <b>body</b>. The reason phrase ("Created") is human sugar; your program checks the code (<code>201</code>).</p>
+  </div>
+</div>
+
+<!-- ============ VERBS ============ -->
+<h2>3 · The verb table — methods</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:12%">Verb</th><th style="width:26%">Meaning</th><th style="width:9%">Body?</th><th style="width:9%">Safe?</th><th style="width:16%">Idempotent?</th><th>SQL</th></tr>
+    <tr><td><b>GET</b></td><td>read a resource</td><td>no</td><td><b>yes</b></td><td>yes</td><td class="muted">SELECT</td></tr>
+    <tr><td><b>POST</b></td><td>create / trigger action</td><td>yes</td><td>no</td><td><b>no</b> (repeat = dup!)</td><td class="muted">INSERT</td></tr>
+    <tr><td><b>PUT</b></td><td>replace entirely</td><td>yes</td><td>no</td><td>yes</td><td class="muted">overwrite row</td></tr>
+    <tr><td><b>PATCH</b></td><td>modify part</td><td>yes</td><td>no</td><td>usually</td><td class="muted">UPDATE field</td></tr>
+    <tr><td><b>DELETE</b></td><td>remove a resource</td><td>no</td><td>no</td><td>yes</td><td class="muted">DELETE</td></tr>
+    <tr><td><b>HEAD</b></td><td>GET but headers only</td><td>no</td><td>yes</td><td>yes</td><td class="muted">"exists? size?"</td></tr>
+    <tr><td><b>OPTIONS</b></td><td>what's allowed here?</td><td>no</td><td>yes</td><td>yes</td><td class="muted">CORS preflight</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  <b>Safe</b> = read-only; observes but never changes server state (GET, HEAD, OPTIONS) — always cacheable. <b>Idempotent</b> = once or ten times leaves the same end state, so retry-safe (GET/PUT/DELETE). <b>POST is not idempotent</b> — retry and you may create two users; <i>that's</i> why retry logic treats POST with care. Safe ⊂ idempotent (DELETE changes state yet deleting twice still ends "gone").
+</div>
+
+<!-- ============ STATUS CODES ============ -->
+<h2>4 · Status codes — the first digit tells the story</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:10%">Family</th><th style="width:24%">Meaning</th><th>Famous members</th></tr>
+    <tr><td><b>1xx</b></td><td>informational (rare)</td><td class="muted">100 Continue · 101 Switching Protocols (WebSocket upgrade)</td></tr>
+    <tr><td><b>2xx</b></td><td>success</td><td class="muted"><b>200</b> OK · <b>201</b> Created (after POST) · <b>204</b> No Content (success, nothing to return — e.g. after DELETE)</td></tr>
+    <tr><td><b>3xx</b></td><td>redirection</td><td class="muted"><b>301</b> Moved Permanently (update bookmark) · <b>302</b> Found (temporary) · <b>304</b> Not Modified (your cache is still good)</td></tr>
+    <tr><td><b>4xx</b></td><td><i>your</i> fault (client)</td><td class="muted"><b>400</b> Bad Request · <b>401</b> Unauthorized · <b>403</b> Forbidden · <b>404</b> Not Found · <b>409</b> Conflict (dup / edit collision) · <b>418</b> I'm a teapot (1998 joke, still in spec) · <b>429</b> Too Many Requests (rate-limited)</td></tr>
+    <tr><td><b>5xx</b></td><td><i>their</i> fault (server)</td><td class="muted"><b>500</b> Internal Server Error · <b>502</b> Bad Gateway (upstream broke) · <b>503</b> Service Unavailable (overloaded/down — retry later)</td></tr>
+  </table>
+</div>
+<div class="callout">
+  <b>401 vs 403:</b> <b>401 = "log in first"</b> (missing/bad credentials — server doesn't know you; its name "Unauthorized" is a misnomer for <i>unauthenticated</i>). <b>403 = "logged in, still no"</b> (it knows you; you lack permission).<br>
+  <b>502 vs 503:</b> 502 = a proxy/gateway got a broken answer from behind it; 503 = the server is up but refusing work.<br>
+  <b>Rule:</b> 4xx → fix your request; 5xx → retry (maybe), or it's not your problem.
+</div>
+
+<!-- ============ URL ============ -->
+<h2>5 · URL anatomy</h2>
+<pre><code>https://api.example.com:443/v1/users/42?fields=name,email&amp;limit=10#section
+└─┬─┘   └───────┬───────┘└┬┘└────┬─────┘└──────────┬───────────┘ └──┬──┘
+scheme       host        port   path          query params       fragment
+(protocol)  (which server)     (which        (?key=value pairs   (client-only,
+                                resource)     joined by &amp;)        never sent)</code></pre>
+<p class="lead">The <b>fragment</b> (after <code>#</code>) is handled by the browser only and <b>never sent to the server</b>. Port defaults to 443 (https) / 80 (http) and is usually omitted.</p>
+
+<!-- ============ REST ============ -->
+<h2>6 · REST — what "RESTful" actually means</h2>
+<p class="lead">Not a protocol or library — a set of conventions for designing predictable HTTP APIs:</p>
+<div class="callout">
+  <ol style="margin:0;">
+    <li><b>Resources are nouns in URLs</b> — <code>/users/42/orders</code>, never <code>/getUserOrders?id=42</code>. Name the thing, not the action.</li>
+    <li><b>Verbs come from HTTP</b> — the method says what you're doing to the noun. You never invent verbs.</li>
+    <li><b>Stateless</b> — every request carries everything (auth included); no session memory. This is what makes REST scale.</li>
+    <li><b>Representations</b> — responses are a <i>representation</i> (usually JSON) of the resource's <i>state</i>. That's literally where the name comes from.</li>
+  </ol>
+</div>
+<div class="card">
+  <h3>CRUD over HTTP — the canonical mapping</h3>
+  <p class="lead">CRUD = Create, Read, Update, Delete. REST maps them onto a noun (<code>/users</code>):</p>
+  <table>
+    <tr><th style="width:30%">Intent</th><th style="width:34%">Method + URL</th><th>Typical success</th></tr>
+    <tr><td><b>Create</b> a user</td><td><code>POST /users</code> (body)</td><td class="muted"><code>201 Created</code> + <code>Location</code></td></tr>
+    <tr><td><b>Read</b> all users</td><td><code>GET /users</code></td><td class="muted"><code>200 OK</code> + array</td></tr>
+    <tr><td><b>Read</b> one user</td><td><code>GET /users/42</code></td><td class="muted"><code>200 OK</code> + object (or <code>404</code>)</td></tr>
+    <tr><td><b>Update</b> (replace)</td><td><code>PUT /users/42</code> (full body)</td><td class="muted"><code>200 OK</code></td></tr>
+    <tr><td><b>Update</b> (partial)</td><td><code>PATCH /users/42</code> (changed fields)</td><td class="muted"><code>200 OK</code></td></tr>
+    <tr><td><b>Delete</b> a user</td><td><code>DELETE /users/42</code></td><td class="muted"><code>204 No Content</code></td></tr>
+  </table>
+  <p class="lead" style="margin-top:10px;"><b>Collection</b> (<code>/users</code>) vs <b>item</b> (<code>/users/42</code>): POST to the collection to create; act on the item by id for read/update/delete.</p>
+</div>
+
+<!-- ============ HEADERS ============ -->
+<h2>7 · Key headers</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:20%">Header</th><th style="width:16%">On</th><th>What it does</th></tr>
+    <tr><td><b>Content-Type</b></td><td>req &amp; resp</td><td class="muted">what the <i>body is</i> — <code>application/json</code>, <code>text/html</code>, <code>multipart/form-data</code>. The receiver parses accordingly.</td></tr>
+    <tr><td><b>Accept</b></td><td>request</td><td class="muted">what the client <i>wants back</i> — <code>Accept: application/json</code>. Drives content negotiation (§8).</td></tr>
+    <tr><td><b>Authorization</b></td><td>request</td><td class="muted">the credential — <code>Bearer &lt;token&gt;</code>, <code>Basic &lt;base64&gt;</code> (§8).</td></tr>
+    <tr><td><b>User-Agent</b></td><td>request</td><td class="muted">identifies the client software (<code>curl/8.4</code>, a browser string).</td></tr>
+    <tr><td><b>Cache-Control</b></td><td>req &amp; resp</td><td class="muted">caching rules — <code>no-store</code>, <code>max-age=3600</code>. Pairs with <code>ETag</code> + <code>304</code> to skip re-downloading unchanged data.</td></tr>
+    <tr><td><b>Set-Cookie / Cookie</b></td><td>resp / req</td><td class="muted">server stores a cookie in the browser; browser sends it back automatically (§8).</td></tr>
+    <tr><td><b>Location</b></td><td>response</td><td class="muted">where the new/moved resource lives (with 201 or 3xx).</td></tr>
+    <tr><td><b>CORS</b> headers</td><td>response</td><td class="muted"><code>Access-Control-Allow-Origin: …</code> — the server's opt-in list of which <i>other</i> sites' JS may read its responses. Browsers block cross-site reads by default; a missing CORS header is the classic "works in curl, fails in the browser" bug.</td></tr>
+  </table>
+</div>
+
+<!-- ============ AUTH / NEGOTIATION / COOKIES ============ -->
+<h2>8 · Auth · content negotiation · cookies &amp; sessions</h2>
+<div class="card">
+  <h3>Auth patterns <span class="muted" style="font-weight:normal;font-size:12px;">(full depth in <code>authentication_cheatsheet.md</code>)</span></h3>
+  <table>
+    <tr><th style="width:20%">Pattern</th><th style="width:32%">Looks like</th><th>Notes</th></tr>
+    <tr><td><b>API key in header</b></td><td><code>x-api-key: sk-abc123…</code></td><td class="muted">simplest; a static secret identifying <i>the app</i>. (Anthropic's API uses exactly this.)</td></tr>
+    <tr><td><b>Bearer token</b></td><td><code>Authorization: Bearer eyJhbGc…</code></td><td class="muted">"whoever <i>bears</i> this token is authorized." Often a <b>JWT</b> (JSON Web Token — signed JSON payload); usually short-lived.</td></tr>
+    <tr><td><b>Basic auth</b></td><td><code>Authorization: Basic dXNlcjpwYXNz</code></td><td class="muted">base64 of <code>user:password</code> — old, only safe over HTTPS, rare in modern APIs.</td></tr>
+    <tr><td><b>OAuth 2.0</b></td><td>a <i>flow</i>, not a header</td><td class="muted">grant App A limited access to your data in Service B without handing A your B password — ends with A holding a Bearer token.</td></tr>
+  </table>
+</div>
+<div class="callout warn">
+  Universal rule: secrets live in environment variables (<code>os.environ["API_KEY"]</code>), never in code or Git.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Content negotiation</h3>
+    <p class="lead">The client says what it can accept; the server picks. <code>Accept: application/json</code> + <code>Accept-Language: fr</code> ask for "JSON, in French if you have it"; the server replies with matching <code>Content-Type</code> / <code>Content-Language</code>. Same URL, different representations.</p>
+  </div>
+  <div class="card">
+    <h3>Cookies &amp; sessions (brief)</h3>
+    <p class="lead">A stateless protocol still needs to remember "you're logged in." The server sends <code>Set-Cookie: session=abc123</code> once; the browser <b>automatically</b> attaches <code>Cookie: session=abc123</code> on every later request to that domain, and the server looks up <code>abc123</code> in its session store. (Token APIs skip cookies and send <code>Authorization</code> each call — the more RESTfully stateless approach.)</p>
+  </div>
+</div>
+
+<!-- ============ WORKED EXAMPLE ============ -->
+<h2>9 · Worked example — same call in curl and Python</h2>
+<div class="grid">
+  <div class="card">
+    <h3>CLI (terminal) — <code>curl</code></h3>
+<pre><code># GET with a query param + auth header.
+# -v = verbose: prints request/response lines + headers
+curl -v "https://api.example.com/v1/users?limit=2" \
+     -H "Authorization: Bearer $TOKEN"
+
+# POST: create a resource (expect 201 Created)
+curl -s -X POST "https://api.example.com/v1/users" \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Ada", "city": "Lisbon"}'</code></pre>
+  </div>
+  <div class="card">
+    <h3>Python — <code>requests</code></h3>
+<pre><code>import requests
+headers = {"Authorization": f"Bearer {token}"}
+
+r = requests.get("https://api.example.com/v1/users",
+                 params={"limit": 2}, headers=headers)
+r.raise_for_status()   # raises on any 4xx/5xx
+users = r.json()       # parse JSON body → list/dict
+
+r = requests.post("https://api.example.com/v1/users",
+                  json={"name": "Ada", "city": "Lisbon"},
+                  headers=headers)   # json= sets body + header
+print(r.status_code)   # 201</code></pre>
+  </div>
+</div>
+<div class="callout good">
+  <code>json=</code> (auto-serializes the dict <b>and</b> sets <code>Content-Type: application/json</code>) vs <code>data=</code> (raw form/bytes) is the classic <code>requests</code> distinction.
+</div>
+
+<!-- ============ WEBHOOKS ============ -->
+<h2>10 · Webhooks vs polling</h2>
+<p class="lead">So far <i>you</i> call the server. Sometimes you want the <i>server</i> to tell <i>you</i> when something happens:</p>
+<div class="card">
+  <table>
+    <tr><th style="width:18%"></th><th style="width:38%">Polling</th><th>Webhook</th></tr>
+    <tr><td><b>Direction</b></td><td><b>you ask</b> repeatedly: "anything new?"</td><td><b>they call you</b> when something happens</td></tr>
+    <tr><td><b>Mechanics</b></td><td>a loop of GET requests on a schedule</td><td>you register a URL; the service POSTs JSON to it on each event</td></tr>
+    <tr><td><b>Latency vs cost</b></td><td>latency = poll interval; wasteful (most polls return nothing)</td><td>near-instant, no wasted calls</td></tr>
+    <tr><td><b>Catch</b></td><td>rate limits (hello, 429)</td><td>you must run a publicly reachable server <b>and</b> verify the payload signature (anyone can POST to a URL)</td></tr>
+  </table>
+</div>
+<div class="callout">
+  Memory hook: polling = checking the mailbox every five minutes; webhook = the doorbell. A webhook inverts the roles — <i>their</i> server becomes the client of <i>your</i> endpoint.
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>11 · Teardown / connection hygiene</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>A TCP connection</b></td><td class="desc">HTTP/1.1 keeps connections alive (<code>Connection: keep-alive</code>) for reuse; they close on <code>Connection: close</code> or idle timeout. Let your client library pool &amp; close them — don't open a fresh connection per request.</td></tr>
+    <tr><td class="cmd"><b>An API key</b></td><td class="desc"><b>revoke it in the provider's console</b> — deleting it from your code is not revocation; a leaked key works until the server side kills it.</td></tr>
+    <tr><td class="cmd"><b>A Bearer token / session</b></td><td class="desc">"log out" properly = the server <b>invalidates the token/session</b>; merely deleting the cookie only makes <i>your</i> browser forget it — a stolen copy stays valid.</td></tr>
+    <tr><td class="cmd"><b>A webhook endpoint</b></td><td class="desc">unsubscribe/disable it in the sending service — otherwise it keeps POSTing events to a URL you no longer control (a re-registered domain could receive your data).</td></tr>
+    <tr><td class="cmd"><b>A streaming connection</b></td><td class="desc">close it explicitly — <code>with requests.get(url, stream=True) as r:</code> (or <code>r.close()</code>) — abandoned streams hold sockets and server resources open.</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>12 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>HTTP</b></td><td class="desc">HyperText Transfer Protocol; the web's stateless request/response protocol (Berners-Lee, 1991)</td></tr>
+    <tr><td class="cmd"><b>HTTPS</b></td><td class="desc">HTTP Secure; HTTP wrapped in TLS encryption</td></tr>
+    <tr><td class="cmd"><b>QUIC</b></td><td class="desc">the UDP-based transport HTTP/3 runs on (faster setup, TLS built in)</td></tr>
+    <tr><td class="cmd"><b>REST</b></td><td class="desc">REpresentational State Transfer (Fielding, 2000); nouns-in-URLs + HTTP verbs + statelessness</td></tr>
+    <tr><td class="cmd"><b>CRUD</b></td><td class="desc">Create, Read, Update, Delete; the four data ops REST maps onto methods</td></tr>
+    <tr><td class="cmd"><b>Method / verb</b></td><td class="desc">GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS; what the request wants done</td></tr>
+    <tr><td class="cmd"><b>Safe</b></td><td class="desc">read-only method; never changes server state (GET, HEAD, OPTIONS)</td></tr>
+    <tr><td class="cmd"><b>Idempotent</b></td><td class="desc">repeating the request leaves the same end state; safe to retry. POST is not</td></tr>
+    <tr><td class="cmd"><b>Status code</b></td><td class="desc">3-digit result; first digit = family (1xx info, 2xx success, 3xx redirect, 4xx client, 5xx server)</td></tr>
+    <tr><td class="cmd"><b>Header</b></td><td class="desc">a <code>Key: value</code> metadata line in a request or response</td></tr>
+    <tr><td class="cmd"><b>URL</b></td><td class="desc">Uniform Resource Locator; web address (scheme · host · port · path · query · fragment)</td></tr>
+    <tr><td class="cmd"><b>CORS</b></td><td class="desc">Cross-Origin Resource Sharing; server opt-in for which other sites' JS may read its responses</td></tr>
+    <tr><td class="cmd"><b>Cookie</b></td><td class="desc">a small value the server sets and the browser auto-returns, used for sessions</td></tr>
+    <tr><td class="cmd"><b>API key / Bearer / JWT</b></td><td class="desc">auth credentials; JWT = JSON Web Token (signed JSON in the <code>Authorization</code> header)</td></tr>
+    <tr><td class="cmd"><b>OAuth</b></td><td class="desc">delegated-authorization flow ending in a Bearer token (see <code>authentication_cheatsheet.md</code>)</td></tr>
+    <tr><td class="cmd"><b>Webhook</b></td><td class="desc">reverse HTTP call: the service POSTs to <i>your</i> URL on events</td></tr>
+    <tr><td class="cmd"><b>TCP / TLS / DNS</b></td><td class="desc">the transport, encryption, and name-resolution layers under HTTP (see <code>networking_cheatsheet.md</code>)</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview">MDN HTTP overview</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods">MDN methods</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">MDN status codes</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers">MDN headers</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">MDN CORS</a> ·
+  <a href="https://www.rfc-editor.org/rfc/rfc9110.html">RFC 9110 (HTTP Semantics)</a> ·
+  <a href="https://www.rfc-editor.org/rfc/rfc9114.html">RFC 9114 (HTTP/3)</a> ·
+  <a href="https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm">Fielding's REST thesis</a> ·
+  <a href="https://requests.readthedocs.io/">requests docs</a> ·
+  <a href="https://curl.se/docs/">curl docs</a>
+</p>
+
+</div>
+</body>
+</html>

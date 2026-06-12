@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TLS Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:42%;}
+  td.desc{width:58%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>TLS Cheat Sheet</h1>
+<p class="sub">The layer behind HTTPS &amp; the padlock: handshake · certificates · chain of trust · started 2026-06-12 · twin of <code>Tools/tls_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>TLS</b> = Transport Layer Security: the standard crypto protocol that slips <i>between</i> <b>TCP</b> (Transmission Control Protocol, the reliable byte pipe) and an app protocol like <b>HTTP</b> (HyperText Transfer Protocol). HTTP inside a TLS tunnel = <b>HTTPS</b> (HTTP Secure) — the <code>https://</code> URL and the padlock.
+</div>
+<div class="callout">
+  <b>A sealed, verified envelope around your connection.</b> Raw TCP is a postcard anyone on the wire can read and edit. TLS makes it a sealed, tamper-evident, signed envelope:
+  <pre><code>application data (HTTP, SMTP, …)
+┌──────────────────────────────┐
+│   T L S  (the envelope)       │  encrypt · authenticate · integrity
+└──────────────────────────────┘
+┌──────────────────────────────┐
+│   T C P  (the postal pipe)    │  reliable, ordered delivery
+└──────────────────────────────┘
+            IP  →  the wire</code></pre>
+</div>
+<div class="callout good">
+  <b>Three guarantees</b> — the <i>why</i> of the whole protocol:
+  <span class="pill">1 · Encryption (eavesdroppers see gibberish)</span>
+  <span class="pill">2 · Authentication (really example.com, not an impostor)</span>
+  <span class="pill">3 · Integrity (no byte tampered in transit)</span>
+</div>
+<div class="callout warn">
+  Encryption alone is useless without authentication — encrypting a chat with an impostor just lets the impostor read you <i>privately</i>. The <b>certificate</b> is what makes the encryption worth having.
+</div>
+
+<!-- ============ NAME HISTORY ============ -->
+<h2>1 · Name history — why "SSL" still means TLS</h2>
+<p class="lead">TLS is a <b>rename</b> of an older protocol, so the names are used interchangeably (you "buy an SSL certificate" that is 100% TLS).</p>
+<div class="grid">
+  <div class="card">
+    <h3>The lineage</h3>
+    <table>
+      <tr><td class="cmd">1994 · <b>SSL</b> 2.0</td><td class="desc">Netscape's Secure Sockets Layer; flawed, dead</td></tr>
+      <tr><td class="cmd">1996 · SSL 3.0</td><td class="desc">last SSL; broken (POODLE, 2014) — never use</td></tr>
+      <tr><td class="cmd">1999 · <b>TLS 1.0</b></td><td class="desc">IETF takes over, renames SSL → TLS</td></tr>
+      <tr><td class="cmd">2008 · TLS 1.2</td><td class="desc">the workhorse for a decade</td></tr>
+      <tr><td class="cmd">2018 · <b>TLS 1.3</b></td><td class="desc">current: faster handshake, dropped old broken crypto</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>What to remember</h3>
+    <p class="lead"><b>SSL</b> = Secure Sockets Layer (Netscape, 1994). <b>TLS</b> = Transport Layer Security (IETF, 1999+). Same lineage; "SSL" is the sticky brand name.</p>
+    <p class="lead"><b>Target today:</b> TLS 1.3 (or 1.2). SSL 2/3 and TLS 1.0/1.1 are deprecated — browsers refuse them.</p>
+    <p class="lead"><b>IETF</b> = Internet Engineering Task Force (standardizes protocols via <b>RFC</b>s, Request for Comments docs).</p>
+  </div>
+</div>
+
+<!-- ============ SYMMETRIC VS ASYMMETRIC ============ -->
+<h2>2 · Symmetric vs. asymmetric — the key idea</h2>
+<p class="lead">From <code>encryption_cheatsheet.md</code>. This is why a handshake exists at all.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Two kinds of crypto</h3>
+    <table>
+      <tr><td class="cmd"><b>Asymmetric</b> (public-key)</td><td class="desc">a key <i>pair</i>: public (shareable) + private (secret). Solves "how do strangers agree on a secret?" but slow. RSA, ECDHE, Diffie-Hellman</td></tr>
+      <tr><td class="cmd"><b>Symmetric</b> (shared-key)</td><td class="desc">one shared secret both hold. Very fast on bulk data, but "how to share the key first?" <b>AES</b> (Advanced Encryption Standard)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>The trick TLS plays</h3>
+    <div class="callout good" style="margin:0">
+      Use <b>asymmetric</b> crypto briefly to <b>establish</b> a shared secret over an open wire (the handshake), then switch to <b>symmetric</b> (AES) to <b>transmit</b> all data fast.
+    </div>
+    <p class="lead" style="margin-top:10px"><b>Memory anchor:</b> <i>asymmetric-to-establish, symmetric-to-transmit</i> — the whole protocol in seven words. The shared secret it produces is the <b>session key</b>.</p>
+  </div>
+</div>
+
+<!-- ============ HANDSHAKE ============ -->
+<h2>3 · The handshake, step by step (TLS 1.3)</h2>
+<p class="lead">The opening negotiation, done <i>before</i> real data: agree on crypto, prove the server's identity, secretly derive the session key. TLS 1.3 does it in one round trip (1-RTT).</p>
+<pre><code>CLIENT (browser)                          SERVER (example.com)
+   │                                              │
+   │ 1. ClientHello ────────────────────────────► │
+   │    "I speak TLS 1.3. My cipher suites,        │
+   │     my Diffie-Hellman public share, a random."│
+   │                                              │
+   │ ◄────────────────── 2. ServerHello + Cert     │
+   │    "Use cipher X. My DH share + random +      │
+   │     my CERTIFICATE (signed proof I'm          │
+   │     example.com) + a Finished check."          │
+   │                                              │
+   │ 3. Verify + derive keys                       │
+   │    cert chains to a trusted CA, name matches, │
+   │    not expired; both sides combine the two DH │
+   │    shares → the SAME session key              │
+   │                                              │
+   │ 4. Finished ───────────────────────────────► │
+   │ ⇄ 5. ENCRYPTED application data (HTTP) ⇄       │</code></pre>
+<div class="grid">
+  <div class="card">
+    <h3>Step by step</h3>
+    <table>
+      <tr><td class="cmd"><b>1 · ClientHello</b></td><td class="desc">browser lists TLS versions + cipher suites, sends its ephemeral DH share + a random</td></tr>
+      <tr><td class="cmd"><b>2 · ServerHello + Cert</b></td><td class="desc">server picks a cipher, sends its DH share + its <b>certificate</b> (the authentication leg)</td></tr>
+      <tr><td class="cmd"><b>3 · Verify + derive</b></td><td class="desc">client validates cert chain; both mix the two DH shares into the same <b>session key</b> — never sent on the wire</td></tr>
+      <tr><td class="cmd"><b>4 · Finished</b></td><td class="desc">a checksum proving the handshake wasn't tampered (integrity)</td></tr>
+      <tr><td class="cmd"><b>5 · App data</b></td><td class="desc">all further traffic AES-encrypted with the session key</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Forward secrecy</h3>
+    <p class="lead"><b>DH / Diffie-Hellman</b> = key-exchange letting two parties derive a shared secret over a public channel. TLS 1.3 mandates the <b>ephemeral</b> form (<b>DHE / ECDHE</b>) — a fresh keypair per session.</p>
+    <div class="callout good" style="margin:0">
+      <b>Forward secrecy (PFS, Perfect Forward Secrecy):</b> because the session key came from throwaway keys, an attacker who later steals the server's long-term private key still can't decrypt <i>past</i> recorded sessions. Each conversation's secret died with it.
+    </div>
+  </div>
+</div>
+
+<!-- ============ CERTIFICATES ============ -->
+<h2>4 · Certificates &amp; the chain of trust</h2>
+<p class="lead">A <b>certificate</b> = a digital ID card for a server: a public key + identity fields, <b>signed</b> by a <b>Certificate Authority (CA)</b> your device already trusts. That signature is what makes the padlock meaningful.</p>
+<div class="grid">
+  <div class="card">
+    <h3>What a cert contains</h3>
+    <table>
+      <tr><td class="cmd"><b>Subject / CN / SAN</b></td><td class="desc">who it's for: the domain(s), e.g. <code>example.com</code>, <code>*.example.com</code>. SAN = Subject Alternative Name (modern domain list)</td></tr>
+      <tr><td class="cmd"><b>Public key</b></td><td class="desc">server's public key (private half never leaves the server)</td></tr>
+      <tr><td class="cmd"><b>Issuer</b></td><td class="desc">which CA signed it</td></tr>
+      <tr><td class="cmd"><b>Validity</b></td><td class="desc">"not before" / "not after" — certs <b>expire</b> (often 90 days now)</td></tr>
+      <tr><td class="cmd"><b>Signature</b></td><td class="desc">the CA's signature over all of the above</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Root → Intermediate → Leaf</h3>
+    <pre><code>Root CA       ← self-signed; in your TRUST STORE
+  │ signs
+Intermediate  ← CA's working key (roots kept offline)
+  │ signs
+Leaf cert     ← example.com's cert, served in handshake</code></pre>
+    <p class="lead"><b>Trust store / root store</b> = the root CA certs shipped with your OS/browser (Apple, Microsoft, Mozilla, Google each curate one). Trust in the leaf is <i>anchored</i> by trust in the root.</p>
+  </div>
+</div>
+<div class="callout good">
+  <b>Let's Encrypt + ACME — why HTTPS went universal.</b> <b>Let's Encrypt</b> = a free, automated, non-profit CA (2015). <b>ACME</b> = Automatic Certificate Management Environment — the protocol that proves you control a domain and fetches/renews a cert with no human (Certbot runs it on a timer). Together they removed the cost/friction that kept small sites on plain HTTP — the main reason the web went mostly-HTTPS after ~2016.
+</div>
+<div class="callout warn">
+  <b>Self-signed certs &amp; the scary warning.</b> A self-signed cert is signed by its own key, not a trusted CA, so it chains to nothing in your trust store. Encryption still works; <i>authentication</i> doesn't — nobody vouches it's really <code>example.com</code>. Browsers show a full-page <code>NET::ERR_CERT_AUTHORITY_INVALID</code> because that's exactly what a man-in-the-middle attack looks like. Fine for <code>localhost</code>; never for the public web.
+</div>
+
+<!-- ============ KEY CONCEPTS ============ -->
+<h2>5 · Key concepts you'll hear</h2>
+<div class="grid">
+  <div class="card">
+    <h3>The vocabulary</h3>
+    <table>
+      <tr><td class="cmd"><b>Cipher suite</b></td><td class="desc">the agreed bundle of algorithms — key exchange + bulk cipher + hash, e.g. <code>TLS_AES_128_GCM_SHA256</code>. TLS 1.3 trimmed it to a few safe ones</td></tr>
+      <tr><td class="cmd"><b>Forward secrecy (PFS)</b></td><td class="desc">ephemeral keys → a stolen server key can't decrypt past sessions (§3)</td></tr>
+      <tr><td class="cmd"><b>SNI</b> (Server Name Indication)</td><td class="desc">client names the wanted domain <i>at the start</i> of the handshake, so one IP can host many HTTPS sites and the server knows which cert to present</td></tr>
+      <tr><td class="cmd"><b>HSTS</b></td><td class="desc">HTTP Strict Transport Security: a header saying "only ever reach me over HTTPS" — blocks downgrade-to-HTTP attacks</td></tr>
+      <tr><td class="cmd"><b>mTLS</b> (mutual TLS)</td><td class="desc">normally only the server proves identity; mTLS makes the <i>client</i> present a cert too. Common in zero-trust internal systems, rare for public users</td></tr>
+      <tr><td class="cmd"><b>Session key</b></td><td class="desc">the symmetric (AES) key derived in the handshake that encrypts the data</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ CLI ============ -->
+<h2>6 · Practical / CLI — inspecting TLS</h2>
+<p class="lead">Run in a terminal (macOS/Linux). <code>openssl</code> ships with most systems.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Inspect a server's cert</h3>
+    <table>
+      <tr><td class="cmd"><code>openssl s_client -connect example.com:443</code></td><td class="desc">open a raw TLS connection; dump the <b>cert chain</b>, protocol, cipher. The workhorse</td></tr>
+      <tr><td class="cmd"><code>openssl s_client -connect example.com:443 -servername example.com</code></td><td class="desc">same, but sends <b>SNI</b> — needed when one IP hosts many sites</td></tr>
+      <tr><td class="cmd"><code>… | openssl x509 -noout -dates -subject -issuer</code></td><td class="desc">print just expiry dates, subject, issuer of the leaf cert</td></tr>
+      <tr><td class="cmd"><code>curl -v https://example.com</code></td><td class="desc">full HTTP-over-TLS conversation; <code>-v</code> prints cert + handshake details</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Reading the padlock &amp; errors</h3>
+    <p class="lead">Click the padlock → "Connection is secure" → view the chain, covered domains, validity dates. A closed padlock = TLS succeeded <i>and</i> the name matched — <b>not</b> that the site is honest, only that the channel is private.</p>
+    <table>
+      <tr><td class="cmd"><b>Expired</b> <code>ERR_CERT_DATE_INVALID</code></td><td class="desc">"not after" date passed — usually a failed renewal. 90-day certs make auto-renewal (ACME) essential</td></tr>
+      <tr><td class="cmd"><b>Name mismatch</b> <code>ERR_CERT_COMMON_NAME_INVALID</code></td><td class="desc">valid cert, wrong domain (cert for <code>example.com</code>, visited as <code>www.example.com</code> with no SAN). Doesn't vouch for the name you typed</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ WHERE TLS SITS ============ -->
+<h2>7 · Where TLS sits — the layering</h2>
+<p class="lead">TLS is protocol-agnostic: it wraps <b>TCP</b> and sits <i>under</i> any app protocol. The same envelope secures more than the web.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Plain → +TLS</h3>
+    <table>
+      <tr><td class="cmd">HTTP</td><td class="desc"><b>HTTPS</b> · port 443</td></tr>
+      <tr><td class="cmd">SMTP (mail send)</td><td class="desc">SMTPS / STARTTLS · 465 / 587</td></tr>
+      <tr><td class="cmd">IMAP (mail read)</td><td class="desc">IMAPS · 993</td></tr>
+      <tr><td class="cmd">Generic TCP</td><td class="desc">"TLS tunnel"</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>The full stack</h3>
+    <div class="callout good" style="margin:0">
+      <b>HTTPS = HTTP over TLS over TCP over IP.</b> The padlock is just the visible tip of that stack.
+    </div>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>8 · Teardown — revoking &amp; rotating certs</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Kill a cert before expiry</h3>
+    <table>
+      <tr><td class="cmd"><b>Rotation</b></td><td class="desc">routinely replacing a cert (+ ideally a fresh keypair) before expiry — mostly automated by ACME on short-lived certs</td></tr>
+      <tr><td class="cmd"><b>Revocation</b></td><td class="desc">declaring a still-unexpired cert invalid (e.g. leaked private key)</td></tr>
+      <tr><td class="cmd"><b>CRL</b></td><td class="desc">Certificate Revocation List — a CA-published blocklist of serial numbers. Bulky; clients must download it</td></tr>
+      <tr><td class="cmd"><b>OCSP</b></td><td class="desc">Online Certificate Status Protocol — ask "is <i>this</i> cert still good?" live. <b>OCSP stapling</b> lets the server attach that proof in the handshake</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Why short-lived certs won</h3>
+    <p class="lead">Revocation checking is famously unreliable (clients often skip it). So the industry moved to <b>short-lived certs</b>: a 90-day cert that leaks is dangerous for at most 90 days — no revocation needed.</p>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>TLS</b></td><td class="desc">Transport Layer Security — the encrypt + authenticate + integrity layer wrapping TCP</td></tr>
+    <tr><td class="cmd"><b>SSL</b></td><td class="desc">Secure Sockets Layer — TLS's 1994 predecessor name (still used loosely)</td></tr>
+    <tr><td class="cmd"><b>HTTPS</b></td><td class="desc">HTTP Secure = HTTP run inside a TLS tunnel (port 443)</td></tr>
+    <tr><td class="cmd"><b>TCP</b></td><td class="desc">Transmission Control Protocol — the reliable ordered byte pipe TLS sits on</td></tr>
+    <tr><td class="cmd"><b>Handshake</b></td><td class="desc">the opening negotiation: pick crypto, prove identity, derive the session key</td></tr>
+    <tr><td class="cmd"><b>Cipher suite</b></td><td class="desc">the agreed bundle of key-exchange + bulk-cipher + hash algorithms</td></tr>
+    <tr><td class="cmd"><b>Diffie-Hellman (DH / DHE / ECDHE)</b></td><td class="desc">key-exchange method; ephemeral form gives forward secrecy</td></tr>
+    <tr><td class="cmd"><b>Forward secrecy (PFS)</b></td><td class="desc">Perfect Forward Secrecy — past sessions stay safe even if the server key later leaks</td></tr>
+    <tr><td class="cmd"><b>Session key</b></td><td class="desc">the symmetric (AES) key that encrypts the actual data</td></tr>
+    <tr><td class="cmd"><b>AES</b></td><td class="desc">Advanced Encryption Standard — the symmetric bulk cipher</td></tr>
+    <tr><td class="cmd"><b>Certificate</b></td><td class="desc">signed digital ID binding a public key to a domain</td></tr>
+    <tr><td class="cmd"><b>CA</b></td><td class="desc">Certificate Authority — the trusted issuer that signs certs</td></tr>
+    <tr><td class="cmd"><b>Trust store / root store</b></td><td class="desc">pre-installed root CA certs your OS/browser trusts</td></tr>
+    <tr><td class="cmd"><b>Leaf / intermediate / root</b></td><td class="desc">the three rungs of the trust chain (server cert → CA working cert → trust anchor)</td></tr>
+    <tr><td class="cmd"><b>Let's Encrypt</b></td><td class="desc">free automated non-profit CA (2015)</td></tr>
+    <tr><td class="cmd"><b>ACME</b></td><td class="desc">Automatic Certificate Management Environment — the auto-issue/renew protocol</td></tr>
+    <tr><td class="cmd"><b>SNI</b></td><td class="desc">Server Name Indication — names the wanted domain early so one IP serves many HTTPS sites</td></tr>
+    <tr><td class="cmd"><b>HSTS</b></td><td class="desc">HTTP Strict Transport Security — "HTTPS-only" enforcement header</td></tr>
+    <tr><td class="cmd"><b>mTLS</b></td><td class="desc">mutual TLS — both client and server present certificates</td></tr>
+    <tr><td class="cmd"><b>CRL / OCSP</b></td><td class="desc">Certificate Revocation List / Online Certificate Status Protocol — the two revocation mechanisms</td></tr>
+    <tr><td class="cmd"><b>IETF / RFC</b></td><td class="desc">Internet Engineering Task Force / Request for Comments — standards body and its documents</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://www.cloudflare.com/learning/ssl/what-happens-in-a-tls-handshake/">Cloudflare: What happens in a TLS handshake?</a> ·
+  <a href="https://www.cloudflare.com/learning/ssl/what-is-ssl/">Cloudflare Learning Center: SSL/TLS</a> ·
+  <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security">MDN: TLS</a> ·
+  <a href="https://letsencrypt.org/how-it-works/">Let's Encrypt: How it works</a> ·
+  <a href="https://www.rfc-editor.org/rfc/rfc8446">RFC 8446 (TLS 1.3)</a> ·
+  companions <code>networking_cheatsheet.md</code>, <code>encryption_cheatsheet.md</code>
+</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP App Architectures Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent);font-size:12.5px;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:42%;}
+  td.desc{width:58%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+  nav.mini{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--border);padding:8px 0;margin:0 0 8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;}
+  nav.mini a{color:var(--muted);text-decoration:none;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:2px 10px;}
+  nav.mini a:hover{color:var(--accent);border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GCP App Architectures Cheat Sheet</h1>
+<p class="sub">How real systems are assembled from GCP parts: eight canonical architectures (static site → IoT pipeline), the layer template every exam scenario follows, and the Dataproc-vs-Dataflow distinction anchored without assuming any Hadoop background. Associate Cloud Engineer depth.</p>
+
+<nav class="mini">
+  <a href="#template">The layer template</a>
+  <a href="#patterns">8 canonical patterns</a>
+  <a href="#dpdf">Dataproc vs Dataflow</a>
+  <a href="#data">Where data lives</a>
+  <a href="#decide">Phrase → service</a>
+</nav>
+
+<!-- ============ TEMPLATE ============ -->
+<h2 id="template">0 · The layer template — every architecture is the same sandwich</h2>
+<p class="lead">Almost every system on GCP (and on the exam) is assembled from the same five layers, top to bottom. When a scenario question hits, place each named requirement on a layer and the answer usually falls out.</p>
+<div class="card">
+  <table>
+    <tr><th style="width:22%">Layer</th><th style="width:38%">Job</th><th style="width:40%">GCP parts</th></tr>
+    <tr><td><b>1 · Name</b></td><td class="desc">a human-friendly, permanent address</td><td class="desc">Cloud DNS (A record → static IP or load balancer)</td></tr>
+    <tr><td><b>2 · Front door</b></td><td class="desc">one stable entry point; spread traffic, terminate TLS, cache</td><td class="desc">Application LB (L7, HTTP/S, global) · Passthrough NLB (L4, raw TCP/UDP) · Cloud CDN</td></tr>
+    <tr><td><b>3 · Compute</b></td><td class="desc">run the code</td><td class="desc">Cloud Run (serverless containers) · GKE (Kubernetes) · MIG of VMs · App Engine</td></tr>
+    <tr><td><b>4 · State</b></td><td class="desc">store the data (see §3)</td><td class="desc">Cloud SQL · Firestore · Bigtable · GCS · BigQuery · Memorystore (cache)</td></tr>
+    <tr><td><b>5 · Async glue</b></td><td class="desc">decouple parts that run at different speeds</td><td class="desc">Pub/Sub (message bus) · Cloud Tasks (targeted task queue) · Eventarc (event routing)</td></tr>
+  </table>
+</div>
+<div class="callout good"><b>Reflex:</b> requirements like "users visit a URL" = layers 1–2; "process/serve" = layer 3; "store/query" = layer 4; "spiky, bursty, background, decouple" = layer 5. The wrong answers in a question are usually parts from the <i>right</i> layer family but the wrong member, or a layer-4 storage product offered for a layer-5 messaging job.</div>
+
+<!-- ============ PATTERNS ============ -->
+<h2 id="patterns">1 · Eight canonical architectures</h2>
+
+<div class="grid">
+  <div class="card">
+    <h3>① Static website / single-page app</h3>
+    <pre><code>Cloud DNS ─► Application LB (+ Cloud CDN)
+                  └─► GCS bucket (HTML/JS/CSS files)</code></pre>
+    <p class="lead">No servers at all: the site is just files in a Cloud Storage bucket; the load balancer gives it HTTPS + a stable address; the CDN (Content Delivery Network — copies cached at Google's edge locations worldwide) makes it fast everywhere.</p>
+    <p class="lead"><b>Trigger words:</b> "static content", "no backend logic", "cheapest way to host a website".</p>
+  </div>
+
+  <div class="card">
+    <h3>② Classic three-tier web app</h3>
+    <pre><code>Cloud DNS ─► Application LB
+                  └─► MIG of VMs  (or Cloud Run)
+                        ├─► Memorystore (Redis cache)
+                        └─► Cloud SQL (relational DB)</code></pre>
+    <p class="lead">The "online store" shape: stateless web/app servers in a MIG (Managed Instance Group — a pool of identical autoscaling VMs from one template) so any instance can die and be replaced; all state lives one layer down in Cloud SQL; Memorystore caches hot reads.</p>
+    <p class="lead"><b>Trigger words:</b> "web app + relational database", "session data in a cache", "autoscale web tier".</p>
+  </div>
+
+  <div class="card">
+    <h3>③ Containerized microservices</h3>
+    <pre><code>Cloud Build ─► Artifact Registry (images)
+                       └─► GKE Autopilot
+                            ├─ Service "frontend" ─► pods
+                            └─ Service "backend"  ─► pods</code></pre>
+    <p class="lead">Many small services, each in its own container. Images are stored in Artifact Registry; pods are ephemeral, so each microservice hides behind a Kubernetes <b>Service</b> (stable virtual IP + DNS name). Choose <b>Autopilot</b> when the question stresses minimal ops / pay-per-pod; choose <b>Cloud Run</b> instead when they don't actually need Kubernetes.</p>
+    <p class="lead"><b>Trigger words:</b> "microservices", "containers", "teams deploy independently".</p>
+  </div>
+
+  <div class="card">
+    <h3>④ IoT / streaming telemetry</h3>
+    <pre><code>devices ─► Pub/Sub ─► Dataflow ─► BigQuery
+            (buffer)   (transform   (store +
+                        in flight)   SQL analysis)</code></pre>
+    <p class="lead">The single most-tested pipeline. Millions of sensors publish readings; <b>Pub/Sub</b> absorbs the bursts (nothing dropped); <b>Dataflow</b> cleans/deduplicates/windows the stream in flight; <b>BigQuery</b> both <i>stores</i> the result and answers SQL over it. Swap the tail for <b>Bigtable</b> when the need is millisecond lookups of time-series rows rather than analytics.</p>
+    <p class="lead"><b>Trigger words:</b> "sensor/event stream", "ingest spikes", "transform then analyze".</p>
+  </div>
+
+  <div class="card">
+    <h3>⑤ Batch ETL / big-data crunching</h3>
+    <pre><code>GCS (raw files) ─► Dataflow ─► BigQuery   (new pipeline)
+GCS (raw files) ─► Dataproc ─► GCS/BQ     (existing Spark/Hadoop jobs)</code></pre>
+    <p class="lead">ETL = Extract, Transform, Load: pull raw data in, reshape it, land it in a warehouse. New pipelines → Dataflow. A company <i>migrating jobs it already runs</i> on a Spark/Hadoop cluster → Dataproc (see §2 for the full distinction).</p>
+    <p class="lead"><b>Trigger words:</b> "nightly job", "process files in a bucket", "migrate our cluster".</p>
+  </div>
+
+  <div class="card">
+    <h3>⑥ Event-driven file processing</h3>
+    <pre><code>upload ─► GCS bucket ─(event)─► Cloud Run function
+                                     └─► thumbnail/result
+                                          back to GCS / Firestore</code></pre>
+    <p class="lead">Nothing runs until something happens: a file landing in a bucket fires an event that invokes a small serverless function (resize the image, parse the invoice, scan the upload). Costs nothing while idle.</p>
+    <p class="lead"><b>Trigger words:</b> "whenever a file is uploaded", "react to events", "no idle cost".</p>
+  </div>
+
+  <div class="card">
+    <h3>⑦ CI/CD pipeline</h3>
+    <pre><code>git push ─► Cloud Build (test + build image)
+                 └─► Artifact Registry
+                       └─► deploy to Cloud Run / GKE</code></pre>
+    <p class="lead">CI/CD = Continuous Integration / Continuous Delivery: every code push is automatically tested, built into a container image, stored, and rolled out. Cloud Build is the trigger-driven build engine; Artifact Registry is the image shelf; Cloud Run/GKE traffic-splitting gives canary releases (send 5% of traffic to the new version first).</p>
+    <p class="lead"><b>Trigger words:</b> "on every commit", "automate build and deploy", "canary/rollback".</p>
+  </div>
+
+  <div class="card">
+    <h3>⑧ Hybrid: on-prem + cloud</h3>
+    <pre><code>on-prem network ═ VPN / Interconnect ═ VPC
+        (Cloud Router exchanges routes via BGP)
+   private VMs ─► Private Google Access ─► GCS/APIs</code></pre>
+    <p class="lead">A company keeps its datacenter and extends into GCP. Cloud VPN (encrypted over internet) or Dedicated/Partner Interconnect (private physical link) joins the networks; <b>Cloud Router</b> uses BGP (Border Gateway Protocol — routers advertising "these addresses live behind me") so routes update automatically; <b>Private Google Access</b> lets internal-only VMs reach Google services without touching the public internet.</p>
+    <p class="lead"><b>Trigger words:</b> "connect our datacenter", "no public IPs", "dynamic routing".</p>
+  </div>
+</div>
+
+<!-- ============ DATAPROC VS DATAFLOW ============ -->
+<h2 id="dpdf">2 · Dataproc vs Dataflow — anchored, no Hadoop background assumed</h2>
+<div class="callout good">
+  <b>The anchor: rented factory vs conveyor-belt service.</b><br>
+  <b>Dataproc</b> = Google rents you a <i>factory you already know how to run</i>. Hadoop and Spark are 2010s-era open-source frameworks for crunching huge datasets on a <b>cluster</b> (a fleet of machines working together). Thousands of companies wrote jobs for them. Dataproc spins that same cluster up in ~90 seconds so those <i>existing</i> jobs run unchanged — but it is still a cluster: <b>you</b> choose its size and turn it off.<br><br>
+  <b>Dataflow</b> = Google runs a <i>conveyor belt</i> for you. You only describe the processing steps (dedupe → average over 5-minute windows → write out); Google builds, staffs, and auto-scales the machinery. No cluster exists for you to manage. It handles <b>both</b> streaming (items processed as they arrive) and batch (truckloads at a time). The pipeline language is Apache Beam — trivia, not the point.
+</div>
+<div class="card">
+  <table>
+    <tr><th style="width:40%">Question says…</th><th style="width:60%">Answer</th></tr>
+    <tr><td class="desc">"existing Hadoop/Spark jobs", "migrate our cluster", "minimal code changes"</td><td class="desc"><b>Dataproc</b> — lift-and-shift the factory</td></tr>
+    <tr><td class="desc">"streaming", "real-time", "windowed/in-flight transforms", "serverless data processing", "no cluster management"</td><td class="desc"><b>Dataflow</b> — the conveyor belt</td></tr>
+    <tr><td class="desc">"ad-hoc SQL on huge data", "analysts query it"</td><td class="desc"><b>BigQuery</b> — neither; that's the warehouse at the end of the pipe</td></tr>
+  </table>
+</div>
+<div class="callout warn"><b>Trap:</b> Dataflow is <i>not</i> "managed Hadoop" — that's Dataproc. If the scenario never mentions an existing cluster or Spark/Hadoop by name, the data-processing answer is almost always Dataflow.</div>
+
+<!-- ============ DATA ============ -->
+<h2 id="data">3 · Where data lives — one line each</h2>
+<p class="lead">Half the wrong answers in architecture questions are the right <i>kind</i> of component but the wrong store. One sentence per store, with its tell.</p>
+<div class="card">
+  <table>
+    <tr><th style="width:24%">Store</th><th style="width:46%">What it is</th><th style="width:30%">Tell</th></tr>
+    <tr><td><b>Cloud Storage (GCS)</b></td><td class="desc">objects/files of any size in buckets</td><td class="desc">"files, images, backups, archives"</td></tr>
+    <tr><td><b>Cloud SQL</b></td><td class="desc">managed MySQL/Postgres/SQL Server — transactional rows, one region</td><td class="desc">"relational, existing app, ACID"</td></tr>
+    <tr><td><b>Spanner</b></td><td class="desc">relational like Cloud SQL but globally distributed and horizontally scalable</td><td class="desc">"global + relational + 99.999%"</td></tr>
+    <tr><td><b>Firestore</b></td><td class="desc">serverless document DB (JSON-like) for app/mobile state, live sync</td><td class="desc">"mobile/web app data, offline sync"</td></tr>
+    <tr><td><b>Bigtable</b></td><td class="desc">wide-column NoSQL for huge key-addressed datasets at millisecond latency</td><td class="desc">"time-series/IoT at TB–PB scale, low-latency reads" — storage, <i>never</i> the answer to "distribute work" (that's Pub/Sub)</td></tr>
+    <tr><td><b>BigQuery</b></td><td class="desc"><b>stores</b> the data <b>and</b> runs SQL analytics on it — a warehouse, not just a query engine</td><td class="desc">"analyze with SQL, dashboards, petabytes"</td></tr>
+    <tr><td><b>Memorystore</b></td><td class="desc">managed Redis/Memcached, in-RAM cache</td><td class="desc">"sub-millisecond, session/cache"</td></tr>
+  </table>
+</div>
+
+<!-- ============ DECIDE ============ -->
+<h2 id="decide">4 · Phrase → architecture reflex table</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:52%">Scenario phrase</th><th style="width:48%">Reach for</th></tr>
+    <tr><td class="desc">"spread tasks across workers / absorb event spikes / decouple"</td><td class="desc">Pub/Sub (§1④)</td></tr>
+    <tr><td class="desc">"pods keep changing IPs / stable pod-to-pod comms"</td><td class="desc">Kubernetes Service (§1③)</td></tr>
+    <tr><td class="desc">"stable public endpoint that survives VM replacement"</td><td class="desc">static external IP + Cloud DNS A record</td></tr>
+    <tr><td class="desc">"Kubernetes with least management / pay per pod"</td><td class="desc">GKE Autopilot</td></tr>
+    <tr><td class="desc">"containerized service, variable load, no Kubernetes requirement"</td><td class="desc">Cloud Run</td></tr>
+    <tr><td class="desc">"URL-based routing / TLS termination / global HTTP(S)"</td><td class="desc">Application LB (L7)</td></tr>
+    <tr><td class="desc">"raw TCP/UDP, preserve client IP, no proxy"</td><td class="desc">Passthrough Network LB (L4)</td></tr>
+    <tr><td class="desc">"private VMs must reach GCS / Artifact Registry, no internet"</td><td class="desc">Private Google Access</td></tr>
+    <tr><td class="desc">"private VMs must reach the public internet outbound"</td><td class="desc">Cloud NAT</td></tr>
+    <tr><td class="desc">"stream + transform + SQL analytics"</td><td class="desc">Pub/Sub → Dataflow → BigQuery</td></tr>
+    <tr><td class="desc">"migrate existing Spark/Hadoop jobs"</td><td class="desc">Dataproc (§2)</td></tr>
+    <tr><td class="desc">"react when a file lands in a bucket"</td><td class="desc">GCS event → Cloud Run function (§1⑥)</td></tr>
+    <tr><td class="desc">"build and deploy on every commit"</td><td class="desc">Cloud Build → Artifact Registry → Cloud Run/GKE (§1⑦)</td></tr>
+    <tr><td class="desc">"connect on-prem, dynamic routes"</td><td class="desc">VPN/Interconnect + Cloud Router (BGP) (§1⑧)</td></tr>
+  </table>
+</div>
+
+<p class="foot">Companion sheets: gcloud command grammar · stable endpoints &amp; messaging · IAM &amp; auth · compute · databases &amp; storage · data analytics · networking. All examples use fictional companies and data.</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGP Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:34%;}
+  td.desc{width:66%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>BGP Cheat Sheet</h1>
+<p class="sub">Border Gateway Protocol — the glue between the internet's ~100k networks · started 2026-06-12 · twin of <code>Tools/bgp_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>BGP</b> (Border Gateway Protocol) = the protocol by which the world's independently-run networks tell each other <b>which IP address ranges they can reach</b>. It's the internet's master routing table, built live by agreement. "Border" = it runs at the borders <i>between</i> networks, not inside them. Spec: <b>RFC 4271</b> (BGP-4, 2006).
+</div>
+<div class="callout">
+  <b>A postal service FOR postal services.</b> The internet is a postal system for packets; BGP is the layer above — the post offices announcing to each other which ZIP codes they deliver to:
+  <pre><code>"I, Network A, can reach 203.0.113.* — route it through me."
+        │
+   neighbours re-announce onward, adding themselves to the path:
+        │
+"To reach 203.0.113.*, go A → me — two hops."</code></pre>
+  The internet is <b>not one network</b> — it's <b>~100,000+ separate networks</b>, each run by a different org, with <b>no central route authority</b>. BGP is how they <b>gossip reachability</b> until every router has a path to every range.
+</div>
+<div class="callout warn">
+  <b>Policy, not shortest-path.</b> BGP doesn't find the <i>fastest</i> route — it finds a route each network is <i>willing</i> to use, given who it pays and who it peers with (§2). One-liner: <b>BGP is route gossip between countries.</b>
+</div>
+
+<!-- ============ CORE TERMS ============ -->
+<h2>1 · Core terms — the vocabulary</h2>
+<div class="grid">
+  <div class="card">
+    <h3>The nouns</h3>
+    <table>
+      <tr><td class="cmd"><b>AS</b><br><span class="lead">Autonomous System</span></td><td class="desc">one network under a <b>single admin policy</b> — an ISP, cloud, big university, CDN. The atomic unit BGP routes <i>between</i> (~100k+ on the net).</td></tr>
+      <tr><td class="cmd"><b>ASN</b><br><span class="lead">AS Number</span></td><td class="desc">an AS's <b>identity</b>, e.g. <code>AS15169</code> (real) or <code>AS64500</code> (example). A country code for networks.</td></tr>
+      <tr><td class="cmd"><b>IP prefix</b></td><td class="desc">a <b>CIDR</b> block (Classless Inter-Domain Routing), e.g. <code>203.0.113.0/24</code> = 256 addresses. What an AS actually advertises — never a single IP.</td></tr>
+      <tr><td class="cmd"><b>Route advertisement</b></td><td class="desc">a BGP message: "I can reach prefix X, here's the AS-path." The unit of gossip.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>The two flavours + the meeting place</h3>
+    <table>
+      <tr><td class="cmd"><b>eBGP</b><br><span class="lead">external BGP</span></td><td class="desc">spoken <b>between different ASes</b> — the actual internet-stitching at the borders.</td></tr>
+      <tr><td class="cmd"><b>iBGP</b><br><span class="lead">internal BGP</span></td><td class="desc">spoken <b>within one AS</b>, to share externally-learned routes among that AS's own routers.</td></tr>
+      <tr><td class="cmd"><b>IXP</b><br><span class="lead">Internet Exchange Point</span></td><td class="desc">a physical building where many ASes plug into a shared switch to <b>peer directly</b>, instead of paying a third party to carry traffic between them.</td></tr>
+    </table>
+    <p class="lead"><b>Private/doc ASNs:</b> just as <code>203.0.113.0/24</code> is reserved for docs, ASNs <b>64496–64511</b> (+ 64512–65534) are reserved for examples — this sheet uses <code>AS64500–AS64511</code>.</p>
+  </div>
+</div>
+
+<!-- ============ PEERING VS TRANSIT ============ -->
+<h2>2 · Peering vs transit — the economics (who pays whom)</h2>
+<p class="lead">The part most explanations skip — and <i>why</i> BGP routes are policy, not distance. Two networks connect in two economically opposite ways.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Transit — buying access</h3>
+    <table>
+      <tr><td class="cmd">Relationship</td><td class="desc">customer <b>buys</b> internet access from a provider</td></tr>
+      <tr><td class="cmd">Who pays</td><td class="desc">the <b>customer pays the provider</b> (per Mbps / per port)</td></tr>
+      <tr><td class="cmd">You get</td><td class="desc">reachability to the <b>whole</b> internet</td></tr>
+      <tr><td class="cmd">Analogy</td><td class="desc">paying FedEx to deliver anywhere</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Peering — swapping traffic</h3>
+    <table>
+      <tr><td class="cmd">Relationship</td><td class="desc">two networks swap traffic <b>directly</b></td></tr>
+      <tr><td class="cmd">Who pays</td><td class="desc">usually <b>nobody</b> (settlement-free), if traffic is roughly balanced</td></tr>
+      <tr><td class="cmd">You get</td><td class="desc">reachability to <b>just that peer</b> + its customers</td></tr>
+      <tr><td class="cmd">Analogy</td><td class="desc">two firms swapping their own mail bags for free, often at an <b>IXP</b></td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout">
+  A <b>Tier 1</b> network reaches the entire internet through <b>peering alone</b> — it buys transit from nobody. Everyone else buys some transit. <b>Why this drives routing:</b> a network <i>prefers</i> a free peering route or a paying-customer route over expensive transit, even if transit is shorter. BGP encodes that as <b>policy</b>.
+</div>
+<div class="callout good">
+  <b>Mental hook:</b> money flows <i>down</i> (customers pay providers), traffic-swap is <i>sideways</i> (peers). BGP route selection quietly optimises the <b>bill</b>, not the <b>mileage</b>.
+</div>
+
+<!-- ============ ROUTE SELECTION ============ -->
+<h2>3 · How a route is chosen — the intuition</h2>
+<p class="lead">When a router learns <b>several</b> paths to one prefix it picks a "best" one. The full process has ~13 tie-breakers; you need the top two.</p>
+<div class="grid">
+  <div class="card">
+    <h3>The two that matter</h3>
+    <table>
+      <tr><td class="cmd"><b>1. Local Preference</b></td><td class="desc">"which exit does <i>my own network</i> prefer?" — set by policy (e.g. the cheap peering link). <b>Highest wins.</b> Local to one AS.</td></tr>
+      <tr><td class="cmd"><b>2. AS-path length</b></td><td class="desc">"how many ASes does this route cross?" Fewer = preferred. <b>Shortest wins.</b> The closest thing to a globally-agreed tie-breaker.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Three intuitions</h3>
+    <table>
+      <tr><td class="desc"><b>Not shortest-physical-path</b> — AS-path counts <i>networks crossed</i>, not miles. A 2-AS slow path beats a 4-AS fibre path.</td></tr>
+      <tr><td class="desc"><b>Local Pref beats AS-path</b> — a network's own policy (who it pays) outranks global hop-count. That's how §2 economics override geography.</td></tr>
+      <tr><td class="desc"><b>Loop prevention</b> — a router seeing <i>its own ASN</i> already in a path discards the route (it'd be a circle).</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ FRAGILITY ============ -->
+<h2>4 · Why it's fragile and famous — BGP runs on trust</h2>
+<div class="callout warn">
+  BGP's 1989 design assumed every operator was a known, cooperative academic or telco. So it <b>largely believes whatever a neighbour advertises</b> — there's no built-in check that an AS actually <i>owns</i> the prefix it announces.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Two failure modes</h3>
+    <table>
+      <tr><td class="cmd"><b>Route leak</b></td><td class="desc">an AS re-advertises routes it shouldn't; traffic floods through a network too small to carry it. <b>Accidental</b> — a misconfig. Traffic takes a wrong, congested turn.</td></tr>
+      <tr><td class="cmd"><b>BGP hijack</b></td><td class="desc">an AS advertises a prefix it does <b>not</b> own (often a <i>more-specific</i> prefix, which wins by longest-match), and the world routes that traffic to it. Malicious <i>or</i> fat-finger.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>The memorable anchors</h3>
+    <table>
+      <tr><td class="cmd"><b>2008<br>Pakistan / YouTube</b></td><td class="desc">an ISP advertised a more-specific YouTube prefix to null-route it domestically — but <b>leaked it globally</b>. More-specific wins, so the world sent YouTube traffic <i>to Pakistan</i>, where it was dropped. <b>YouTube dark for ~2h.</b></td></tr>
+      <tr><td class="cmd"><b>2021<br>Facebook</b></td><td class="desc">a maintenance change <b>withdrew the BGP advertisements</b> for Facebook/Instagram/WhatsApp prefixes. No route advertised → no path to reach them. <b>Erased from the internet for ~6h</b> — self-inflicted.</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout">
+  <b>The teardown-equivalent:</b> in Git, <code>rm -rf .git</code> un-gits a folder. In BGP, a <b>route withdrawal un-internets a network</b> — stop advertising your prefix and within minutes nobody on Earth can find you. Going offline isn't a crash; it's the <b>absence of an advertisement</b>.
+</div>
+
+<!-- ============ THE FIX ============ -->
+<h2>5 · The fix — RPKI &amp; ROAs (cryptographic origin validation)</h2>
+<p class="lead">The defence: <b>cryptographically prove who may announce a prefix.</b></p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>RPKI</b><br><span class="lead">Resource Public Key Infrastructure</span></td><td class="desc">a public-key system (run by the <b>Regional Internet Registries</b> — RIRs — that hand out IP blocks) letting a prefix owner sign which AS may originate it.</td></tr>
+    <tr><td class="cmd"><b>ROA</b><br><span class="lead">Route Origin Authorization</span></td><td class="desc">the signed statement: <i>"AS64500 may originate <code>203.0.113.0/24</code>."</i></td></tr>
+    <tr><td class="cmd"><b>ROV</b><br><span class="lead">Route Origin Validation</span></td><td class="desc">what a router <i>does</i> with ROAs: an advertisement whose origin doesn't match a valid ROA is marked <b>Invalid</b> and can be dropped.</td></tr>
+  </table>
+</div>
+<div class="callout good">
+  RPKI/ROA stops the <b>wrong-origin</b> hijack (announcing a prefix you don't own). It does <b>not</b> yet fully protect the <i>path</i> — a liar can still forge an AS-path (BGPsec/ASPA target that, less deployed). Adoption is gradual but real: most large transit networks now drop RPKI-Invalid routes, shrinking the blast radius vs 2008.
+</div>
+<div class="callout">
+  <b>Mental hook:</b> RPKI is <i>DNSSEC for routing</i> — it doesn't change how the system works, it just adds a signature so neighbours can stop blindly believing every announcement.
+</div>
+
+<!-- ============ OBSERVE ============ -->
+<h2>6 · How you'd actually observe BGP — no config required</h2>
+<div class="callout">
+  You almost <b>never "configure BGP"</b> yourself. It's run by ISPs, clouds, and <b>multi-homed</b> enterprises (connected to two+ providers for redundancy, running BGP to fail over). For everyone else, BGP is something you <i>observe</i>.
+</div>
+<div class="grid">
+  <div class="card">
+    <h3>Tools</h3>
+    <table>
+      <tr><td class="cmd"><code>whois &lt;IP&gt;</code></td><td class="desc">"which AS/org owns this address?" A <b>terminal command</b> (preinstalled on macOS/Linux). Returns prefix, org, often the ASN — the fastest "who is this?"</td></tr>
+      <tr><td class="cmd"><b>Looking-glass server</b></td><td class="desc">"what does the internet see as the route to X, from elsewhere?" A public portal hosted <i>on</i> a provider's router — routing from their vantage, not yours.</td></tr>
+      <tr><td class="cmd"><code>traceroute &lt;host&gt;</code></td><td class="desc">"which hops does my packet cross?" Indirect — the realised path, from which you infer AS borders.</td></tr>
+      <tr><td class="cmd"><b>bgp.tools / RIPEstat</b></td><td class="desc">web dashboards: an AS's prefixes, peers, upstreams, route history. <i>Mention-level — verify specifics before quoting.</i></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Try it</h3>
+    <pre><code>whois 203.0.113.42        # who owns this IP, the org, often the ASN
+traceroute example.com    # the realised hop path (infer AS borders)</code></pre>
+    <p class="lead"><b>Reality check:</b> unless you run a network or a multi-homed business, you'll <i>read</i> BGP far more than you touch it. The value is literacy — so "a BGP route leak" reads as <i>traffic got mis-announced to the wrong network</i>, not a hardware fault.</p>
+  </div>
+</div>
+
+<!-- ============ CLOUD BRIDGE ============ -->
+<h2>7 · Bridge to cloud (where you do meet BGP)</h2>
+<div class="callout">
+  The one place a non-network-engineer meets BGP config is hybrid cloud. In GCP a <b>Cloud Router</b> speaks BGP to your on-prem network over <b>Cloud VPN</b> or <b>Cloud Interconnect</b>, so new subnets on either side are <b>learned dynamically</b> — no static routes to maintain. AWS (Direct Connect / VPN) and Azure (ExpressRoute) do the same. Details: <a href="gcp_networking_cheatsheet.html">GCP networking sheet</a>.
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>8 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>BGP</b></td><td class="desc">Border Gateway Protocol — how networks advertise reachable IP prefixes so routers worldwide learn paths. Policy-driven, trust-based (RFC 4271).</td></tr>
+    <tr><td class="cmd"><b>AS</b></td><td class="desc">Autonomous System — one network under one admin policy (ISP/cloud/uni/CDN). ~100k on the net.</td></tr>
+    <tr><td class="cmd"><b>ASN</b></td><td class="desc">AS Number — an AS's global identity (AS15169 real; AS64500 example).</td></tr>
+    <tr><td class="cmd"><b>IP prefix</b></td><td class="desc">a CIDR block (<code>203.0.113.0/24</code>) — what an AS advertises, never a single IP.</td></tr>
+    <tr><td class="cmd"><b>Route advert / withdrawal</b></td><td class="desc">announcing vs un-announcing a prefix; a withdrawal removes you from the internet's map.</td></tr>
+    <tr><td class="cmd"><b>eBGP / iBGP</b></td><td class="desc">external (between ASes) / internal (within one AS) BGP.</td></tr>
+    <tr><td class="cmd"><b>Peering</b></td><td class="desc">two networks swapping traffic directly, usually settlement-free, often at an IXP.</td></tr>
+    <tr><td class="cmd"><b>Transit</b></td><td class="desc">buying internet reachability from a provider; the customer pays.</td></tr>
+    <tr><td class="cmd"><b>Tier 1</b></td><td class="desc">a network reaching the whole internet via peering alone, buying transit from no one.</td></tr>
+    <tr><td class="cmd"><b>IXP</b></td><td class="desc">Internet Exchange Point — shared physical fabric where many ASes peer.</td></tr>
+    <tr><td class="cmd"><b>AS-path</b></td><td class="desc">the list of ASes a route crosses; shorter preferred; own-ASN-in-path → dropped (loop prevention).</td></tr>
+    <tr><td class="cmd"><b>Local Preference</b></td><td class="desc">an AS's internal "which exit do I prefer" knob; outranks AS-path (economics &gt; geography).</td></tr>
+    <tr><td class="cmd"><b>Route leak</b></td><td class="desc">accidentally re-advertising routes you shouldn't; traffic floods the wrong way.</td></tr>
+    <tr><td class="cmd"><b>BGP hijack</b></td><td class="desc">advertising a prefix you don't own (often more-specific); intercepts/blackholes traffic.</td></tr>
+    <tr><td class="cmd"><b>RPKI</b></td><td class="desc">Resource Public Key Infrastructure — signs "which AS may originate this prefix" (run by RIRs).</td></tr>
+    <tr><td class="cmd"><b>ROA</b></td><td class="desc">Route Origin Authorization — the signed "AS X may announce prefix Y".</td></tr>
+    <tr><td class="cmd"><b>ROV</b></td><td class="desc">Route Origin Validation — dropping advertisements that don't match a valid ROA.</td></tr>
+    <tr><td class="cmd"><b>Multi-homed</b></td><td class="desc">connected to two+ providers for redundancy; main reason an ordinary enterprise runs BGP.</td></tr>
+    <tr><td class="cmd"><b>Looking-glass</b></td><td class="desc">a public portal on a provider's router for viewing routes from their vantage point.</td></tr>
+    <tr><td class="cmd"><b>Anycast</b></td><td class="desc">advertising the same prefix from many locations via BGP so each router picks the nearest (see networking sheet).</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://www.cloudflare.com/learning/security/glossary/what-is-bgp/">Cloudflare: What is BGP?</a> ·
+  <a href="https://www.cloudflare.com/learning/security/glossary/bgp-hijacking/">Cloudflare: BGP hijacking</a> ·
+  <a href="https://www.rfc-editor.org/rfc/rfc4271">RFC 4271 (BGP-4 spec)</a> ·
+  <a href="https://www.cloudflare.com/learning/security/glossary/what-is-rpki/">Cloudflare: RPKI</a> ·
+  <a href="https://isbgpsafeyet.com/">isbgpsafeyet.com</a> ·
+  <a href="https://blog.cloudflare.com/october-2021-facebook-outage/">Cloudflare: Oct 2021 Facebook outage</a>
+</p>
+
+</div>
+</body>
+</html>

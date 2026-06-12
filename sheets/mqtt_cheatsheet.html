@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MQTT Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:48%;}
+  td.desc{width:52%;color:var(--muted);}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>MQTT Cheat Sheet</h1>
+<p class="sub">Lightweight pub/sub for IoT &amp; sensor telemetry · started 2026-06-12 · twin of <code>Tools/mqtt_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>MQTT</b> (Message Queuing Telemetry Transport) = a lightweight, binary <b>publish/subscribe</b> protocol over <b>TCP</b> (Transmission Control Protocol). Built for telemetry: many small messages from many devices over slow/flaky networks. The "Queuing" is legacy naming — there's no real queue in the core protocol today. <b>IoT</b> (Internet of Things) = networked physical devices/sensors; MQTT is a common protocol beneath it.
+</div>
+<div class="callout">
+  <b>Publish/subscribe through a central broker</b> — the single most important idea:
+  <pre><code>PUBLISHERS            BROKER             SUBSCRIBERS
+(data sources)     (the post office)    (consumers)
+
+sensor ──publish──► ┌────────────┐ ──deliver──► dashboard
+sensor ──publish──► │  topic =   │ ──deliver──► database
+gateway ─publish──► │ rendezvous │ ──deliver──► alarm svc
+                    └────────────┘
+          fans each message out to every matching subscriber</code></pre>
+  A device <b>publishes</b> to a named <b>topic</b> (<code>plant/well07/pressure</code>); clients <b>subscribe</b> to it; the <b>broker</b> fans every message out. <b>Nobody addresses anybody directly — the topic is the rendezvous.</b>
+</div>
+<div class="callout good">
+  <b>Why pub/sub, not HTTP request/response?</b> Thousands of battery sensors on a flaky radio link. With <b>HTTP</b> (HyperText Transfer Protocol) each device must know every consumer's address, open a heavy connection, retry. With MQTT each device keeps <i>one</i> light long-lived connection to the broker and fires small messages at a topic. Add a new consumer? It just subscribes — the devices change nothing. That decoupling (in space and time) is the whole payoff.
+</div>
+
+<!-- ============ HISTORY ============ -->
+<h2>1 · History</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>1999</b></td><td class="desc">invented by <b>Andy Stanford-Clark</b> (IBM) &amp; <b>Arlen Nipper</b> for <b>SCADA</b> (Supervisory Control And Data Acquisition) monitoring of <b>oil &amp; gas pipelines</b> over costly low-bandwidth satellite links — remote-equipment telemetry was the original use case.</td></tr>
+    <tr><td class="cmd"><b>"MQ" name</b></td><td class="desc">nods to IBM's MQ Series message-queue product it descended from; modern MQTT has no durable core queue, so the name is historical.</td></tr>
+    <tr><td class="cmd"><b>2013</b></td><td class="desc">standardisation moves to <b>OASIS</b> (Organization for the Advancement of Structured Information Standards), an open-standards body.</td></tr>
+    <tr><td class="cmd"><b>3.1.1 / 5</b></td><td class="desc"><b>MQTT 3.1.1</b> (2014) is the long-time workhorse; <b>MQTT 5</b> (2019) is current — richer errors, message properties, shared subscriptions. Check which version a broker/client speaks.</td></tr>
+  </table>
+</div>
+
+<!-- ============ CORE CONCEPTS ============ -->
+<h2>2 · Core concepts</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Actors &amp; routing</h3>
+    <table>
+      <tr><td class="cmd"><b>Broker</b></td><td class="desc">central server: accepts connections, receives every publish, matches topics, fans out to subscribers (Mosquitto, HiveMQ, EMQX)</td></tr>
+      <tr><td class="cmd"><b>Client</b></td><td class="desc">any device/app connected to the broker — can publish, subscribe, or both</td></tr>
+      <tr><td class="cmd"><b>Topic</b></td><td class="desc">UTF-8 label that routes a stream; created implicitly just by publishing to it</td></tr>
+      <tr><td class="cmd"><b>Topic hierarchy</b></td><td class="desc">slash-delimited levels like a path: <code>plant/area3/well07/pressure</code>; no leading slash by convention</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Verbs &amp; data</h3>
+    <table>
+      <tr><td class="cmd"><b>Publish</b></td><td class="desc">send a message (the <b>payload</b>) to a topic</td></tr>
+      <tr><td class="cmd"><b>Subscribe</b></td><td class="desc">register interest; broker then pushes matching messages to you</td></tr>
+      <tr><td class="cmd"><b>Payload</b></td><td class="desc">the body — content-agnostic: <code>3200</code>, <code>{"psi":3200}</code>, or binary. You pick the encoding</td></tr>
+      <tr><td class="cmd"><b>Session</b></td><td class="desc">broker's memory of a client (subscriptions + undelivered msgs); clean or persistent (see §5)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ WILDCARDS ============ -->
+<h2>3 · Topic wildcards (subscribing only)</h2>
+<p class="lead">Wildcards match many topics in <b>one subscription</b>. Never valid when publishing.</p>
+<div class="grid">
+  <div class="card">
+    <h3>The two wildcards</h3>
+    <table>
+      <tr><td class="cmd"><code>+</code> single level</td><td class="desc">matches exactly one level. <code>plant/+/pressure</code> → <code>plant/well07/pressure</code> but NOT <code>plant/area3/well07/pressure</code></td></tr>
+      <tr><td class="cmd"><code>#</code> multi level</td><td class="desc">matches this level &amp; everything below; must be last. <code>plant/#</code> → <code>plant</code>, <code>plant/well07/pressure</code>, <code>plant/area3/well07/temp</code>, …</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Mnemonic</h3>
+    <p class="lead"><code>+</code> = single-slot (one level); <code>#</code> = "everything from here down." Subscribing to <code>#</code> alone fans the <i>entire</i> broker to you — great for debugging, dangerous in production.</p>
+    <span class="pill">+ → one level</span>
+    <span class="pill"># → all below</span>
+  </div>
+</div>
+
+<!-- ============ QOS ============ -->
+<h2>4 · QoS — Quality of Service (the delivery tradeoff)</h2>
+<p class="lead"><b>QoS</b> (Quality of Service) = how hard the protocol works to deliver. Higher = stronger guarantee but more round-trips. Chosen per publish and per subscription.</p>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>0</b> — at most once<br>("fire &amp; forget")</td><td class="desc">sent once, no ack; may be lost, never duplicated. Cheapest — fine for high-rate readings where one dropped sample is harmless</td></tr>
+    <tr><td class="cmd"><b>1</b> — at least once</td><td class="desc">acked &amp; resent until confirmed; guaranteed to arrive but <b>may duplicate</b> — make consumers idempotent. Good default</td></tr>
+    <tr><td class="cmd"><b>2</b> — exactly once</td><td class="desc">four-step handshake: delivered with <b>no duplicates</b>. Strongest &amp; slowest — use where a duplicate would harm (e.g. "open valve" twice)</td></tr>
+  </table>
+</div>
+<div class="callout good">Rule of thumb: stream high-rate telemetry at QoS 0/1; reserve QoS 2 for the rare message whose duplication would actually cause harm.</div>
+
+<!-- ============ RELIABILITY ============ -->
+<h2>5 · Reliability features for flaky links</h2>
+<div class="grid">
+  <div class="card">
+    <h3>State &amp; last-value</h3>
+    <table>
+      <tr><td class="cmd"><b>Retained message</b></td><td class="desc">flag telling the broker to keep the last message on a topic and hand it to any <i>future</i> subscriber immediately — "last known value" for a slow sensor (latest tank level, even if hourly)</td></tr>
+      <tr><td class="cmd"><b>Clean vs persistent session</b></td><td class="desc"><b>clean</b> = broker forgets the client on disconnect; <b>persistent</b> = remembers subscriptions &amp; queues missed QoS 1/2 messages, delivering on reconnect. MQTT 5 reframes this as <i>session expiry interval</i></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Liveness</h3>
+    <table>
+      <tr><td class="cmd"><b>LWT</b> (Last Will &amp; Testament)</td><td class="desc">message registered <i>at connect</i>; broker auto-publishes it if the client drops <b>unexpectedly</b> — e.g. publish <code>offline</code> to <code>plant/well07/status</code> so dashboards know the sensor died vs. the reading being merely stale</td></tr>
+      <tr><td class="cmd"><b>Keep-alive (heartbeat)</b></td><td class="desc">timer set at connect; client must send something (a tiny <code>PINGREQ</code> if idle) within it. Silence past ~1.5× the interval → broker declares the client dead and fires its LWT. Catches silent network drops TCP alone may miss for ages</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ WHY TINY ============ -->
+<h2>6 · Why MQTT is tiny + ports</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Frugal by design</h3>
+    <table>
+      <tr><td class="cmd"><b>2-byte min header</b></td><td class="desc">smallest control packet is 2 bytes of overhead — vs. hundreds of bytes of text headers in a typical HTTP request</td></tr>
+      <tr><td class="cmd"><b>Binary wire format</b></td><td class="desc">not text — compact, fast to parse on an 8-bit microcontroller</td></tr>
+      <tr><td class="cmd"><b>One long-lived TCP conn</b></td><td class="desc">reused for everything, vs. setting up/tearing down a connection per message</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Ports &amp; transport</h3>
+    <table>
+      <tr><td class="cmd"><b>1883</b></td><td class="desc">MQTT over plain TCP — <b>unencrypted</b>; local testing only, never expose publicly</td></tr>
+      <tr><td class="cmd"><b>8883</b></td><td class="desc">MQTT over <b>TLS</b> (Transport Layer Security — the encryption behind HTTPS); the standard for real deployments</td></tr>
+      <tr><td class="cmd"><b>8080/8081</b></td><td class="desc">MQTT over WebSockets so a browser dashboard can subscribe directly</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ MOSQUITTO CLI ============ -->
+<h2>7 · Practical CLI with Mosquitto</h2>
+<p class="lead"><b>Mosquitto</b> = Eclipse's small open-source broker; ships <code>mosquitto_sub</code> (subscribe) and <code>mosquitto_pub</code> (publish). Commands below are typed in a <b>terminal/shell</b>.</p>
+<pre><code># Terminal — subscribe: every topic under "plant/"
+mosquitto_sub -h test.example.com -t 'plant/#' -v
+#   -h host   -t topic   -v = verbose (prints "topic payload")
+
+# Terminal (another window) — publish a wellhead pressure reading
+mosquitto_pub -h test.example.com -t plant/well07/pressure -m 3200
+#   -t topic   -m message (the payload)
+
+# Publish a RETAINED "last known value" for late subscribers
+mosquitto_pub -h test.example.com -t plant/well07/pressure -m 3200 -r
+#   -r = retain
+
+# Subscribe at QoS 1 (at-least-once)
+mosquitto_sub -h test.example.com -t 'plant/+/pressure' -q 1
+
+# Over TLS on 8883 with credentials (real deployments)
+mosquitto_sub -h broker.example.com -p 8883 --cafile ca.crt \
+              -u sensoruser -P 's3cret' -t 'plant/#' -v</code></pre>
+<div class="callout good">The two-terminal demo (one <code>mosquitto_sub -t 'plant/#'</code>, one <code>mosquitto_pub</code>) is the fastest way to <i>see</i> pub/sub: publish in one window, watch it appear in the other — no direct connection between them.</div>
+<div class="card">
+  <h3>Common brokers</h3>
+  <table>
+    <tr><td class="cmd"><b>Mosquitto</b></td><td class="desc">Eclipse's tiny single-binary open-source broker; learning, edge gateways, small fleets</td></tr>
+    <tr><td class="cmd"><b>HiveMQ</b></td><td class="desc">commercial + open-source; clustering, enterprise features, excellent docs</td></tr>
+    <tr><td class="cmd"><b>EMQX</b></td><td class="desc">high-scale open-source (millions of connections), clustering, rules engine</td></tr>
+    <tr><td class="cmd"><b>AWS IoT Core</b></td><td class="desc">Amazon's managed MQTT broker, integrated with AWS device auth/services</td></tr>
+    <tr><td class="cmd"><b>GCP IoT Core</b></td><td class="desc"><b>retired by Google Aug 2023</b> — on Google Cloud, run a partner broker (HiveMQ/EMQX on GCE/GKE) or use another cloud's managed service</td></tr>
+  </table>
+</div>
+
+<!-- ============ COMPARISON ============ -->
+<h2>8 · MQTT vs HTTP vs AMQP</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>MQTT</b></td><td class="desc">pub/sub via a broker; tiny binary frames over TCP → massive fleets of constrained, intermittently-connected devices pushing telemetry</td></tr>
+    <tr><td class="cmd"><b>HTTP</b></td><td class="desc">request/response, client → server, text headers → web pages, REST APIs, occasional calls. Heavy for high-frequency device telemetry</td></tr>
+    <tr><td class="cmd"><b>AMQP</b> (Advanced Message Queuing Protocol)</td><td class="desc">broker messaging with rich <i>durable queues</i>, exchanges, routing → enterprise back-end buses where complex routing + guaranteed queued delivery beat device frugality</td></tr>
+  </table>
+</div>
+<div class="callout good">Shorthand: HTTP = "ask and wait", MQTT = "publish and forget (to a topic)", AMQP = "enterprise message plumbing with real queues."</div>
+
+<!-- ============ SECURITY ============ -->
+<h2>9 · Security — the default is wide open</h2>
+<div class="callout warn">
+  A bare broker on <b>1883</b> has <b>no encryption and often no authentication</b> — anyone who can reach it can subscribe to everything (<code>#</code>) or publish anything. Treat an open broker like an open database. <b>Never expose 1883 to the public internet.</b>
+</div>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Encrypt</b></td><td class="desc">TLS on 8883 so payloads &amp; credentials aren't in cleartext</td></tr>
+    <tr><td class="cmd"><b>Authenticate</b></td><td class="desc">username/password at minimum; ideally per-device <b>X.509 client certificates</b> (digital identity certs)</td></tr>
+    <tr><td class="cmd"><b>Authorise</b></td><td class="desc">topic-level <b>ACLs</b> (access-control lists) so a sensor publishes only to <i>its</i> topic and reads nothing else</td></tr>
+  </table>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>10 · Teardown / lifecycle — leaving cleanly</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Disconnect paths</h3>
+    <table>
+      <tr><td class="cmd"><b>Clean disconnect</b></td><td class="desc">client sends <code>DISCONNECT</code>, then closes TCP. Broker sees it as intentional and does NOT fire the LWT</td></tr>
+      <tr><td class="cmd"><b>Unexpected drop</b></td><td class="desc">network dies / battery fails / process crashes. Broker notices when keep-alive lapses (~1.5×) and <b>publishes the LWT</b> to announce it's gone</td></tr>
+      <tr><td class="cmd"><b>Session cleanup</b></td><td class="desc">clean session → broker discards subscriptions + queued msgs on disconnect; persistent → keeps them (until session-expiry) so the client resumes on reconnect</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Design tip</h3>
+    <p class="lead">Pair a <b>retained</b> <code>status</code> topic with an <b>LWT</b>: publish <code>online</code> (retained) on connect, register <code>offline</code> as the will. Subscribers then always see the true current state — even if they connect after the device already died.</p>
+  </div>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>11 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>MQTT</b></td><td class="desc">Message Queuing Telemetry Transport; lightweight pub/sub protocol over TCP</td></tr>
+    <tr><td class="cmd"><b>IoT</b></td><td class="desc">Internet of Things; networked physical devices/sensors</td></tr>
+    <tr><td class="cmd"><b>Broker</b></td><td class="desc">central server routing messages by topic from publishers to subscribers</td></tr>
+    <tr><td class="cmd"><b>Client</b></td><td class="desc">any device/app connected to the broker (publisher, subscriber, or both)</td></tr>
+    <tr><td class="cmd"><b>Topic</b></td><td class="desc">slash-delimited UTF-8 label routing a stream (<code>plant/well07/pressure</code>)</td></tr>
+    <tr><td class="cmd"><b>Wildcard</b></td><td class="desc"><code>+</code> single level / <code>#</code> multi level (trailing) for matching topics in a subscription</td></tr>
+    <tr><td class="cmd"><b>QoS</b></td><td class="desc">Quality of Service; delivery guarantee 0 (at most once) / 1 (at least once) / 2 (exactly once)</td></tr>
+    <tr><td class="cmd"><b>Retained message</b></td><td class="desc">last message kept on a topic, given to future subscribers immediately</td></tr>
+    <tr><td class="cmd"><b>LWT</b></td><td class="desc">Last Will &amp; Testament; message the broker auto-publishes when a client drops unexpectedly</td></tr>
+    <tr><td class="cmd"><b>Keep-alive</b></td><td class="desc">heartbeat interval; broker declares a client dead if it goes silent past it</td></tr>
+    <tr><td class="cmd"><b>Clean / persistent session</b></td><td class="desc">whether the broker forgets or remembers a client's subscriptions + queued messages</td></tr>
+    <tr><td class="cmd"><b>TCP</b></td><td class="desc">Transmission Control Protocol; reliable ordered byte stream MQTT runs on</td></tr>
+    <tr><td class="cmd"><b>TLS</b></td><td class="desc">Transport Layer Security; encryption layer (MQTT over TLS = port 8883)</td></tr>
+    <tr><td class="cmd"><b>SCADA</b></td><td class="desc">Supervisory Control And Data Acquisition; industrial monitoring/control (MQTT's 1999 origin)</td></tr>
+    <tr><td class="cmd"><b>OASIS</b></td><td class="desc">Organization for the Advancement of Structured Information Standards; MQTT's standards steward since 2013</td></tr>
+    <tr><td class="cmd"><b>AMQP</b></td><td class="desc">Advanced Message Queuing Protocol; heavier broker protocol with durable queues</td></tr>
+    <tr><td class="cmd"><b>HTTP</b></td><td class="desc">HyperText Transfer Protocol; request/response web protocol (contrast to MQTT)</td></tr>
+    <tr><td class="cmd"><b>Mosquitto</b></td><td class="desc">Eclipse's small open-source MQTT broker (+ <code>mosquitto_pub</code>/<code>mosquitto_sub</code> CLI)</td></tr>
+    <tr><td class="cmd"><b>ACL</b></td><td class="desc">Access-Control List; topic-level permission rules on the broker</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://mqtt.org/">mqtt.org</a> ·
+  <a href="https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html">MQTT 5 OASIS spec</a> ·
+  <a href="https://www.hivemq.com/mqtt-essentials/">HiveMQ MQTT Essentials</a> ·
+  <a href="https://mosquitto.org/">Eclipse Mosquitto</a> ·
+  <a href="https://www.hivemq.com/blog/mqtt-essentials-part-5-mqtt-topics-best-practices/">HiveMQ topics &amp; wildcards</a>
+</p>
+
+</div>
+</body>
+</html>

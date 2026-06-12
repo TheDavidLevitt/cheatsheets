@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gRPC Cheat Sheet</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a21; --ink:#e6e8ee; --muted:#9aa3b2;
+    --accent:#7aa2f7; --accent2:#9ece6a; --warn:#e0af68; --code:#1d2230;
+    --border:#262b36; --kbd:#2a3040;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.5;padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  h2{font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent);margin:30px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+  td{vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border);
+     overflow-wrap:anywhere;word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  td.cmd{width:42%;}
+  td.desc{width:58%;color:var(--muted);}
+  th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--ink);font-size:13px;}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    background:var(--code);color:#cdd6f4;padding:2px 6px;border-radius:5px;font-size:12.6px;
+    white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.9;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    overflow-x:auto;font-size:12.8px;line-height:1.55;}
+  pre code{white-space:pre;background:none;padding:0;line-height:1.55;}
+  .callout{background:var(--code);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 16px;margin:12px 0;font-size:14px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.good{border-left-color:var(--accent2);}
+  .callout b{color:var(--ink);}
+  kbd{background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px;}
+  .pill{display:inline-block;background:var(--code);color:var(--accent2);border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;margin:2px 2px 0 0;}
+  .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
+  a{color:var(--accent);}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>gRPC Cheat Sheet</h1>
+<p class="sub">Services calling services: RPC · protobuf · HTTP/2 · started 2026-06-12 · twin of <code>Tools/grpc_cheatsheet.md</code></p>
+
+<!-- ============ MENTAL MODEL FIRST ============ -->
+<h2>0 · The mental model (read once)</h2>
+<div class="callout good">
+  <b>gRPC</b> = a framework for calling a function that runs inside <i>another program on another machine</i>, as if it were local. Official expansion: <b>gRPC Remote Procedure Calls</b> — a recursive acronym (the name contains itself); the "g" first hinted at <b>Google</b>, which open-sourced it in 2015 (it grew from Google's internal system <b>Stubby</b>). <b>RPC</b> (Remote Procedure Call) = the older core idea: invoke a procedure that executes elsewhere while your code looks like an ordinary local call; the network plumbing is generated and hidden.
+</div>
+<div class="callout">
+  <b>Call a function, don't fetch a URL.</b> REST makes you think in resources/URLs; gRPC flips back to functions:
+  <pre><code>REST mindset                  gRPC mindset
+───────────                   ────────────
+GET /users/42        →        user = client.GetUser(id=42)
+(fetch a document)            (call a remote method, get a typed object)</code></pre>
+  The workflow — first step is the whole point:
+  <b>1) Write a contract</b> (a <code>.proto</code> file declaring methods + message shapes — the language-independent source of truth). <b>2) Generate code</b> with the <code>protoc</code> compiler → a client <b>stub</b> (local stand-in whose methods secretly make network calls) + server skeleton, in any target language. <b>3) Call remote methods like local ones</b>; gRPC marshals args over <b>HTTP/2</b> and returns a typed result.
+</div>
+<div class="callout good">
+  <b>Why it matters for GCP-ACE:</b> internal microservices, Kubernetes (K8s) service-to-service traffic, and service meshes (Istio, Anthos Service Mesh) lean on gRPC — it's fast, strongly typed, and <b>polyglot</b> (many languages, one contract).
+</div>
+
+<!-- ============ WHAT THE LETTERS MEAN ============ -->
+<h2>1 · What the letters mean</h2>
+<div class="card">
+  <table>
+    <tr><th>Term</th><th>Expansion</th><th>Note</th></tr>
+    <tr><td class="cmd"><b>gRPC</b></td><td class="desc" style="width:30%">gRPC Remote Procedure Calls</td><td class="desc">recursive acronym; "g" first hinted at <b>Google</b>. Open-sourced 2015.</td></tr>
+    <tr><td class="cmd"><b>RPC</b></td><td class="desc">Remote Procedure Call</td><td class="desc">general technique: call a function that runs elsewhere. Predates gRPC.</td></tr>
+    <tr><td class="cmd"><b>Stubby</b></td><td class="desc">(no expansion)</td><td class="desc">Google's internal predecessor; gRPC is its public, standards-based reincarnation.</td></tr>
+    <tr><td class="cmd"><b>IDL</b></td><td class="desc">Interface Definition Language</td><td class="desc">describes an API independent of any one language. The <code>.proto</code> is written in one.</td></tr>
+    <tr><td class="cmd"><b>protobuf</b></td><td class="desc">Protocol Buffers</td><td class="desc">Google's binary serialization format <b>and</b> the IDL. The two pillars are protobuf + HTTP/2.</td></tr>
+  </table>
+</div>
+
+<!-- ============ PILLAR 1 PROTOBUF ============ -->
+<h2>2 · Pillar one — Protocol Buffers (protobuf)</h2>
+<p class="lead"><b>Protocol Buffers</b> does two jobs: a <b>serialization format</b> (how data becomes wire bytes — <b>binary</b> + schema-driven, so bytes carry compact tag numbers, not field names) <i>and</i> an <b>IDL</b> (the language you define messages/services in). You write a <code>.proto</code>, then run the <code>protoc</code> compiler to generate code (with the gRPC plugin: client stub + server skeleton) in any language.</p>
+<div class="card">
+  <h3>protobuf vs JSON — why binary + schema wins for internal traffic</h3>
+  <table>
+    <tr><th></th><th>JSON</th><th>Protocol Buffers</th></tr>
+    <tr><td class="cmd">Encoding</td><td class="desc">text</td><td class="desc"><b>binary</b></td></tr>
+    <tr><td class="cmd">Schema</td><td class="desc">none (self-describing)</td><td class="desc"><b>required</b> (<code>.proto</code>) → static typing</td></tr>
+    <tr><td class="cmd">Size on wire</td><td class="desc">larger (field names as text)</td><td class="desc"><b>smaller</b> (numeric tags)</td></tr>
+    <tr><td class="cmd">Parse speed</td><td class="desc">slower</td><td class="desc"><b>faster</b></td></tr>
+    <tr><td class="cmd">Human-readable</td><td class="desc"><b>yes</b></td><td class="desc">no (needs the schema)</td></tr>
+    <tr><td class="cmd">Best for</td><td class="desc">public/browser APIs, config, debugging</td><td class="desc">internal service↔service, high volume</td></tr>
+  </table>
+</div>
+<div class="callout">
+  Trade-off in one line: protobuf buys <b>smaller + faster + type-checked</b> at the cost of <b>human-readability</b>. Public API → often JSON; chatty internal microservices → protobuf. See <code>formats_cheatsheet.md</code> for the JSON side.
+</div>
+
+<!-- ============ PILLAR 2 HTTP/2 ============ -->
+<h2>3 · Pillar two — HTTP/2 as the transport</h2>
+<p class="lead">gRPC runs on <b>HTTP/2</b> (the 2015 revision of the Hypertext Transfer Protocol), not HTTP/1.1 — its streaming and speed depend on these features. <b>TCP</b> (Transmission Control Protocol) = the reliable ordered byte-stream HTTP sits on.</p>
+<div class="grid">
+  <div class="card">
+    <h3>Features gRPC relies on</h3>
+    <table>
+      <tr><td class="cmd"><b>Multiplexing</b></td><td class="desc">many concurrent requests share <b>one</b> TCP connection as independent <b>streams</b> — no head-of-line blocking</td></tr>
+      <tr><td class="cmd"><b>Streams</b></td><td class="desc">each call is a long-lived bidirectional stream — the basis for gRPC's streaming call types</td></tr>
+      <tr><td class="cmd"><b>Binary framing</b></td><td class="desc">HTTP/2 already splits traffic into binary frames; protobuf bytes ride inside them</td></tr>
+      <tr><td class="cmd"><b>HPACK</b></td><td class="desc">header compression — repeated metadata (auth tokens) cut down on chatty traffic</td></tr>
+    </table>
+  </div>
+  <div class="card callout warn" style="display:block">
+    <h3>Browser caveat → gRPC-Web</h3>
+    <p class="lead">Browsers <b>cannot speak raw gRPC</b> (JavaScript doesn't get the needed HTTP/2 frame control). <b>gRPC-Web</b> — a variant + proxy — lets browser apps reach gRPC backends. This is the main reason public, browser-facing APIs still tend to be REST/JSON. See <code>http_cheatsheet.md</code> for HTTP/2 detail.</p>
+  </div>
+</div>
+
+<!-- ============ FOUR CALL TYPES ============ -->
+<h2>4 · The four call types (the big differentiator vs REST)</h2>
+<p class="lead">A REST call is one request → one response. Because gRPC sits on HTTP/2 streams it offers <b>four</b> shapes; the streaming ones are what REST/JSON can't do cleanly. In the <code>.proto</code>, the <code>stream</code> keyword on the request and/or response picks the shape.</p>
+<div class="card">
+  <table>
+    <tr><th>Type</th><th>Client</th><th>Server</th><th>Use</th></tr>
+    <tr><td class="cmd"><b>Unary</b></td><td class="desc">one msg</td><td class="desc">one msg</td><td class="desc">the classic call — <code>GetUser(id)</code> → <code>User</code>. Like REST.</td></tr>
+    <tr><td class="cmd"><b>Server-streaming</b></td><td class="desc">one msg</td><td class="desc"><b>stream</b></td><td class="desc">ask once, server pushes many — price updates, paged list as a stream</td></tr>
+    <tr><td class="cmd"><b>Client-streaming</b></td><td class="desc"><b>stream</b></td><td class="desc">one msg</td><td class="desc">upload many, one reply — stream sensor readings, get one summary</td></tr>
+    <tr><td class="cmd"><b>Bidirectional</b></td><td class="desc"><b>stream</b></td><td class="desc"><b>stream</b></td><td class="desc">both send freely over one connection — chat, live telemetry, games</td></tr>
+  </table>
+</div>
+
+<!-- ============ PROTO EXAMPLE ============ -->
+<h2>5 · A minimal <code>.proto</code>, annotated</h2>
+<pre><code>syntax = "proto3";              // use proto3, the current dialect
+
+package user.v1;               // namespace; "v1" lets you version the API
+
+// A "service" groups related remote methods (RPCs).
+service UserService {
+  // unary: one request message in, one response message out
+  rpc GetUser (GetUserRequest) returns (User);
+
+  // server-streaming: one request in, a STREAM of Users back
+  rpc ListUsers (ListUsersRequest) returns (stream User);
+}
+
+// A "message" defines a typed record. Each field has a type,
+// a name, and a unique field NUMBER (the tag used on the wire —
+// numbers, not names, are what get serialized).
+message GetUserRequest {
+  int64 id = 1;                 // field 1
+}
+
+message User {
+  int64  id    = 1;
+  string name  = 2;
+  string email = 3;
+}
+
+message ListUsersRequest {
+  int32 page_size = 1;
+}</code></pre>
+<p class="lead">Then compile it on the command line (CLI):</p>
+<pre><code># CLI (your shell): generate Python client+server code from the .proto
+python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. user.proto</code></pre>
+<div class="callout warn">
+  Field <b>numbers</b> (<code>= 1</code>, <code>= 2</code>) are a field's identity on the wire. Rename a field freely, but <b>never reuse or change a number</b> — that breaks compatibility with already-serialized data.
+</div>
+
+<!-- ============ WHEN TO USE ============ -->
+<h2>6 · When to use gRPC vs REST/JSON</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Reach for gRPC when…</h3>
+    <table>
+      <tr><td class="desc">internal <b>microservices</b> talking to each other</td></tr>
+      <tr><td class="desc"><b>low latency</b> + high throughput matter</td></tr>
+      <tr><td class="desc"><b>polyglot</b> stack — one contract, many languages</td></tr>
+      <tr><td class="desc">you need <b>streaming</b> (any of the 3 streaming modes)</td></tr>
+      <tr><td class="desc">strong typing / generated clients are valued</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Reach for REST/JSON when…</h3>
+    <table>
+      <tr><td class="desc">API is <b>public</b> / third-party consumed</td></tr>
+      <tr><td class="desc">clients are <b>browsers</b> (can't speak raw gRPC)</td></tr>
+      <tr><td class="desc">you want easy human debugging (curl, paste JSON)</td></tr>
+      <tr><td class="desc">simple CRUD over caching-friendly HTTP/1.1</td></tr>
+      <tr><td class="desc">maximum ecosystem familiarity / lowest friction</td></tr>
+    </table>
+  </div>
+</div>
+<div class="callout good">
+  Rule of thumb: <b>gRPC behind the wall</b> (service↔service inside your cluster), <b>REST at the front door</b> (anything a browser or outside party hits). When a browser <i>must</i> reach a gRPC backend, put <b>gRPC-Web</b> + a proxy in between.
+</div>
+
+<!-- ============ ECOSYSTEM ============ -->
+<h2>7 · Ecosystem one-liners</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Reliability &amp; plumbing</h3>
+    <table>
+      <tr><td class="cmd"><b>Deadline / timeout</b></td><td class="desc">client sets a deadline ("answer by T") that propagates across hops; if it passes, the call is cancelled everywhere. Prefer deadlines over per-hop timeouts — they don't pile up.</td></tr>
+      <tr><td class="cmd"><b>Interceptor</b></td><td class="desc">middleware wrapping every call — auth, logging, metrics, retries — without touching business logic. The gRPC analog of HTTP middleware.</td></tr>
+      <tr><td class="cmd"><b>Health checks</b></td><td class="desc">a standard <code>Health</code> service (<code>Check</code>/<code>Watch</code>) that load balancers + K8s probes use to ask "are you ready?"</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Building blocks &amp; where it lives</h3>
+    <table>
+      <tr><td class="cmd"><b>Channel</b></td><td class="desc">the client's long-lived connection to a server (manages HTTP/2 + load balancing). Create one, make many calls.</td></tr>
+      <tr><td class="cmd"><b>Metadata</b></td><td class="desc">key-value pairs sent alongside a call (like HTTP headers) — auth tokens, request IDs.</td></tr>
+      <tr><td class="cmd"><b>Where it shows up</b></td><td class="desc"><b>Kubernetes</b> internal traffic, service meshes (Istio, Anthos Service Mesh), GCP APIs, high-throughput data systems.</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ TEARDOWN ============ -->
+<h2>8 · Teardown — closing down cleanly</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>Close the channel</b></td><td class="desc">when done, the client closes the channel to free the HTTP/2 connection + sockets. Leaking channels leaks connections — create one per server target and reuse it.</td></tr>
+    <tr><td class="cmd"><b>Cancel via deadline</b></td><td class="desc">if a call exceeds its deadline, gRPC cancels it and propagates the cancellation server-ward, so no machine keeps doing dead work. The graceful "give up" path.</td></tr>
+    <tr><td class="cmd"><b>Graceful server shutdown</b></td><td class="desc">a server can stop accepting new calls but let in-flight RPCs finish before exiting (e.g. Go's <code>GracefulStop</code>), avoiding abrupt stream breaks.</td></tr>
+  </table>
+</div>
+
+<!-- ============ GLOSSARY ============ -->
+<h2>9 · Glossary recap</h2>
+<div class="card">
+  <table>
+    <tr><td class="cmd"><b>gRPC</b></td><td class="desc">gRPC Remote Procedure Calls; Google's RPC framework (open-sourced 2015, ex-"Stubby")</td></tr>
+    <tr><td class="cmd"><b>RPC</b></td><td class="desc">Remote Procedure Call: invoke a function that runs on another machine as if local</td></tr>
+    <tr><td class="cmd"><b>protobuf / Protocol Buffers</b></td><td class="desc">Google's compact <b>binary</b> serialization format <b>and</b> the IDL gRPC uses</td></tr>
+    <tr><td class="cmd"><b>IDL</b></td><td class="desc">Interface Definition Language: describes an API independent of any language</td></tr>
+    <tr><td class="cmd"><b><code>.proto</code></b></td><td class="desc">the contract file defining messages + services; compiled by <code>protoc</code></td></tr>
+    <tr><td class="cmd"><b><code>protoc</code></b></td><td class="desc">the Protocol Buffers compiler that generates client/server code from a <code>.proto</code></td></tr>
+    <tr><td class="cmd"><b>stub</b></td><td class="desc">generated local stand-in object whose method calls go over the network</td></tr>
+    <tr><td class="cmd"><b>HTTP/2</b></td><td class="desc">the 2015 HTTP revision (multiplexed binary streams) that gRPC requires as transport</td></tr>
+    <tr><td class="cmd"><b>Multiplexing</b></td><td class="desc">many concurrent requests sharing one connection as independent streams</td></tr>
+    <tr><td class="cmd"><b>Unary / streaming (3 kinds)</b></td><td class="desc">the four gRPC call shapes (unary, server-, client-, bidirectional-streaming)</td></tr>
+    <tr><td class="cmd"><b>Channel</b></td><td class="desc">the client's reusable, long-lived connection to a server</td></tr>
+    <tr><td class="cmd"><b>Deadline</b></td><td class="desc">a propagating "answer-by" time; the basis for timeout + cancellation</td></tr>
+    <tr><td class="cmd"><b>Interceptor</b></td><td class="desc">middleware wrapping every call (auth, logging, retries)</td></tr>
+    <tr><td class="cmd"><b>gRPC-Web</b></td><td class="desc">variant + proxy letting browsers (which can't speak raw gRPC) reach gRPC backends</td></tr>
+    <tr><td class="cmd"><b>polyglot</b></td><td class="desc">many programming languages sharing one contract</td></tr>
+    <tr><td class="cmd"><b>K8s</b></td><td class="desc">Kubernetes, the container orchestrator where gRPC service traffic is common</td></tr>
+  </table>
+</div>
+
+<p class="foot">
+  Sources:
+  <a href="https://grpc.io/docs/">grpc.io docs</a> ·
+  <a href="https://grpc.io/docs/what-is-grpc/core-concepts/">gRPC core concepts</a> ·
+  <a href="https://protobuf.dev/">Protocol Buffers docs</a> ·
+  <a href="https://protobuf.dev/programming-guides/proto3/">proto3 language guide</a> ·
+  <a href="https://httpwg.org/specs/rfc7540.html">HTTP/2 (RFC 7540)</a>
+</p>
+
+</div>
+</body>
+</html>

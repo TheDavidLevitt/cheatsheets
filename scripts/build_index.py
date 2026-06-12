@@ -49,13 +49,23 @@ LAYOUT = {
         "obsidian_cheatsheet.html",
         "excel_functions_cheatsheet.html",
     ],
-    "Languages": [
+    # "##Label" entries render an in-column sub-heading (per David's
+    # "no section heads until 1–2 subsections" rule — Protocols now qualifies).
+    "Languages & Protocols": [
         "bash_zsh_cheatsheet.html",
         "powershell_cheatsheet.html",
         "python_cheatsheet.html",
         "python_environments_cheatsheet.html",
-        "formats_cheatsheet.html",
         "html_cheatsheet.html",
+        "markdown_cheatsheet.html",
+        "formats_cheatsheet.html",
+        "##Protocols",
+        "http_cheatsheet.html",
+        "tls_cheatsheet.html",
+        "websockets_cheatsheet.html",
+        "grpc_cheatsheet.html",
+        "mqtt_cheatsheet.html",
+        "bgp_cheatsheet.html",
     ],
 }
 
@@ -71,6 +81,7 @@ GROUPS = {
             "gcp_networking_cheatsheet.html",
             "gcloud_command_grammar_cheatsheet.html",
             "gcp_endpoints_messaging_cheatsheet.html",
+            "gcp_app_architectures_cheatsheet.html",
         ],
     },
 }
@@ -111,6 +122,15 @@ BLURBS = {
     "gcp_networking_cheatsheet.html": "VPCs, subnets, firewall rules — the private roads between your machines.",
     "gcloud_command_grammar_cheatsheet.html": "Reading and writing gcloud commands without guessing.",
     "gcp_endpoints_messaging_cheatsheet.html": "Pub/Sub, endpoints, and how GCP services talk to each other.",
+    # Languages
+    "markdown_cheatsheet.html": "Formatted text in plain text — the syntax this whole site is written in.",
+    # Protocols
+    "http_cheatsheet.html": "The web's request/response protocol — verbs, status codes, REST.",
+    "tls_cheatsheet.html": "The handshake that turns HTTP into HTTPS — certificates and the padlock.",
+    "websockets_cheatsheet.html": "A phone call left off the hook — live, push-without-refresh apps.",
+    "grpc_cheatsheet.html": "Call a function on another machine — Google's fast binary RPC.",
+    "mqtt_cheatsheet.html": "Tiny publish/subscribe for sensors and IoT telemetry.",
+    "bgp_cheatsheet.html": "How the internet's networks find each other — the route-gossip layer.",
 }
 
 CARD = """      <a class="card" href="{href}" data-search="{search}" data-key="{key}">
@@ -150,6 +170,9 @@ CSS = """  :root{
     text-decoration:none;color:var(--ink);transition:border-color .15s;}
   .card:hover{border-color:var(--accent);}
   .card.hit{border-color:var(--accent);}
+  .subhead{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);margin:18px 0 10px;padding-top:2px;}
+  .subhead.hide{display:none;}
   .card h3{margin:0 0 5px;font-size:15px;color:var(--accent);}
   .card p{margin:0;font-size:12.5px;color:var(--muted);}
   .badge{display:inline-block;font-size:10.5px;text-transform:uppercase;
@@ -199,6 +222,8 @@ PAGE = """<!DOCTYPE html>
       }});
       col.querySelector('.empty').hidden = visible > 0;
     }});
+    // Hide in-column sub-headings while filtering so lone labels don't float.
+    document.querySelectorAll('.subhead').forEach(h => h.classList.toggle('hide', !!needle));
   }});
 </script>
 </body>
@@ -316,7 +341,9 @@ def main() -> None:
     for col, entries in LAYOUT.items():
         out = []
         for e in entries:
-            if e.startswith("@"):
+            if e.startswith("##"):
+                out.append(f'    <h3 class="subhead">{e[2:]}</h3>')
+            elif e.startswith("@"):
                 if e[1:] in hub_cards:
                     out.append(hub_cards[e[1:]])
                     placed.add(e[1:])
@@ -328,8 +355,11 @@ def main() -> None:
         if name not in placed and name not in grouped_files:
             by_col["Tools"].append(card)
 
+    def col_id(name: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
     columns = "\n".join(
-        COLUMN.format(cid=c.lower(), cname=c, cards="\n".join(by_col[c]) or "")
+        COLUMN.format(cid=col_id(c), cname=c, cards="\n".join(by_col[c]) or "")
         for c in LAYOUT
     )
     (SITE / "index.html").write_text(
