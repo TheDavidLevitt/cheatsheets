@@ -47,6 +47,9 @@
   .lead{color:var(--muted);font-size:13.5px;margin:-4px 0 10px;}
   a{color:var(--accent);}
   .ok{color:var(--accent2);font-weight:600;}
+  .rg{color:var(--warn);font-weight:600;}
+  tr.rg-row td{background:rgba(224,175,104,.12);}
+  .card.rg-card{border-color:var(--warn);}
   .no{color:var(--bad);font-weight:600;}
   .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:12px;}
 
@@ -311,7 +314,7 @@ web-2        us-central1-b  RUNNING</code></pre>
     <table>
       <tr><td class="cmd"><code>--project=PROJECT_ID</code></td><td class="desc">which project (defaults to <code>config</code> value)</td></tr>
       <tr><td class="cmd"><code>--zone=us-central1-a</code></td><td class="desc">required for <b>zonal</b> resources (VMs, zonal disks)</td></tr>
-      <tr><td class="cmd"><code>--region=us-central1</code></td><td class="desc">required for <b>regional</b> resources (subnets, regional addresses)</td></tr>
+      <tr class="rg-row"><td class="cmd"><code>--region=us-central1</code></td><td class="desc"><span class="rg">required for <b>regional</b> resources</span> (subnets, regional addresses) — see §6 for the full yellow list</td></tr>
     </table>
     <p class="lead">Omit the scope flag and gcloud either uses your <code>config</code> default or prompts you to pick. See §6 for which resources are zonal vs regional vs global.</p>
   </div>
@@ -357,39 +360,52 @@ gcloud compute instances list \
 
 <!-- ============ SCOPE ============ -->
 <h2 id="scope">6 · Zonal vs regional vs global — which flag the resource demands</h2>
-<p class="lead">Pick the wrong scope flag and the command errors or finds nothing. The scope is a property of the resource <i>type</i>:</p>
+<p class="lead">Every Compute-family resource has exactly one <b>scope</b>, fixed by its <i>type</i>. The scope decides the flag: <span class="rg">resources that <b>require</b> <code>--region</code> are highlighted yellow</span>. Zonal resources take <code>--zone</code> (and <b>reject</b> <code>--region</code>); global resources take <b>neither</b>. Pass the wrong flag and the command errors or finds nothing.</p>
 <div class="grid">
   <div class="card">
-    <h3><span class="pill">--zone</span> Zonal</h3>
-    <p class="lead">Lives in one zone; needs <code>--zone</code>.</p>
+    <h3><span class="pill">--zone</span> Zonal — <code>--zone</code>, NOT <code>--region</code></h3>
+    <p class="lead">Lives in one zone. Passing <code>--region</code> is rejected.</p>
     <table>
-      <tr><td class="desc">VM instances</td></tr>
-      <tr><td class="desc">Standard persistent disks (zonal)</td></tr>
-      <tr><td class="desc">Zonal MIGs</td></tr>
+      <tr><td class="desc">Compute Engine <b>VM instances</b> (the classic gotcha)</td></tr>
+      <tr><td class="desc">Zonal persistent disks (pd-standard/ssd), local SSDs</td></tr>
+      <tr><td class="desc">GPUs / accelerators (attach to a zonal VM)</td></tr>
+      <tr><td class="desc">Zonal managed instance groups (MIGs)</td></tr>
+      <tr><td class="desc">Reservations; instance-level operations</td></tr>
+    </table>
+  </div>
+  <div class="card rg-card">
+    <h3><span class="pill">--region</span> <span class="rg">Regional — REQUIRES <code>--region</code></span></h3>
+    <p class="lead">Spans the zones of one region.</p>
+    <table>
+      <tr class="rg-row"><td class="desc">Subnets (<code>compute networks subnets</code>)</td></tr>
+      <tr class="rg-row"><td class="desc">Regional static IP addresses (internal &amp; external)</td></tr>
+      <tr class="rg-row"><td class="desc">Regional MIGs; regional persistent disks</td></tr>
+      <tr class="rg-row"><td class="desc">Cloud Router, Cloud NAT, VPC connectors</td></tr>
+      <tr class="rg-row"><td class="desc">Regional forwarding rules / backend services (regional LB)</td></tr>
+      <tr class="rg-row"><td class="desc">Cloud Run, Cloud Functions, Cloud SQL, Dataproc</td></tr>
+      <tr class="rg-row"><td class="desc">GKE <b>regional</b> clusters; Memorystore</td></tr>
     </table>
   </div>
   <div class="card">
-    <h3><span class="pill">--region</span> Regional</h3>
-    <p class="lead">Spans zones in a region; needs <code>--region</code>.</p>
+    <h3><span class="pill">global</span> Global — no <code>--region</code> or <code>--zone</code></h3>
+    <p class="lead">Project-wide; cannot take a location flag.</p>
     <table>
-      <tr><td class="desc">Subnets</td></tr>
-      <tr><td class="desc">Regional static addresses</td></tr>
-      <tr><td class="desc">Regional MIGs, Cloud Router, Cloud NAT</td></tr>
-      <tr><td class="desc">Cloud SQL (regional service)</td></tr>
-    </table>
-  </div>
-  <div class="card">
-    <h3><span class="pill">global</span> Global</h3>
-    <p class="lead">No location flag — the resource is project-wide.</p>
-    <table>
-      <tr><td class="desc">VPC <b>networks</b> (the network is global; its subnets are regional)</td></tr>
-      <tr><td class="desc">Firewall rules</td></tr>
-      <tr><td class="desc">Images, global addresses, URL maps</td></tr>
+      <tr><td class="desc">VPC <b>networks</b> (global; their subnets are regional)</td></tr>
+      <tr><td class="desc">Firewall rules, routes</td></tr>
+      <tr><td class="desc">Images, snapshots, instance templates</td></tr>
+      <tr><td class="desc">Global IP addresses + global LB parts (URL maps, target proxies, global backend services)</td></tr>
+      <tr><td class="desc">IAM, projects, service accounts, billing</td></tr>
     </table>
   </div>
 </div>
+<div class="callout warn">
+  <b>Dual-scope resources</b> — a few types come in two flavors and take <code>--zone</code> <i>or</i> <span class="rg"><code>--region</code></span> depending on which you create: <b>persistent disks</b> (zonal vs regional), <b>addresses</b> (global vs regional), <b>backend services / forwarding rules</b> (global vs regional), <b>MIGs</b> (zonal vs regional). The flag follows the variant, not the family.
+</div>
+<div class="callout">
+  <b><code>--region</code> vs <code>--location</code>:</b> storage/data services don't use <code>--region</code> at all — they take <code>--location</code> (a region <i>or</i> multi-region), and it's usually set at create and immutable: <b>Cloud Storage buckets</b>, <b>BigQuery</b> datasets, <b>Artifact Registry</b>, <b>Cloud Composer</b>. So "no <code>--region</code>" doesn't always mean global — sometimes it means "uses <code>--location</code> instead."
+</div>
 <div class="callout good">
-  <b>The classic question:</b> "A subnet is created with which scope flag?" → <code>--region</code>. "A VM?" → <code>--zone</code>. "The VPC network itself?" → neither, it's global. Remember the nesting: <b>global network ⊃ regional subnet ⊃ zonal VM.</b>
+  <b>The classic exam questions:</b> "A subnet is created with which scope flag?" → <span class="rg"><code>--region</code></span>. "A VM?" → <code>--zone</code> (never <code>--region</code>). "The VPC network itself?" → neither, it's global. Remember the nesting: <b>global network ⊃ <span class="rg">regional subnet</span> ⊃ zonal VM.</b> Tip: set defaults with <code>gcloud config set compute/region …</code> and <code>compute/zone …</code> so the flag becomes optional day-to-day.
 </div>
 
 <!-- ============ CANONICAL ============ -->
