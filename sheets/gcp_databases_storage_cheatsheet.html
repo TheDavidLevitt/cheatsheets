@@ -284,13 +284,15 @@ Storing whole files (images, backups, logs)?    → Cloud Storage</code></pre>
   <div class="body">
     <p class="lead"><b>Object storage</b> = whole files retrieved by name over HTTP, not a filesystem and not a disk. A <b>bucket</b> (globally-unique name, chosen location) holds <b>objects</b> (the files + metadata). Flat namespace — <code>photos/2026/cat.jpg</code> is one object whose name contains slashes; "folders" are an illusion the console draws.</p>
     <table>
-      <tr><th>Class</th><th>Min storage duration</th><th>Use when accessed…</th></tr>
-      <tr><td><b>Standard</b></td><td class="desc">none</td><td class="desc">frequently — live website assets, active data</td></tr>
-      <tr><td><b>Nearline</b></td><td class="desc">30 days</td><td class="desc">≈ once a month — recent backups</td></tr>
-      <tr><td><b>Coldline</b></td><td class="desc">90 days</td><td class="desc">≈ once a quarter — DR (disaster recovery) copies</td></tr>
-      <tr><td><b>Archive</b></td><td class="desc">365 days</td><td class="desc">≈ once a year — compliance retention</td></tr>
+      <tr><th>Class</th><th>Storage /GB·mo</th><th>Retrieval /GB</th><th>Min duration</th><th>Accessed…</th></tr>
+      <tr><td><b>Standard</b></td><td class="desc">$0.020</td><td class="desc">$0 (free)</td><td class="desc">none</td><td class="desc">frequently — live assets, active data</td></tr>
+      <tr><td><b>Nearline</b></td><td class="desc">$0.010</td><td class="desc">$0.01</td><td class="desc">30 days</td><td class="desc">≈ monthly — recent backups</td></tr>
+      <tr><td><b>Coldline</b></td><td class="desc">$0.004</td><td class="desc">$0.02</td><td class="desc">90 days</td><td class="desc">≈ quarterly — DR copies</td></tr>
+      <tr><td><b>Archive</b></td><td class="desc">$0.0012</td><td class="desc">$0.05</td><td class="desc">365 days</td><td class="desc">≈ yearly — compliance retention</td></tr>
     </table>
-    <p class="lead">Colder = cheaper storage but pricier retrieval + early-deletion fees. All classes have the same ms-level access latency — "cold" means <i>billing</i> temperature, not tape robots.</p>
+    <p class="lead"><b>Read the columns left→right as the tradeoff:</b> each colder class cuts storage cost (Standard → Archive ≈ <b>17× cheaper</b> to store) but raises retrieval cost (free → $0.05/GB) and lengthens the <b>minimum-duration</b> commitment. <b>Early-deletion</b> = delete/overwrite/move-out before the minimum is up and you're still billed for the remaining days (e.g. delete Archive after 30 days → charged the other ~335). All four have the same millisecond access latency — "cold" is <i>billing</i> temperature, not tape robots.</p>
+    <div class="callout warn"><b>Prices: <code>us</code> region list rate, ~2026-06 — verify before quoting.</b> They vary by region/multi-region (a multi-region bucket costs more) and GCP changed several in 2026. Beyond storage + retrieval there are also per-1,000 <b>operation</b> (Class A/B) fees that rise as the class gets colder, and network <b>egress</b> when data leaves GCP. Live: <a href="https://cloud.google.com/storage/pricing">cloud.google.com/storage/pricing</a>; model a real workload in the <a href="https://cloud.google.com/products/calculator">Pricing Calculator</a>.</div>
+    <p class="lead"><b>Decision rule:</b> pick the coldest class whose retrieval pattern still wins. Crossover math — Archive saves ~$0.0188/GB·mo over Standard but costs $0.05/GB to read, so a full read "repays" only after it sits ≈ 2.7 months unread; access more often than the minimum-duration window and a warmer class is cheaper overall.</p>
     <table>
       <tr><td class="cmd"><b>Lifecycle rules</b></td><td class="desc">per-bucket automation: "after 30 days → Nearline; after 365 → Archive; after 7 years → delete." Set once, forget forever</td></tr>
       <tr><td class="cmd"><b>Signed URLs</b></td><td class="desc">time-limited tokenized links granting anyone (no Google account) GET/PUT on one object — how apps let users download private files or upload directly to the bucket</td></tr>
